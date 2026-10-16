@@ -190,12 +190,19 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "tree_digest": "Digest",
       "files": "list(SourceFile,0,10000)"
     },
+    "PlannedDeployTask": {
+      "kind": "enum(deploy)",
+      "environment_id": "Id",
+      "artifact_from": "Id"
+    },
+    "PlannedTask": "oneof(BuilderTask,GoTestTask,GoVetTask,GoBuildTask,DenoTask,VerifyTask,PlannedDeployTask)",
     "PlannedJob": {
       "id": "Id",
       "base_job_id": "JobId",
+      "selected": "bool",
       "matrix_values": "ScalarMap",
       "needs": "list(Id,0,256)",
-      "task": "Task",
+      "task": "PlannedTask",
       "resources": "Resources",
       "retry": "Retry",
       "cache": "CachePolicy",
@@ -552,6 +559,7 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
     "TriggerCursor": {
       "project_id": "Id",
       "definition_id": "Id",
+      "definition_revision": "int(1,2147483647)",
       "trigger_id": "Id",
       "kind": "enum(watch,schedule)",
       "last_sha": "nullable(SHA)",
@@ -626,9 +634,19 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
 }
 ```
 
-**複合制約と既定値：** record 配列は owner の複合キーで一意とする。definition / template は project,id,revision、environment は project,id、run は project,id,attempt、artifact は project,digest、cache は project,key、grant は subject_kind,subject_id,project_id,environment_id,role。SecretMetaはproject_id,id,version一意。idを持つその他のRoot entityはid一意。Credentialのcicd-v1 login_countだけは安全整数上限9007199254740991以下に追加制限する（legacy fileの型は変更しない）。全entity参照は同一project内で解決し（user/worker/serviceはglobal、digestを識別子へ代用しない）、不在・無効・deleting参照を拒否する。rev / generationの上限では wrap せず P19_REVISION。Timeの順序逆転・不正なstate / timestamp組合せは P19_STATE_CORRUPT。Task、Grant、Environmentの意味上の制約は各owner正本を参照する。
+**複合制約と既定値：** record 配列は owner の複合キーで一意とする。definition / template は project,id,revision、environment は project,id、run は project,id,attempt、artifact は project,digest、cache は project,key、grant は subject_kind,subject_id,project_id,environment_id,role。SecretMetaはproject_id,id,version一意。idを持つその他のRoot entityはid一意。Credentialのcicd-v1 login_countだけは安全整数上限9007199254740991以下に追加制限する（legacy fileの型は変更しない）。全entity参照は同一project内で解決し（user/worker/serviceはglobal、digestを識別子へ代用しない）、不在・無効・deleting参照を拒否する。ただし成果物digestの保持記録は [履歴参照境界](#phase-19-retained-content-references) を適用し、live foreign keyと区別する。rev / generationの上限では wrap せず P19_REVISION。Timeの順序逆転・不正なstate / timestamp組合せは P19_STATE_CORRUPT。Task、Grant、Environmentの意味上の制約は各owner正本を参照する。
 
-保存時のschema既定値はない。作成UIの初期値だけを `Quota={parallel:1,queue:64,artifact_mb:1024,cache_mb:256,retention_days:7}`、`Resources={cpu_percent:100,memory_mb:1024,disk_mb:512,tasks:128,timeout_seconds:900,output_mb:16}`、`Retry={max_attempts:1,backoff_seconds:1}`、cache無効・paths空・TTL604800秒、empty selector / matrix / template / env / secret、optional=false、fail_fast=false とする。memory_mb >= disk_mb+256、env全値合計32768 bytes以下、secret投入後の合計16384 bytes以下を要求する。Templateは他Templateを参照しない。EnvironmentStateはproject,environmentで一意。TriggerCursorはproject,definition,kind,trigger_idで一意であり、immutable Definitionとは別に更新する。StatusDeliveryはproject,run,attempt,stateで一意。Notification.idはcanonical `{project_id,target_id,target_attempt,source_revision,event}` のSHA256先頭63文字にnを付ける。target_attemptはRun.attempt（Deploymentは1）、source_revisionは通知を生成する遷移後のRun/Deployment.revision。同一遷移再処理では同じidとし、配信retry用attemptと混同しない。Source.filesはpath昇順、UTF-8合計100 MiB以下、tree_digestはcanonical files配列のSHA256。snapshot全体は32 MiB、active run16、全実行job64、projectごとの上限はQuotaでさらに制限する。
+保存時のschema既定値はない。作成UIの初期値だけを `Quota={parallel:1,queue:64,artifact_mb:1024,cache_mb:256,retention_days:7}`、`Resources={cpu_percent:100,memory_mb:1024,disk_mb:512,tasks:128,timeout_seconds:900,output_mb:16}`、`Retry={max_attempts:1,backoff_seconds:1}`、cache無効・paths空・TTL604800秒、empty selector / matrix / template / env / secret、optional=false、fail_fast=false とする。memory_mb >= disk_mb+256、env全値合計32768 bytes以下、secret投入後の合計16384 bytes以下を要求する。Templateは他Templateを参照しない。EnvironmentStateはproject,environmentで一意。TriggerCursorはproject,definition,definition_revision,kind,trigger_idで一意であり、immutable Definitionとは別に更新する。StatusDeliveryはproject,run,attempt,stateで一意。Notification.idはcanonical `{project_id,target_id,target_attempt,source_revision,event}` のSHA256先頭63文字にnを付ける。target_attemptはRun.attempt（Deploymentは1）、source_revisionは通知を生成する遷移後のRun/Deployment.revision。同一遷移再処理では同じidとし、配信retry用attemptと混同しない。Source.filesはpath昇順、UTF-8合計100 MiB以下、tree_digestはcanonical files配列のSHA256。snapshot全体は32 MiB、active run16、全実行job64、projectごとの上限はQuotaでさらに制限する。
+
+<a id="phase-19-plan-state-invariants"></a>
+**保存済み計画の整合：** Plan.digestはPlan.dataのcanonical SHA256と一致を要求する。Run.project_idとPlanData.project_id、Run.jobsとPlanData.jobsのID集合・配列順を一致させ、欠落/追加/重複をP19_STATE_CORRUPTで拒否する。PlannedJob.needsは保存Plan内の先行IDだけ、PlannedDeployTask.artifact_fromはneeds内の一つのbuilder IDだけを許す。原定義のDeployTaskと展開済みPlannedDeployTaskを混同せず、展開後IDをJobId長へ切り詰めない。selected=falseのJobResultはskipped/try_number=0/worker_id=null/lease_generation=0/started_at=null/duration_ms=0/code=null/artifact=null/reused_from_attempt=null/log_gap=falseでfinished_at=当該Run.created_atとし、実行状態への遷移を拒否する。selected=trueの初期JobResultはqueued/try_number=0/worker_id=null/lease_generation=0/started_at=finished_at=duration_ms=code=artifact=reused_from_attempt=null/log_gap=false。依存終端によるskippedは同じ非実行fieldを使いduration_ms=0/finished_at=当該遷移時刻とする。選択計算の本文は [docs/details/runner.md 詳細本文責務 条件選択](runner.md#phase-19-plan-selection)、新attempt生成は [再実行](runner.md#phase-19-attempt-plan) を参照する。
+
+一度受け付けたRun.planは変更不可。同project/runのattemptは1始まり欠番なし、新attemptでrevision=1、旧attemptの保存bytesは変更しない。Run.requester/created_at/event_key/triggerは新受付に対応する値であり旧attemptから無条件copyしない。requester=systemは [docs/details/security.md 詳細本文責務 自動trigger主体](security.md#phase-19-automatic-subject) の非User参照例外だけである。activeまたはrecovery_requiredのattemptがある間は次attemptを作らない。Root読取でもこれらの関係を検証し、現在のDefinitionやbranchからPlanを再構築して破損を隠さない。TriggerCursorのrevisionは同project/definitionの存在revisionへ接続し、watchはlast_due=null、scheduleはlast_sha=null。新revisionのcursor初期値は両方null、異なるrevisionのcursorを上書き/流用しない。旧cursorは当該revisionを参照する未終端処理がなく、そのrevisionがProjectの現在参照でない場合だけRoot GCで回収可能とする。
+
+<a id="phase-19-retained-content-references"></a>
+**成果物digestの履歴参照境界：** terminalのRun.JobResult.artifact、終端Deploymentのplan.artifact/previous_artifact、非選択jobのPlan内VerifyTask.artifactはcontent identityの記録であり、Artifact metadataへの常時live foreign keyではない。対応Artifactが正規GC済みでも保存digestを消去/書換えせず、Root読取と履歴APIを破損にしない。metadata不在をfile scanによる再登録や成果物download成功へ変換もしない。
+
+一方、selected jobの実行待ち/稼働中/recovery_requiredの必須artifact参照、active Deployment、EnvironmentStateのcurrent/保持対象、承認待ち、明示pinの参照は保護対象であり、同projectに存在する非deleting Artifactと対応pinを要求する。不在ならP19_STATE_CORRUPTとして通常処理を停止し、GCによるものと推測して緩和しない。保護の解除・GC候補は [docs/details/archive.md 詳細本文責務](archive.md#phase-19-artifact-read-gc) を参照する。保持記録を新しい実行へ利用する際はrunnerの [固定Plan再実行](runner.md#phase-19-attempt-plan) が最新metadata/実file/新pinを再検証し、過去の成功表示だけで再利用を許可しない。操作対象identityや未終端OperationによるRun/Deployment自体の保持は [operation lifecycle](#phase-19-operation-lifecycle) を変更しない。
 
 <a id="phase-19-state-paths"></a>
 **保存 path と権限：**

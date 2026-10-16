@@ -27,6 +27,9 @@ disabled projectは新規run/deploy開始・retry/resumeを拒否するが、初
 
 承認対象はDeployPlan digest、承認有効期限は発行から3600秒、必要人数はEnvironment.approvals（0〜2）。production=trueは1以上かつallow_self_approval=false。同一subject重複不可、service不可。approver grantが失効/無効化、plan内容/環境revision/期待世代変更で承認無効。self禁止時requester本人は拒否。rejectはdeployment.failed/P19_APPROVALとして終端化、承認だけで実体配備はしない。
 
+<a id="phase-19-automatic-subject"></a>
+**自動triggerの内部主体：** watch/scheduleのRun.requesterは予約Id systemを使用し、User/Service/Grant/credential/session/tokenを新設しない。systemはcoordinator内部の登録済project trigger専用であり、API login/Bearer/要求bodyから選択できず、platform-admin権限を持つuserの代替でもない。project.enabledと現在参照Definitionの整合を受付commitで確認する。自動配備でもEnvironmentのapproval・production・freeze・target認可境界を省略せず、内部主体だけで承認人数を満たさない。再実行を人間またはserviceが要求した場合は元system主体を継承せず、現在の要求subjectを認可・記録する。保存表現は [docs/details/statefile.md 詳細本文責務 Plan保存整合](statefile.md#phase-19-plan-state-invariants)、trigger受付は [docs/details/runner.md 詳細本文責務](runner.md#phase-19-trigger-admission) を参照する。
+
 <a id="phase-19-secret-crypto"></a>
 **secret暗号・投入・mask：**
 

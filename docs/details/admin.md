@@ -11,6 +11,9 @@ exact形は `adlaire-ci-admin --api-url URL --token-file ABS --json cicd COMMAND
 <a id="phase-19-admin-operation-result"></a>
 **CLIの要求結果境界：** key分類・HTTP結果は [docs/details/api.md 詳細本文責務 operation受付](api.md#phase-19-operation-admission) と一致させ、不要な--idempotency-keyはnetwork前入力拒否する。mutation応答はoperation.id/kind/target_attemptと送信対象を照合し、不一致をprotocol失敗とする。timeout/通信断は非zero終了であり未実行の証明ではない。固定診断だけを出し、keyを付け替えた自動再送、stdin再読込、秘密bodyのcacheを行わない。照会は既知keyをparams-fileへ指定したoperation-getで行い、404を「再実行可」に変換しない。user/service作成のone_time消失は再表示不可として扱い、照会のために別user/serviceを作成しない。
 
+<a id="phase-19-admin-plan-boundary"></a>
+**CLIの計画と再実行：** plan/run-getは [docs/details/api.md 詳細本文責務 計画受付](api.md#phase-19-plan-request-boundary) の完全Planを1回のJSON出力で保持し、selected=falseの除去、展開Idの短縮、表示用Plan.digest再計算をしない。run-startはbody-file内の明示plan_digestだけを送信する。run-retry/run-resumeはparams-fileのattemptとbody-fileのexpected_revisionを渡し、欠落をlatestで補完せず入力拒否する。エラー後のplan取得・新digest採用・新attempt再要求を自動実行しない。受信Planの型/ID/needs不整合はexit5で部分成功JSONを出さない。
+
 <a id="phase-19-admin-artifact-chunk"></a>
 **CLIの成果物範囲読取：** artifact-downloadはparams-fileのproject/digest/offsetで1回だけ [docs/details/api.md 詳細本文責務 download wire](api.md#phase-19-artifact-download) を呼ぶ。要求offset/digest・strict base64・全byte不変条件を検査後、単一Chunkを含むAPI envelopeをJSON1行でstdoutへ返す。protocol不一致はexit5、部分JSONを成功出力せず固定診断だけを返す。CLIはarchiveを自動生成/保存せず、final=trueを全file hash検証済みと表示しない。複数chunkの連結・最終digest確認は明示caller責務であり、失敗時の自動巻戻し・自動retry・pin作成を行わない。
 

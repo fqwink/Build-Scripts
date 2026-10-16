@@ -107,6 +107,514 @@ func TestSpecificationReferenceIntegrity(t *testing.T) {
 	}
 }
 
+type phase19PlanInputCase struct {
+	ID       string                     `json:"id"`
+	Kind     string                     `json:"kind"`
+	Min      int64                      `json:"min"`
+	Max      int64                      `json:"max"`
+	Required bool                       `json:"required"`
+	Default  json.RawMessage            `json:"default"`
+	Choices  []json.RawMessage          `json:"choices"`
+	Values   map[string]json.RawMessage `json:"values"`
+	Expected map[string]json.RawMessage `json:"expected"`
+	Code     string                     `json:"expected_code"`
+}
+
+type phase19PlanMatrixCase struct {
+	ID        string                       `json:"id"`
+	Base      string                       `json:"base"`
+	Axes      map[string][]json.RawMessage `json:"axes"`
+	Exclude   []map[string]json.RawMessage `json:"exclude"`
+	Include   []map[string]json.RawMessage `json:"include"`
+	Count     int                          `json:"expected_count"`
+	Digest    string                       `json:"expected_digest"`
+	IDsDigest string                       `json:"expected_ids_digest"`
+	Code      string                       `json:"expected_code"`
+}
+
+type phase19PlanDAGJob struct {
+	ID    string   `json:"id"`
+	Needs []string `json:"needs"`
+	Match bool     `json:"own_match"`
+}
+
+type phase19PlanEvent struct {
+	Project    string  `json:"project_id"`
+	Definition string  `json:"definition_id"`
+	Revision   int     `json:"definition_revision"`
+	Kind       string  `json:"kind"`
+	Trigger    string  `json:"trigger_id"`
+	SHA        string  `json:"source_sha"`
+	Due        *string `json:"due"`
+}
+
+type phase19PlanSpecificationVector struct {
+	Version  int                     `json:"schema_version"`
+	Inputs   []phase19PlanInputCase  `json:"input_cases"`
+	Matrices []phase19PlanMatrixCase `json:"matrix_cases"`
+	DAGs     []struct {
+		ID       string              `json:"id"`
+		Jobs     []phase19PlanDAGJob `json:"jobs"`
+		IDs      []string            `json:"expected_ids"`
+		Selected []bool              `json:"expected_selected"`
+		Code     string              `json:"expected_code"`
+	} `json:"dag_cases"`
+	Selectors []struct {
+		ID       string                     `json:"id"`
+		Kind     string                     `json:"kind"`
+		Branches []string                   `json:"branches"`
+		Tags     []string                   `json:"tags"`
+		Paths    []string                   `json:"paths"`
+		Changed  []string                   `json:"changed"`
+		Equals   map[string]json.RawMessage `json:"equals"`
+		Values   map[string]json.RawMessage `json:"values"`
+		Expected bool                       `json:"expected"`
+	} `json:"selector_cases"`
+	Events []struct {
+		ID     string           `json:"id"`
+		Input  phase19PlanEvent `json:"input"`
+		Digest string           `json:"expected_digest"`
+	} `json:"event_cases"`
+}
+
+func phase19PlanScalar(raw json.RawMessage) (string, []byte, bool) {
+	var value any
+	if json.Unmarshal(raw, &value) != nil {
+		return "", nil, false
+	}
+	canonical, err := json.Marshal(value)
+	if err != nil {
+		return "", nil, false
+	}
+	switch value.(type) {
+	case string:
+		return "string", canonical, true
+	case bool:
+		return "boolean", canonical, true
+	case float64:
+		s := strings.TrimSpace(string(raw))
+		n, err := strconv.ParseInt(s, 10, 64)
+		if err != nil || strconv.FormatInt(n, 10) != s || n < -2147483648 || n > 2147483647 {
+			return "", nil, false
+		}
+		return "integer", canonical, true
+	default:
+		return "", nil, false
+	}
+}
+
+func phase19PlanInputOracle(c phase19PlanInputCase) (map[string]json.RawMessage, string) {
+	empty := map[string]json.RawMessage{}
+	fail := func() (map[string]json.RawMessage, string) { return empty, "P19_SCHEMA" }
+	if c.Min > c.Max || (c.Kind == "string" && (c.Min < 0 || c.Max > 4096)) ||
+		(c.Kind == "boolean" && (c.Min != 0 || c.Max != 1)) ||
+		!phase17StringInSlice(c.Kind, []string{"string", "integer", "boolean"}) {
+		return fail()
+	}
+	valid := func(raw json.RawMessage) bool {
+		kind, _, ok := phase19PlanScalar(raw)
+		if !ok || kind != c.Kind {
+			return false
+		}
+		if kind == "string" {
+			var s string
+			if json.Unmarshal(raw, &s) != nil {
+				return false
+			}
+			return int64(len([]byte(s))) >= c.Min && int64(len([]byte(s))) <= c.Max
+		}
+		if kind == "integer" {
+			n, err := strconv.ParseInt(strings.TrimSpace(string(raw)), 10, 64)
+			return err == nil && n >= c.Min && n <= c.Max
+		}
+		return true
+	}
+	choiceSet := map[string]bool{}
+	for _, raw := range c.Choices {
+		if !valid(raw) {
+			return fail()
+		}
+		_, key, _ := phase19PlanScalar(raw)
+		if choiceSet[string(key)] {
+			return fail()
+		}
+		choiceSet[string(key)] = true
+	}
+	allowed := func(raw json.RawMessage) bool {
+		if !valid(raw) {
+			return false
+		}
+		_, key, _ := phase19PlanScalar(raw)
+		return len(choiceSet) == 0 || choiceSet[string(key)]
+	}
+	hasDefault := string(c.Default) != "null"
+	if (c.Required && hasDefault) || (hasDefault && !allowed(c.Default)) {
+		return fail()
+	}
+	for key := range c.Values {
+		if key != "x" {
+			return fail()
+		}
+	}
+	raw, present := c.Values["x"]
+	if !present {
+		if c.Required {
+			return fail()
+		}
+		if !hasDefault {
+			return empty, "ok"
+		}
+		raw = c.Default
+	}
+	if !allowed(raw) {
+		return fail()
+	}
+	return map[string]json.RawMessage{"x": raw}, "ok"
+}
+
+func phase19PlanCanonicalHash(value any) string {
+	b, err := json.Marshal(value)
+	if err != nil {
+		return ""
+	}
+	var decoded any
+	if json.Unmarshal(b, &decoded) != nil {
+		return ""
+	}
+	h := sha256.Sum256(iacSpecificationCanonical(decoded))
+	return hex.EncodeToString(h[:])
+}
+
+func phase19PlanMatrixOracle(c phase19PlanMatrixCase) ([]map[string]json.RawMessage, []string, string) {
+	fail := func() ([]map[string]json.RawMessage, []string, string) {
+		return []map[string]json.RawMessage{}, []string{}, "P19_MATRIX"
+	}
+	axes := []string{}
+	kinds := map[string]string{}
+	if len(c.Axes) > 4 {
+		return fail()
+	}
+	for axis, values := range c.Axes {
+		if len(values) == 0 || len(values) > 32 {
+			return fail()
+		}
+		axes = append(axes, axis)
+		seen := map[string]bool{}
+		for _, raw := range values {
+			kind, key, ok := phase19PlanScalar(raw)
+			if !ok || (kinds[axis] != "" && kinds[axis] != kind) || seen[string(key)] {
+				return fail()
+			}
+			kinds[axis] = kind
+			seen[string(key)] = true
+		}
+	}
+	sort.Strings(axes)
+	for _, list := range []struct {
+		values   []map[string]json.RawMessage
+		complete bool
+	}{{c.Exclude, false}, {c.Include, true}} {
+		for _, tuple := range list.values {
+			if (list.complete && len(tuple) != len(axes)) || (!list.complete && len(tuple) == 0) {
+				return fail()
+			}
+			for key, raw := range tuple {
+				kind, _, ok := phase19PlanScalar(raw)
+				if !ok || kinds[key] == "" || kinds[key] != kind {
+					return fail()
+				}
+			}
+		}
+	}
+	tuples := []map[string]json.RawMessage{}
+	var walk func(int, map[string]json.RawMessage)
+	walk = func(index int, tuple map[string]json.RawMessage) {
+		if index < len(axes) {
+			axis := axes[index]
+			for _, raw := range c.Axes[axis] {
+				tuple[axis] = raw
+				walk(index+1, tuple)
+			}
+			return
+		}
+		for _, excluded := range c.Exclude {
+			matches := true
+			for key, raw := range excluded {
+				_, a, _ := phase19PlanScalar(raw)
+				_, b, _ := phase19PlanScalar(tuple[key])
+				if !bytes.Equal(a, b) {
+					matches = false
+					break
+				}
+			}
+			if matches {
+				return
+			}
+		}
+		copyTuple := map[string]json.RawMessage{}
+		for key, raw := range tuple {
+			copyTuple[key] = raw
+		}
+		tuples = append(tuples, copyTuple)
+	}
+	walk(0, map[string]json.RawMessage{})
+	seen := map[string]bool{}
+	for _, tuple := range tuples {
+		seen[phase19PlanCanonicalHash(tuple)] = true
+	}
+	for _, tuple := range c.Include {
+		h := phase19PlanCanonicalHash(tuple)
+		if seen[h] {
+			return fail()
+		}
+		seen[h] = true
+		tuples = append(tuples, tuple)
+	}
+	if len(tuples) == 0 || len(tuples) > 256 {
+		return fail()
+	}
+	ids := []string{}
+	for i := range tuples {
+		id := c.Base
+		if len(axes) > 0 {
+			id += "_m" + strconv.Itoa(i+1)
+		}
+		if len(id) > 64 {
+			return fail()
+		}
+		ids = append(ids, id)
+	}
+	return tuples, ids, "ok"
+}
+
+func phase19PlanDAGOracle(jobs []phase19PlanDAGJob) ([]string, []bool, string) {
+	fail := func() ([]string, []bool, string) { return []string{}, []bool{}, "P19_DAG" }
+	index := map[string]int{}
+	for i, job := range jobs {
+		if _, ok := index[job.ID]; ok {
+			return fail()
+		}
+		index[job.ID] = i
+	}
+	degrees := make([]int, len(jobs))
+	done := make([]bool, len(jobs))
+	selection := map[string]bool{}
+	for i, job := range jobs {
+		seen := map[string]bool{}
+		for _, need := range job.Needs {
+			if _, ok := index[need]; !ok || need == job.ID || seen[need] {
+				return fail()
+			}
+			seen[need] = true
+			degrees[i]++
+		}
+	}
+	ids := []string{}
+	selected := []bool{}
+	for len(ids) < len(jobs) {
+		chosen := -1
+		for i := range jobs {
+			if !done[i] && degrees[i] == 0 {
+				chosen = i
+				break
+			}
+		}
+		if chosen < 0 {
+			return fail()
+		}
+		job := jobs[chosen]
+		value := job.Match
+		for _, need := range job.Needs {
+			value = value && selection[need]
+		}
+		done[chosen] = true
+		selection[job.ID] = value
+		ids = append(ids, job.ID)
+		selected = append(selected, value)
+		for i, other := range jobs {
+			for _, need := range other.Needs {
+				if need == job.ID {
+					degrees[i]--
+				}
+			}
+		}
+	}
+	return ids, selected, "ok"
+}
+
+func phase19PlanSelectorOracle(kind string, branches, tags, paths, changed []string, equals, values map[string]json.RawMessage) bool {
+	list, other, ref := branches, tags, "main"
+	if kind == "tag" {
+		list, other, ref = tags, branches, "v1"
+	}
+	if len(list) == 0 && len(other) > 0 {
+		return false
+	}
+	if len(list) > 0 && !phase17StringInSlice(ref, list) {
+		return false
+	}
+	if len(paths) > 0 {
+		matched := false
+		for _, p := range paths {
+			if phase17StringInSlice(p, changed) {
+				matched = true
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	for key, want := range equals {
+		got, ok := values[key]
+		if !ok {
+			return false
+		}
+		wk, wb, wok := phase19PlanScalar(want)
+		gk, gb, gok := phase19PlanScalar(got)
+		if !wok || !gok || wk != gk || !bytes.Equal(wb, gb) {
+			return false
+		}
+	}
+	return true
+}
+
+func decodePhase19PlanSpecification(input []byte) (phase19PlanSpecificationVector, error) {
+	var v phase19PlanSpecificationVector
+	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	encoded, err := json.Marshal(v)
+	var a, b any
+	if err != nil || json.Unmarshal(input, &a) != nil || json.Unmarshal(encoded, &b) != nil || !bytes.Equal(iacSpecificationCanonical(a), iacSpecificationCanonical(b)) {
+		return v, fmt.Errorf("required fields")
+	}
+	if v.Version != 1 || v.Inputs == nil || v.Matrices == nil || v.DAGs == nil || v.Selectors == nil || v.Events == nil {
+		return v, fmt.Errorf("vector identity")
+	}
+	seen := map[string]bool{}
+	checkID := func(id string) bool {
+		if !regexp.MustCompile("^[a-z][a-z0-9-]*$").MatchString(id) || seen[id] {
+			return false
+		}
+		seen[id] = true
+		return true
+	}
+	code := func(s string) bool {
+		return phase17StringInSlice(s, []string{"ok", "P19_SCHEMA", "P19_MATRIX", "P19_DAG"})
+	}
+	for _, c := range v.Inputs {
+		if !checkID(c.ID) || c.Choices == nil || c.Values == nil || c.Expected == nil || len(c.Default) == 0 || !code(c.Code) {
+			return v, fmt.Errorf("input identity")
+		}
+	}
+	for _, c := range v.Matrices {
+		if !checkID(c.ID) || c.Axes == nil || c.Exclude == nil || c.Include == nil || !phase17IsLowerHexSHA256(c.Digest) || !phase17IsLowerHexSHA256(c.IDsDigest) || !code(c.Code) {
+			return v, fmt.Errorf("matrix identity")
+		}
+	}
+	for _, c := range v.DAGs {
+		if !checkID(c.ID) || c.Jobs == nil || c.IDs == nil || c.Selected == nil || !code(c.Code) {
+			return v, fmt.Errorf("dag identity")
+		}
+		for _, j := range c.Jobs {
+			if j.Needs == nil {
+				return v, fmt.Errorf("dag needs")
+			}
+		}
+	}
+	for _, c := range v.Selectors {
+		if !checkID(c.ID) || !phase17StringInSlice(c.Kind, []string{"branch", "tag"}) || c.Branches == nil || c.Tags == nil || c.Paths == nil || c.Changed == nil || c.Equals == nil || c.Values == nil {
+			return v, fmt.Errorf("selector identity")
+		}
+	}
+	for _, c := range v.Events {
+		if !checkID(c.ID) || c.Input.Project == "" || c.Input.Definition == "" || c.Input.Revision < 1 || !phase17IsLowerHexSHA256(c.Digest) {
+			return v, fmt.Errorf("event identity")
+		}
+	}
+	return v, nil
+}
+
+func TestPhase19PlanSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	doc := phase11MustReadText(t, "docs/details/fixture.md")
+	match := regexp.MustCompile("(?s)<a id=\"phase-19-plan-vectors\"></a>.*?\x60\x60\x60json\\n(.*?)\\n\x60\x60\x60").FindStringSubmatch(doc)
+	if len(match) != 2 {
+		t.Fatal("runner.plan-spec.presence: missing fixed input")
+	}
+	input := []byte(match[1])
+	v, err := decodePhase19PlanSpecification(input)
+	if err != nil || len(v.Inputs) != 22 || len(v.Matrices) != 11 || len(v.DAGs) != 7 || len(v.Selectors) != 7 || len(v.Events) != 3 {
+		t.Fatalf("runner.plan-spec.schema: expected 22/11/7/7/3 vectors actual %v", err)
+	}
+	for _, c := range v.Inputs {
+		t.Run(c.ID, func(t *testing.T) {
+			actual, code := phase19PlanInputOracle(c)
+			if code != c.Code || phase19PlanCanonicalHash(actual) != phase19PlanCanonicalHash(c.Expected) {
+				t.Fatalf("runner.plan-spec.%s.result: runner.md#phase-19-input-normalization expected=%s/%s actual=%s/%s", c.ID, c.Code, phase19PlanCanonicalHash(c.Expected), code, phase19PlanCanonicalHash(actual))
+			}
+		})
+	}
+	for _, c := range v.Matrices {
+		t.Run(c.ID, func(t *testing.T) {
+			tuples, ids, code := phase19PlanMatrixOracle(c)
+			if code != c.Code || len(tuples) != c.Count || phase19PlanCanonicalHash(tuples) != c.Digest || phase19PlanCanonicalHash(ids) != c.IDsDigest {
+				t.Fatalf("runner.plan-spec.%s.result: runner.md#phase-19-matrix-order expected=%s/%d/%s/%s actual=%s/%d/%s/%s", c.ID, c.Code, c.Count, c.Digest, c.IDsDigest, code, len(tuples), phase19PlanCanonicalHash(tuples), phase19PlanCanonicalHash(ids))
+			}
+		})
+	}
+	for _, c := range v.DAGs {
+		t.Run(c.ID, func(t *testing.T) {
+			ids, selected, code := phase19PlanDAGOracle(c.Jobs)
+			if code != c.Code || phase19PlanCanonicalHash(ids) != phase19PlanCanonicalHash(c.IDs) || phase19PlanCanonicalHash(selected) != phase19PlanCanonicalHash(c.Selected) {
+				t.Fatalf("runner.plan-spec.%s.result: runner.md#phase-19-plan-selection expected=%s/%v/%v actual=%s/%v/%v", c.ID, c.Code, c.IDs, c.Selected, code, ids, selected)
+			}
+		})
+	}
+	for _, c := range v.Selectors {
+		t.Run(c.ID, func(t *testing.T) {
+			actual := phase19PlanSelectorOracle(c.Kind, c.Branches, c.Tags, c.Paths, c.Changed, c.Equals, c.Values)
+			if actual != c.Expected {
+				t.Fatalf("runner.plan-spec.%s.result: runner.md#phase-19-plan-selection expected=%t actual=%t", c.ID, c.Expected, actual)
+			}
+		})
+	}
+	for _, c := range v.Events {
+		t.Run(c.ID, func(t *testing.T) {
+			actual := phase19PlanCanonicalHash(c.Input)
+			if actual != c.Digest {
+				t.Fatalf("runner.plan-spec.%s.result: runner.md#phase-19-trigger-state expected=%s actual=%s", c.ID, c.Digest, actual)
+			}
+		})
+	}
+	var nullValue map[string]json.RawMessage
+	if err := json.Unmarshal(input, &nullValue); err != nil {
+		t.Fatal(err)
+	}
+	nullValue["input_cases"] = json.RawMessage("null")
+	nullInput, err := json.Marshal(nullValue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		id    string
+		input []byte
+	}{
+		{"missing", []byte(strings.Replace(string(input), "\"schema_version\": 1,", "", 1))},
+		{"unknown", []byte(strings.Replace(string(input), "\"schema_version\": 1,", "\"schema_version\": 1,\"unknown\":true,", 1))},
+		{"duplicate", []byte(strings.Replace(string(input), "\"schema_version\": 1,", "\"schema_version\": 1,\"schema_version\": 1,", 1))},
+		{"null", nullInput},
+		{"trailing", append(append([]byte{}, input...), []byte("{}")...)},
+		{"invalid-utf8", append([]byte{0xff}, input...)},
+	} {
+		t.Run("schema-"+c.id, func(t *testing.T) {
+			if _, err := decodePhase19PlanSpecification(c.input); err == nil {
+				t.Fatalf("runner.plan-spec.schema-%s.reject: fixture.md#phase-19-plan-vectors expected rejected actual accepted", c.id)
+			}
+		})
+	}
+}
+
 func phase19LogRingOracle(data []byte, first int64) ([]byte, int64, int64) {
 	drop := len(data) - 1048576
 	if drop < 0 {
@@ -2106,6 +2614,10 @@ func TestPhase19SpecificationContracts(t *testing.T) {
 		{"environment-key-type", "docs/details/statefile.md", `"env": "envmap(EnvValue,0,64)"`, `"env": "map(EnvValue,0,64)"`},
 		{"site-atomic-state", "docs/details/statefile.md", `"counters": "SiteCounters"`, `"wrong_counters": "SiteCounters"`},
 		{"site-retention-clock", "docs/details/statefile.md", `"committed_at": "Time"`, `"committed_at": "Id"`},
+		{"planned-selection", "docs/details/statefile.md", `"selected": "bool"`, `"wrong_selected": "bool"`},
+		{"planned-task", "docs/details/statefile.md", `"task": "PlannedTask"`, `"task": "Task"`},
+		{"planned-artifact-id", "docs/details/statefile.md", "\"PlannedDeployTask\": {\n      \"kind\": \"enum(deploy)\",\n      \"environment_id\": \"Id\",\n      \"artifact_from\": \"Id\"", "\"PlannedDeployTask\": {\n      \"kind\": \"enum(deploy)\",\n      \"environment_id\": \"Id\",\n      \"artifact_from\": \"JobId\""},
+		{"cursor-revision", "docs/details/statefile.md", "\"TriggerCursor\": {\n      \"project_id\": \"Id\",\n      \"definition_id\": \"Id\",\n      \"definition_revision\": \"int(1,2147483647)\"", "\"TriggerCursor\": {\n      \"project_id\": \"Id\",\n      \"definition_id\": \"Id\",\n      \"definition_revision\": \"Id\""},
 		{"operation-attempt", "docs/details/statefile.md", `"target_attempt": "nullable(int(1,100))"`, `"target_attempt": "nullable(Id)"`},
 		{"operation-digest-target", "docs/details/statefile.md", `"target_id": "nullable(text(1,64))"`, `"target_id": "nullable(Id)"`},
 		{"audit-digest-target", "docs/details/statefile.md", "\"at\": \"Time\",\n      \"target_id\": \"nullable(text(1,64))\"", "\"at\": \"Time\",\n      \"target_id\": \"nullable(Id)\""},
@@ -2289,7 +2801,7 @@ func phase19ValidateSpecification(documents map[string]string) error {
 	if err := developmentActionsDecodeJSON([]byte(block[1]), &registry, 1048576, true); err != nil {
 		return fmt.Errorf("Phase 19 schema registry: %w", err)
 	}
-	if registry.SchemaVersion != 1 || registry.Profile != "cicd-v1" || len(registry.Types) != 83 {
+	if registry.SchemaVersion != 1 || registry.Profile != "cicd-v1" || len(registry.Types) != 85 {
 		return fmt.Errorf("Phase 19 registry identity or coverage invalid")
 	}
 	dependencies := make(map[string][]string)
@@ -2336,16 +2848,18 @@ func phase19ValidateSpecification(documents map[string]string) error {
 		}
 	}
 	for name, fields := range map[string]map[string]string{
-		"Job":             {"env": "envmap(EnvValue,0,64)", "secrets": "envmap(SecretRef,0,16)"},
-		"PlannedJob":      {"env": "envmap(EnvValue,0,64)", "secrets": "envmap(SecretRef,0,16)"},
-		"SiteState":       {"route": "Route", "operations": "list(SiteOperation,0,1024)", "counters": "SiteCounters"},
-		"Root":            {"secrets": "list(SecretMeta,0,10000)"},
-		"WorkerExecution": {"job": "JobResult", "lease_generation": "int(1,9007199254740991)"},
-		"SiteOperation":   {"committed_at": "Time"},
-		"Operation":       {"target_id": "nullable(text(1,64))", "target_attempt": "nullable(int(1,100))"},
-		"Audit":           {"target_id": "nullable(text(1,64))"},
-		"Deployment":      {"observations": "list(StageObservation,0,512)"},
-		"Notification":    {"target_attempt": "int(1,100)", "source_revision": "int(1,2147483647)"},
+		"Job":               {"env": "envmap(EnvValue,0,64)", "secrets": "envmap(SecretRef,0,16)"},
+		"PlannedJob":        {"env": "envmap(EnvValue,0,64)", "secrets": "envmap(SecretRef,0,16)", "selected": "bool", "task": "PlannedTask"},
+		"PlannedDeployTask": {"artifact_from": "Id"},
+		"TriggerCursor":     {"definition_revision": "int(1,2147483647)"},
+		"SiteState":         {"route": "Route", "operations": "list(SiteOperation,0,1024)", "counters": "SiteCounters"},
+		"Root":              {"secrets": "list(SecretMeta,0,10000)"},
+		"WorkerExecution":   {"job": "JobResult", "lease_generation": "int(1,9007199254740991)"},
+		"SiteOperation":     {"committed_at": "Time"},
+		"Operation":         {"target_id": "nullable(text(1,64))", "target_attempt": "nullable(int(1,100))"},
+		"Audit":             {"target_id": "nullable(text(1,64))"},
+		"Deployment":        {"observations": "list(StageObservation,0,512)"},
+		"Notification":      {"target_attempt": "int(1,100)", "source_revision": "int(1,2147483647)"},
 	} {
 		var actual map[string]string
 		if err := json.Unmarshal(registry.Types[name], &actual); err != nil {

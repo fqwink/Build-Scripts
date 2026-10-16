@@ -40,6 +40,79 @@ expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,tra
 
 **補助固定vector：** canonical JSONは `{"b":2,"a":1}` → `{"a":1,"b":2}`、duplicate keyは拒否。matrix {os:[linux,other],v:[1,2]}はaxis ASCII順で4tuple、exclude={v:2}で2tuple。leaseはnow=untilで失効、approvalもnow=expiresで失効。freezeはfrom含む/until含まない。AES-GCMは [Go標準AEAD仕様](https://pkg.go.dev/crypto/cipher#NewGCM) に加え、[NIST GCM-AES256 Example #1〜4](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/AES_GCM.pdf) のkey/IV/AAD/plaintext/ciphertext/tagを固定独立oracleとして用い、Seal結果をciphertext||tagへbyte完全一致させOpen結果も比較する。空/非空AAD・plainの両方を含め、key/nonce/AAD/tag各1bit反転を拒否する。製品固有AADはsecurity正本の区切りを含むbyte列を別oracleで検査し、roundtripだけでAAD不使用を見逃さない、Ed25519は [RFC8032 §7.1](https://www.rfc-editor.org/rfc/rfc8032#section-7.1) のTEST1〜3を独立既知値として取り込み、公開鍵/署名/message改竄を拒否する。既知値は実装出力で再生成しない。
 
+<a id="phase-19-plan-vectors"></a>
+**固定Planとtriggerの文書入力：** 処理の正本は [docs/details/runner.md 詳細本文責務 入力](runner.md#phase-19-input-normalization)、[matrix](runner.md#phase-19-matrix-order)、[条件選択](runner.md#phase-19-plan-selection)、[自動trigger](runner.md#phase-19-trigger-admission)、[再実行](runner.md#phase-19-attempt-plan)、保存表現は [docs/details/statefile.md 詳細本文責務](statefile.md#phase-19-plan-state-invariants)。TestPhase19PlanSpecificationVectorsは以下50case（入力22/matrix11/DAG7/selector7/event3）とschema負例6件を読む文書oracleであり、製品の計画/queue/worker/外部GitHubの実行証跡ではない。全key必須、unknown/duplicate/null/trailing/invalid UTF-8を拒否し、IDは全配列で一意。入力caseは宣言key xだけ、明示nullと欠落を区別、scalarの指数/負の0もraw JSONで保持して比較する。selector caseのpatternはliteralだけで、glob処理の製品受入を代替しない。matrix全tuple順と全展開IDのSHA256、event keyのSHA256はnative Ruby標準JSON/Digestでchecker作成前に独立固定した。
+
+```json
+{
+  "schema_version": 1,
+  "input_cases": [
+    {"id":"default-missing","kind":"string","min":0,"max":8,"required":false,"default":"yes","choices":[],"values":{},"expected":{"x":"yes"},"expected_code":"ok"},
+    {"id":"false-present","kind":"boolean","min":0,"max":1,"required":false,"default":true,"choices":[],"values":{"x":false},"expected":{"x":false},"expected_code":"ok"},
+    {"id":"zero-present","kind":"integer","min":0,"max":9,"required":false,"default":1,"choices":[],"values":{"x":0},"expected":{"x":0},"expected_code":"ok"},
+    {"id":"empty-present","kind":"string","min":0,"max":8,"required":false,"default":"yes","choices":[],"values":{"x":""},"expected":{"x":""},"expected_code":"ok"},
+    {"id":"optional-absent","kind":"string","min":0,"max":8,"required":false,"default":null,"choices":[],"values":{},"expected":{},"expected_code":"ok"},
+    {"id":"required-value","kind":"integer","min":-2,"max":2,"required":true,"default":null,"choices":[-2,0,2],"values":{"x":2},"expected":{"x":2},"expected_code":"ok"},
+    {"id":"required-missing","kind":"integer","min":0,"max":9,"required":true,"default":null,"choices":[],"values":{},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"required-default","kind":"integer","min":0,"max":9,"required":true,"default":1,"choices":[],"values":{"x":1},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"explicit-null","kind":"string","min":0,"max":8,"required":false,"default":"yes","choices":[],"values":{"x":null},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"string-number","kind":"integer","min":0,"max":9,"required":false,"default":null,"choices":[],"values":{"x":"1"},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"boolean-number","kind":"boolean","min":0,"max":1,"required":false,"default":null,"choices":[],"values":{"x":0},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"integer-fraction","kind":"integer","min":0,"max":9,"required":false,"default":null,"choices":[],"values":{"x":1.5},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"integer-range","kind":"integer","min":0,"max":9,"required":false,"default":null,"choices":[],"values":{"x":10},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"utf8-equal","kind":"string","min":2,"max":2,"required":true,"default":null,"choices":[],"values":{"x":"é"},"expected":{"x":"é"},"expected_code":"ok"},
+    {"id":"utf8-over","kind":"string","min":0,"max":1,"required":true,"default":null,"choices":[],"values":{"x":"é"},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"unknown-key","kind":"string","min":0,"max":8,"required":false,"default":null,"choices":[],"values":{"y":"x"},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"duplicate-choice","kind":"integer","min":0,"max":9,"required":false,"default":null,"choices":[1,1],"values":{"x":1},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"default-not-choice","kind":"integer","min":0,"max":9,"required":false,"default":2,"choices":[1],"values":{},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"choice-mismatch","kind":"string","min":0,"max":8,"required":false,"default":null,"choices":["a"],"values":{"x":"b"},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"reversed-range","kind":"integer","min":2,"max":1,"required":false,"default":null,"choices":[],"values":{"x":1},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"integer-exponent","kind":"integer","min":0,"max":9,"required":false,"default":null,"choices":[],"values":{"x":1e0},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"integer-negative-zero","kind":"integer","min":0,"max":9,"required":false,"default":null,"choices":[],"values":{"x":-0},"expected":{},"expected_code":"P19_SCHEMA"}
+  ],
+  "matrix_cases": [
+    {"id":"matrix-none","base":"build","axes":{},"exclude":[],"include":[],"expected_code":"ok","expected_count":1,"expected_digest":"e10808d43975dc400731053386849f864f297e6c4f7519c380f3dbaf7067a840","expected_ids_digest":"4ebb81b90bcec2aa2691b63b66a47cd34479425f8574312ce71c047aa5e9e8e4"},
+    {"id":"matrix-order","base":"build","axes":{"z":[1,2],"a":["x","y"]},"exclude":[],"include":[],"expected_code":"ok","expected_count":4,"expected_digest":"0fb4de0970e634ad17d2c0082c5842775ea52f7f918e8280c620e8186cc7c187","expected_ids_digest":"1ea0efe5ff914d394cc48420162d5628cea98451b3845610fd8db547bbac1b9b"},
+    {"id":"matrix-exclude","base":"build","axes":{"a":[1,2],"b":[true,false]},"exclude":[{"b":false}],"include":[],"expected_code":"ok","expected_count":2,"expected_digest":"7b51d3f6e9fe6bc8a9a5ba1e580ea0be8de071a965143dc94052e8d546e4cd97","expected_ids_digest":"64a42465132169570c9959feadcc53a9b4dcd42f3e3eef271285daa463a7e3dc"},
+    {"id":"matrix-reinclude","base":"build","axes":{"a":[1,2]},"exclude":[{"a":1}],"include":[{"a":1}],"expected_code":"ok","expected_count":2,"expected_digest":"d806173fee9c9ec4a81916fd7eff117ef664919a66aa1c13e1bb88b9f9e8e9eb","expected_ids_digest":"64a42465132169570c9959feadcc53a9b4dcd42f3e3eef271285daa463a7e3dc"},
+    {"id":"matrix-duplicate","base":"build","axes":{"a":[1,2]},"exclude":[],"include":[{"a":1}],"expected_code":"P19_MATRIX","expected_count":0,"expected_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945","expected_ids_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"},
+    {"id":"matrix-type","base":"build","axes":{"a":[1,"1"]},"exclude":[],"include":[],"expected_code":"P19_MATRIX","expected_count":0,"expected_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945","expected_ids_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"},
+    {"id":"matrix-empty","base":"build","axes":{"a":[1]},"exclude":[{"a":1}],"include":[],"expected_code":"P19_MATRIX","expected_count":0,"expected_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945","expected_ids_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"},
+    {"id":"matrix-unknown-axis","base":"build","axes":{"a":[1]},"exclude":[{"b":1}],"include":[],"expected_code":"P19_MATRIX","expected_count":0,"expected_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945","expected_ids_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"},
+    {"id":"matrix-long-id","base":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","axes":{"v":[1]},"exclude":[],"include":[],"expected_code":"ok","expected_count":1,"expected_digest":"2f82c48b76c854095c5ff86fd0568fee6ea2cf16f807ca7d9dc73da5adff183d","expected_ids_digest":"2865eedc17479ba5e69f15d33f41459f169fc23ee7405a11e4b2dc98e244c2d2"},
+    {"id":"matrix-limit","base":"build","axes":{"a":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],"b":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]},"exclude":[],"include":[],"expected_code":"ok","expected_count":256,"expected_digest":"9c0f27e6b4da73a9f50081becbc9056ef5e2b0e6fce5d78e587d1dfdccc8a01c","expected_ids_digest":"73149acd87f27a8c1e72823e5186a35671ccda5c97095d4bfa787671b401d3e9"},
+    {"id":"matrix-over","base":"build","axes":{"a":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],"b":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]},"exclude":[],"include":[{"a":16,"b":0}],"expected_code":"P19_MATRIX","expected_count":0,"expected_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945","expected_ids_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"}
+  ],
+  "dag_cases": [
+    {"id":"dag-origin","jobs":[{"id":"c","needs":["a"],"own_match":true},{"id":"b","needs":[],"own_match":true},{"id":"a","needs":[],"own_match":true}],"expected_ids":["b","a","c"],"expected_selected":[true,true,true],"expected_code":"ok"},
+    {"id":"dag-transitive-skip","jobs":[{"id":"a","needs":[],"own_match":false},{"id":"b","needs":["a"],"own_match":true},{"id":"c","needs":["b"],"own_match":true},{"id":"d","needs":[],"own_match":true}],"expected_ids":["a","b","c","d"],"expected_selected":[false,false,false,true],"expected_code":"ok"},
+    {"id":"dag-own-skip","jobs":[{"id":"a","needs":[],"own_match":true},{"id":"b","needs":["a"],"own_match":false}],"expected_ids":["a","b"],"expected_selected":[true,false],"expected_code":"ok"},
+    {"id":"dag-unknown","jobs":[{"id":"a","needs":["x"],"own_match":true}],"expected_ids":[],"expected_selected":[],"expected_code":"P19_DAG"},
+    {"id":"dag-cycle","jobs":[{"id":"a","needs":["b"],"own_match":true},{"id":"b","needs":["a"],"own_match":true}],"expected_ids":[],"expected_selected":[],"expected_code":"P19_DAG"},
+    {"id":"dag-duplicate-edge","jobs":[{"id":"a","needs":[],"own_match":true},{"id":"b","needs":["a","a"],"own_match":true}],"expected_ids":[],"expected_selected":[],"expected_code":"P19_DAG"},
+    {"id":"dag-duplicate-id","jobs":[{"id":"a","needs":[],"own_match":true},{"id":"a","needs":[],"own_match":false}],"expected_ids":[],"expected_selected":[],"expected_code":"P19_DAG"}
+  ],
+  "selector_cases": [
+    {"id":"selector-tag-only-branch","kind":"branch","branches":[],"tags":["v1"],"paths":[],"changed":[],"equals":{},"values":{},"expected":false},
+    {"id":"selector-branch-only-tag","kind":"tag","branches":["main"],"tags":[],"paths":[],"changed":[],"equals":{},"values":{},"expected":false},
+    {"id":"selector-both-empty","kind":"branch","branches":[],"tags":[],"paths":[],"changed":[],"equals":{},"values":{},"expected":true},
+    {"id":"selector-branch-match","kind":"branch","branches":["main"],"tags":["v1"],"paths":["docs/a"],"changed":["docs/a"],"equals":{"release":true},"values":{"release":true},"expected":true},
+    {"id":"selector-typed-input","kind":"branch","branches":["main"],"tags":[],"paths":[],"changed":[],"equals":{"release":true},"values":{"release":1},"expected":false},
+    {"id":"selector-deleted-path","kind":"branch","branches":[],"tags":[],"paths":["gone"],"changed":["gone"],"equals":{},"values":{},"expected":true},
+    {"id":"selector-empty-source","kind":"branch","branches":[],"tags":[],"paths":["docs/a"],"changed":[],"equals":{},"values":{},"expected":false}
+  ],
+  "event_cases": [
+    {"id":"event-base","input":{"project_id":"alpha","definition_id":"build","definition_revision":1,"kind":"watch","trigger_id":"main","source_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","due":null},"expected_digest":"86fa405be62506c2b3ce18b8722ef745a472aea17799c1970f3feaa3271a0fdb"},
+    {"id":"event-definition","input":{"project_id":"alpha","definition_id":"other","definition_revision":1,"kind":"watch","trigger_id":"main","source_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","due":null},"expected_digest":"af1006cee4b232869d0ecfed636abb655bccf7b95cf6dbc0f0bc8805c9f63159"},
+    {"id":"event-revision","input":{"project_id":"alpha","definition_id":"build","definition_revision":2,"kind":"watch","trigger_id":"main","source_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","due":null},"expected_digest":"52547868d5927261d69b1ef0c97346b2db28115cca1350db5579f940994cff2a"}
+  ]
+}
+```
+
+assertionはrunner.plan-spec.<case>.result、schema負例はrunner.plan-spec.schema-<case>.reject。registry checkerのselected欠落/PlannedTask差替/展開IdのJobId化/cursor revision型差替も必須負例とする。実source変異は型付きdefault・明示false/0/空・UTF-8長・matrix順/上限・条件/依存伝播・Definitionを含むevent key・registry必須fieldの緩和を検出し、隔離copyの復元を確認する。
+
+将来P19-PLAN/EVENT/DAG/RETRY/ACCESS/LOG-UIでは、この固定入力を実際のDefinition/Template/Project/Runへ接続し、Plan.selectedとdigestの保存/restart、48文字baseからの51文字deploy参照、template origin順、matrix単一/複数artifact参照、削除path、別Definition/同revision cursor、新revision切替中の取得、required入力付き自動trigger拒否、manual=falseのpreview/start分離、systemのAPI認証拒否、retry/resumeでbranchが移動しても旧Plan保持、旧attempt/active/recovery拒否、pin取得失敗で再実行、終端Runのartifactが正規GC済みなら履歴成功を維持しresumeは再実行、active/環境current参照の不在はSTATE_CORRUPT、stale confirmation/遅延responseをnormal/fault/restart/concurrentへ展開する。現在は実runtime root未作成のままであり、doc oracle合格から製品完了を宣言しない。
+
 <a id="phase-19-content-vectors"></a>
 **artifact/cacheの文書入力：** 処理の正本は [docs/details/archive.md 詳細本文責務 envelope](archive.md#phase-19-archive-envelope)、[read/GC](archive.md#phase-19-artifact-read-gc)、[docs/details/runner.md 詳細本文責務 cache lifecycle](runner.md#phase-19-cache-lifecycle)、[docs/details/api.md 詳細本文責務 download](api.md#phase-19-artifact-download)。TestPhase19ContentSpecificationVectorsは以下の固定入力を読む純粋なdocument oracleであり、実際の製品API/Filesystem/lockを検証した証跡ではない。全key必須、unknown/duplicate/null拒否、IDは全配列で一意、key hashは独立したRuby標準JSON/sha256で固定してからcheckerを作成する。大小文字や環境値の変更を同じkeyへ丸めない。
 
@@ -1293,7 +1366,7 @@ assertion IDはrunner.log-spec.<case>.result、api.log-spec.<case>.result、stat
 <a id="specification-reference-checker"></a>
 全仕様文書の参照検査は `TestSpecificationReferenceIntegrity` とし、AGENTS/README/CONTRIBUTING/SECURITYとdocs配下全Markdownの説明文linkを対象に、実在path、固定anchor、同一file内anchor一意性を検査する。fenced/inline code内の構文例は参照と混同しない。missing-path/missing-anchor/duplicate-anchorの3負例と構文例を除外する正例でcheckerを検証する。assertion IDは `statefile.spec-reference.positive.accept`、`statefile.spec-reference.<case>.reject`、`statefile.spec-reference.examples.accept`、失敗診断は検出path/line/anchorへ接続する。同じrootでROADMAPのPhase行を唯一の登録集合として、現在のPhase1〜21の欠落/重複/未登録行を拒否し、全対象文書のPhase番号参照を照合する。単独番号だけでなくslash/comma/rangeの連記、path表記、英字大小、フェーズ表記も対象にし、番号末尾と日本語本文の間にword boundaryを要求しない。syntheticな次の未登録番号は最大登録番号+1で作り、joined-list/comma-list/range/spaced/path/japanese/leading-zero/zero/unregistered-row/duplicate-rowの10負例を実行する。assertion IDはstatefile.spec-phase.positive.acceptとstatefile.spec-phase.<case>.reject、負例を通すchecker-source mutationは検証失敗とする。この検査は意味上の重複・機能完全性を証明しない。
 
-現時点の文書checker `TestPhase19SpecificationContracts` はregistryのstrict JSON/型式arity/range/参照cycle/環境map/atomic SiteState構造/保持時刻/観測record/通知attempt結合、53操作のSDK/UI/CLI接続、状態表の一致を検査する。negative controlは未知型、arity不足、逆転range、未知関数、duplicate JSON key/enum、型cycle、環境map差替、SiteState counter欠落、SiteOperation保持時刻型差替、Operation対象Digest型/attempt型差替、Audit対象Digest型差替、Deployment観測数差替、Notification対象attempt上限差替、状態逆戻り、SDK/UI/CLI欠落、route/anchor重複。これらは文書入力の負例であり、製品runtimeのmutation成功件数へ加算しない。checker自体の常時成功化も隔離copyでコンパイル・実行し、負例testが失敗することを確認する。現在のdocument assertionは `runner.phase19-spec.positive.accept` と `runner.phase19-spec.<negative-case>.reject`、fixture前提不足は `runner.phase19-spec.<negative-case>.fixture`。display用subtest名/行番号とは別の安定IDで期待値/実値を診断する。
+現時点の文書checker `TestPhase19SpecificationContracts` はregistry85型のstrict JSON/型式arity/range/参照cycle/環境map/atomic SiteState構造/保持時刻/観測record/通知attempt結合、53操作のSDK/UI/CLI接続、状態表の一致を検査する。negative controlは未知型、arity不足、逆転range、未知関数、duplicate JSON key/enum、型cycle、環境map差替、SiteState counter欠落、SiteOperation保持時刻型差替、Operation対象Digest型/attempt型差替、Audit対象Digest型差替、PlannedJob.selected欠落/PlannedTask差替/PlannedDeployTask参照型差替/TriggerCursor版型差替、Deployment観測数差替、Notification対象attempt上限差替、状態逆戻り、SDK/UI/CLI欠落、route/anchor重複。これらは文書入力の負例であり、製品runtimeのmutation成功件数へ加算しない。checker自体の常時成功化も隔離copyでコンパイル・実行し、負例testが失敗することを確認する。現在のdocument assertionは `runner.phase19-spec.positive.accept` と `runner.phase19-spec.<negative-case>.reject`、fixture前提不足は `runner.phase19-spec.<negative-case>.fixture`。display用subtest名/行番号とは別の安定IDで期待値/実値を診断する。
 
 実装時のchecker入口は `go test ./... -run TestPhase19InhouseCICDEvidence -count=1`。内部subtest名はcase ID/variant/assertion、全384 assertionを実体観測し、件数定数だけでpassを出さない。mutationは表の各制御を1つずつ除去して同じ入口を走らせ、oracleがfailすること、未適用/compile failureをkilled扱いしない。isolation propertyは各property1mutation、最低16ではなく実selection件数を記録しsurvived=0を要求する。
 

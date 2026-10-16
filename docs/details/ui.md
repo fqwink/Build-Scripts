@@ -74,6 +74,9 @@ projectsはproject設定、definition/templateのJSON editor、入力型editor�
 
 開始/取消/rollback/秘密更新/権限変更/drainはconfirmationでproject/対象ID/revision/digest/環境世代を固定する。確認後のselection変化で無効化。submit中二重押下禁止、o-IDはフォーム1回の操作に固定。secret入力は送信/close/logoutで消去しDOM再描画へ残さない。one-time credentialはそのresponse内でだけ表示しview離脱で破棄する。approveとdeploy開始は別action、受付を配備完了や復旧成功と表示しない。
 
+<a id="phase-19-ui-plan-confirmation"></a>
+**計画確認とattempt選択：** DAG表はAPIのPlanData.jobs順で全jobを表示し、selected=falseも除外済み状態として残す。選択の再計算や展開IDの短縮をしない。runStart confirmationは取得済Plan.digestとdefinition/revision/ref/解決済valuesを同じ表示snapshotへ固定し、project/入力/選択版変更・再取得失敗で破棄する。送信時はそのsnapshotをSDKへ渡し、stale応答で新digestへ自動確認しない。manual=falseでは開始controlを無効化するがplan表示は妨げない。retry/resume confirmationは選択したRun/attempt/revision/保存Planを表示し、最新branchへ切替える操作と混在させない。旧attemptまたは未終端の拒否後はRunを再取得し、元操作を自動再送しない。HTTP・固定Planの正本は [docs/details/api.md 詳細本文責務](api.md#phase-19-plan-request-boundary) を参照する。
+
 <a id="phase-19-ui-artifact-download"></a>
 **成果物の検証済みdownload：** artifactDownloadは1件ずつoffset0からSDKを呼び、開始時のproject/digestと最初のtotal_bytesをmemoryへ固定する。各dataをbase64 decodeしたbyte列として連結し、次requestは返却next_offsetだけを使う。SDK成功後も後続chunkのtotal_bytes/digest一致を確認し、変更・不連続・404・権限失効・通信失敗では中止して部分bufferを破棄する。最後に受信byte数=total_bytesとcrypto.subtle SHA-256=要求digestの両方を確認した後だけBlob/object URLからpayload.tar.gzをdownload可能にする。最終chunkのflagだけ、空finalだけ、manifest_digest一致だけで成功表示しない。allocation/digest/Blob生成失敗も未完了として扱う。
 
