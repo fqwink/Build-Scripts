@@ -345,6 +345,7 @@ func TestRunnerPhase2PipelineConfigAppliesArgsEnvAndMasksSecret(t *testing.T) {
 
 	for _, wrong := range []string{"PIPELINE_ENV", "BRANCH_VALUE", "BRANCH_ONLY"} {
 		t.Run("native-reject-"+wrong, func(t *testing.T) {
+			caseID := strings.ReplaceAll(strings.ToLower(wrong), "_", "-")
 			root := t.TempDir()
 			fixture := nativeBuilderFixture{PipelineArgs: filepath.Join(root, "args")}
 			data, err := json.Marshal(fixture)
@@ -370,11 +371,11 @@ func TestRunnerPhase2PipelineConfigAppliesArgsEnvAndMasksSecret(t *testing.T) {
 			err = cmd.Run()
 			var exit *exec.ExitError
 			if !errors.As(err, &exit) || exit.ExitCode() != 6 || stdout.Len() != 0 || stderr.String() != "pipeline environment mismatch\n" {
-				t.Fatalf("runner.pipeline-env.native.reject: fixture.md#15a-f-runner-初期受け入れ-fixture-契約 expected exit6/empty stdout/fixed reason actual=%v/%q/%q", err, stdout.String(), stderr.String())
+				t.Fatalf("runner.pipeline-env.native.%s.reject: fixture.md#15a-f-runner-初期受け入れ-fixture-契約 expected exit6/empty stdout/fixed reason actual=%v/%q/%q", caseID, err, stdout.String(), stderr.String())
 			}
 			for _, name := range []string{fixture.PipelineArgs, filepath.Join(root, "out")} {
 				if _, err := os.Lstat(name); !errors.Is(err, os.ErrNotExist) {
-					t.Fatalf("runner.pipeline-env.native.no-write: expected absent fake output actual=%v", err)
+					t.Fatalf("runner.pipeline-env.native.%s.%s.no-write: expected absent fake output actual=%v", caseID, filepath.Base(name), err)
 				}
 			}
 		})
