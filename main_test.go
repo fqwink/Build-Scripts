@@ -36,7 +36,7 @@ import (
 func TestSpecificationReferenceIntegrity(t *testing.T) {
 	t.Parallel()
 	documents := map[string]string{}
-	paths := []string{"AGENTS.md", "README.md"}
+	paths := []string{"AGENTS.md", "README.md", "CONTRIBUTING.md", "SECURITY.md"}
 	if err := filepath.WalkDir("docs", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err

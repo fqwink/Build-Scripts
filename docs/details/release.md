@@ -284,8 +284,8 @@ Phase 13 の release governance artifact は以下の最低内容を満たす。
 | file | 最低内容 |
 |------|----------|
 | `LICENSE` | license 名、copyright holder、license text、適用範囲。 |
-| `SECURITY.md` | supported versions、vulnerability report channel、secret leakage report handling、expected response policy。 |
-| `CONTRIBUTING.md` | branch / PR 方針への参照、spec-first requirement、test evidence requirement、Phase 単位実装 requirement。 |
+| `SECURITY.md` | [docs/SPEC.md ポリシー責務 §5 セキュリティ報告](../SPEC.md#policy-security-reporting) への利用者向け参照入口。 |
+| `CONTRIBUTING.md` | [AGENTS.md 最上位ルールブック](../../AGENTS.md#agents-approval-rules)、[docs/SPEC.md 責務文書構成](../SPEC.md#document-responsibility-map)、[docs/DETAIL_INDEX.md 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) への開発参加者向け参照入口。 |
 | `CODEOWNERS` | 仕様文書、Go owner package、admin static artifact、workflow、release governance file の reviewer ownership。 |
 
 Phase 13 の `records/release.jsonl` は release evidence 1 件につき `release_id`、`git_tag`、`commit_sha`、`asset_names`、`sha256sums_digest`、`signature_verified`、`sbom_verified`、`reproducible_build_verified`、`download_verified`、`governance_files_verified` を持つ。未実行項目を `true` にしてはならない。

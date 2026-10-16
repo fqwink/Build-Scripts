@@ -25,6 +25,7 @@
 | 確認対象 | 参照先 |
 |----------|--------|
 | 作業ルール | [`AGENTS.md`](../AGENTS.md) |
+| 開発参加の参照入口 / セキュリティ報告の参照入口 | [`CONTRIBUTING.md`](../CONTRIBUTING.md)、[`SECURITY.md`](../SECURITY.md)。報告ポリシーの正本は [docs/SPEC.md ポリシー責務 §5](SPEC.md#policy-security-reporting) |
 | 開発 GitHub Actions 方針・ポリシーの所在 | [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3)、[`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](SPEC.md#policy-development-actions) |
 | 開発 GitHub Actions 作業手順の所在 | [`AGENTS.md` 開発 GitHub Actions 作業手順](../AGENTS.md#agents-development-actions) |
 | Node 禁止契約 / 非依存開発準備の所在 | [`docs/SPEC.md` ポリシー責務 §4a](SPEC.md#policy-node-runtime-ban)、[`docs/details/fixture.md` fixture 証跡責務 Node 非依存開発検証契約](details/fixture.md#development-actions-node-free-contract)、[`.github/scripts/development-ci.sh`](../.github/scripts/development-ci.sh) |

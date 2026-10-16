@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "9ba9dd539c6a78dacd5ae472f9c48a3461a1813a79acd8e31a708b6fba1023e1",
+  "source_group_sha256": "c2aa087279010adaf32954290a8f63158b07980f2bc2a41ffa649e4100cd3e20",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -75,8 +75,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "6b833e27b996f41088879a19fb880f24bce150b3e7d7c0f395bce3a76dda12ce",
-      "size_bytes": 440874,
+      "sha256": "bdc3a98a0427a0e7827fb3236c5ccd416a4465a115e9c94f408dfe65420fc023",
+      "size_bytes": 440908,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [
@@ -115,8 +115,8 @@
     {
       "path": "docs/SPEC.md",
       "source_exists": true,
-      "sha256": "bf8ee20e2d210ea2cad613005aa682c90faf081a1d30b10d673a417dae5c5f87",
-      "size_bytes": 214413,
+      "sha256": "3d34c00c7232f2ec6af67b923c58bff8218be7bcc9325ea1bd83b6688819113a",
+      "size_bytes": 216290,
       "owner_component": "runner",
       "area": "policy",
       "detected_terms": [
@@ -175,8 +175,8 @@
     {
       "path": "docs/DOCUMENT_INDEX.md",
       "source_exists": true,
-      "sha256": "0f3f74425067ca93dad938a2ef02f13e49f8793030a44dba575b7cb9a0bef88a",
-      "size_bytes": 66487,
+      "sha256": "d7cc956cee365f63c967248d3aa56feb3f6f0aa3385e1863f70ee2a8e4224dec",
+      "size_bytes": 66743,
       "owner_component": "runner",
       "area": "document-index",
       "detected_terms": [
@@ -195,8 +195,8 @@
     {
       "path": "docs/details/fixture.md",
       "source_exists": true,
-      "sha256": "da0cb0dd4c35607a0ab92c4acbcaa58d42998f7c1d979a58ed57ee5c2e688adb",
-      "size_bytes": 1257999,
+      "sha256": "a599b373bfcc343dc141e7ccb316a052ae7d237ac8b553a29a22851a3e415f9c",
+      "size_bytes": 1258021,
       "owner_component": "runner",
       "area": "fixture-spec",
       "detected_terms": [

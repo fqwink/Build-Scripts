@@ -47,7 +47,7 @@
 | 本番検証詳細本文責務 | [`docs/details/production-validation.md`](details/production-validation.md) | **本番同等で何を検証するか** | ConoHa VPS 試験本番運用、本番環境同等検証、本番検証、VPS simulation、provider target、opaque environment identity、credential / SSH 入力境界、試験本番運用窓・停止条件、destructive operation 禁止境界、運用中バグ修正順序、VPS Pull Bootstrap、bootstrap session、内製 CI/CD 運用検証、運用証跡、fixture 証跡への接続条件。 |
 | デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) | **どう見せるか** | 生成静的 Web サイトと標準管理 UI のデザイン関係。 |
 | 文書・実装ファイル所在の索引責務 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | **どこにあるか** | 文書、実装ファイル、testdata、未作成 path の所在。 |
-| 利用入口責務 | [`README.md`](../README.md) | **どう始めるか** | 利用者向け入口、概要、参照先。 |
+| 利用入口責務 | [`README.md`](../README.md)、[`CONTRIBUTING.md`](../CONTRIBUTING.md)、[`SECURITY.md`](../SECURITY.md) | **どう始めるか・参加するか・報告するか** | READMEは利用者向け入口・概要、CONTRIBUTINGは開発参加の参照入口、SECURITYはセキュリティ報告の参照入口。 |
 
 新しい記載内容は「この内容はどの責務の問いに答えるか」を基準に、責務を持つ正本を決定する。
 
@@ -1277,6 +1277,15 @@ GitHub Actions を開発基盤として使用する方針は継続する。管�
 - PAT は最小権限とし、標準構成では対象リポジトリの `Contents: Read` だけを許可する。任意機能の Commit Status を有効にした場合だけ `Commit statuses: Write` を追加でき、他の GitHub 書き込み API へ流用してはならない
 - PAT の GitHub repository permission と API 呼び出し条件は [`docs/details/runner.md` 詳細本文責務 §17](details/runner.md#17-github-連携前提) と [`docs/details/commitstatus.md` 詳細本文責務 §27.1](details/commitstatus.md#sec-27-1)、保存 path と file 境界は [`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、読み取り、mask、漏えい禁止は [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/security.md`](details/security.md) 詳細本文責務を正本とする
 - ランナーは外部公開エンドポイントを持たない。サーバーから GitHub API への送信のみで動作する
+
+<a id="policy-security-reporting"></a>
+**セキュリティ報告・保守対象：**
+
+本契約は本リポジトリへの脆弱性報告とsecret漏えい対応に適用する。正式リリース前のsecurity修正対象は現在のmainおよび明示されたactive release-candidate作業とし、release branchへの対応は [docs/ROADMAP.md 状態・計画責務](ROADMAP.md#roadmap-phase-plan) で当該branchが明示された場合に限る。入口は [SECURITY.md 利用入口責務](../SECURITY.md) を参照する。
+
+脆弱性の詳細、exploit payload、private infrastructureの情報、secretをpublic issueへ公開してはならない。GitHub private vulnerability reportingが本repositoryで利用可能なら同channelを使用する。利用できない場合は機密を含まない概要だけのpublic issueでownerへprivate handoff channelを依頼し、非公開経路の確定前に再現用の秘密情報を送らない。
+
+漏えい報告は影響artifactと必要な失効・rotation境界を特定し、credential/token/private key/session値/機密配備pathを再掲しない。修正の対象は該当責務正本から判断し、仕様・実装・検証・証跡・公開入力の整合を必要とする。完了判定は [docs/SPEC.md ポリシー責務 §0g](#policy-meaningful-test)、検証入口は [docs/DETAIL_INDEX.md 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) を適用する。公開時の告知入力と変更記録の所在は [docs/SPEC.md ポリシー責務 変更履歴artifact禁止契約](#policy-change-history-artifact-ban) を参照する。
 
 <a id="policy-runner-execution"></a>
 
