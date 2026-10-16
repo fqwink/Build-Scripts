@@ -13,7 +13,7 @@ manifest schemaは `{schema_version:1,profile:"cicd-v1",cases:[{id,owner,contrac
 input.json=`{schema_version:1,case_id,variants:[{id,initial_root:Root,requests:[{operation,request_id,params,body}],advance_ms:int[],faults:[{boundary,call:int(1,2147483647),result:"error"|"crash"|"timeout"}]}]}`。
 fake.json=`{clock_start:"2026-01-01T00:00:00Z",entropy_hex:string,github:[{method,path,status,body}],transport:[{peer,frame,result}],filesystem:[{boundary,call,result}],process:[{argv,exit,stdout_base64,stderr_base64,ignore_term:bool}]}`。全fakeは呼出順と残未使用入力を検査し、未登録呼出を成功させない。clock/sleep/entropy/network/process/fs adapterをproduction入口へ注入する。testが本番処理をコピーして代替しない。
 
-expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,trace:[{kind,target,at_ms}],diagnostics:string[]}]}`、effects.json=`{variants:[{id,files:[{path,sha256,mode}],absent_paths:string[],max_parallel:int,remaining_processes:int}]}`、security_expected.json=`{variants:[{id,forbidden_bytes_base64:string[],forbidden_paths:string[],denied_operations:string[]}]}`。全object key必須、unknown/duplicate拒否、配列順を比較し、Rootだけ時刻/乱数をfake値へ結び付ける。秘密scanはstdout/stderr/state/log/cache/artifact/notification/診断の全bytesを対象にし、暗号ciphertext中の偶然一致はplain leakと誤判定しない（secret markerは固定32byte以上のtest値）。schema/JSON/IPCの追加oracleは18個のdocument負例に加え、metadata全長/offset/final digest、broker peer UIDとstage順、SiteState同時commit、PageEnvelopeのgeneration/byte分割、認証must_changeを各該当caseのnormal/fault/concurrentへ入力し、期待失敗codeと禁止副作用を比較する。
+expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,trace:[{kind,target,at_ms}],diagnostics:string[]}]}`、effects.json=`{variants:[{id,files:[{path,sha256,mode}],absent_paths:string[],max_parallel:int,remaining_processes:int}]}`、security_expected.json=`{variants:[{id,forbidden_bytes_base64:string[],forbidden_paths:string[],denied_operations:string[]}]}`。全object key必須、unknown/duplicate拒否、配列順を比較し、Rootだけ時刻/乱数をfake値へ結び付ける。秘密scanはstdout/stderr/state/log/cache/artifact/notification/診断の全bytesを対象にし、暗号ciphertext中の偶然一致はplain leakと誤判定しない（secret markerは固定32byte以上のtest値）。schema/JSON/IPCの追加oracleは文書checkerの全負例に加え、metadata全長/offset/final digest、broker peer UIDとstage順、SiteState同時commit、PageEnvelopeのgeneration/byte分割、認証must_changeを各該当caseのnormal/fault/concurrentへ入力し、期待失敗codeと禁止副作用を比較する。
 
 全caseは `normal` / `lower-bound` / `upper-bound` / `fault` / `restart` / `concurrent` の6variantを必須とする。境界はownerの最小値-1/最小値/最大値/最大値+1をそれぞれ有効性と副作用で検査する。faultは下表の異常入力、restartはdurable claim前/後・外部effect前/後・terminal commit前/後の6停止点、concurrentは同一資源2要求をbarrierで前後両順へ制御する。timing sleepだけのrace再現は禁止。operationはAPI catalogのoperation ID閉集合、request_idは各requestのo-IDでIdempotency-Keyへ対応し、params/bodyは該当wire型を使う。各variantのassertion IDは `owner.phase19-case.variant.assertion` の4 segment（caseは表IDのP19-を除いたlowercase、ownerは表owner、assertionはresponse/state/effects/security、例 `runner.phase19-plan.normal.response`）の4個（計384）とし、下表oracleをこの4面へ接続する。
 
@@ -39,6 +39,245 @@ expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,tra
 **fault / fakeの閉じた入力：** boundaryは `state.open/write/fsync-file/rename/fsync-directory/read-head/read-snapshot`、`archive.header/read/write/publish/gc`、`worker.assign/start/heartbeat/result/cleanup`、`site.stage/switch/finalize/health/query/restore`、`broker.peer/claim/unit-start/unit-wait/cleanup`、`http.request/response`、`log.mask/flush/read` だけ。callは同boundaryの1始まり累積呼出回数、未知名/未消費指定はtest失敗。advance_msは0〜7200000の非負値で順にfake clockだけを進める。entropy_hexは64hex seed、fake entropyはSHA256(seed bytes || uint64 big-endian counter)をcounter0から連結し必要長だけ返す。production crypto/randを置換するのはtest injection内だけ。process.argvはrunner exact argvのplaceholderをfixture identityで置換した配列、未登録argvは即test失敗。stateful network/site fakeは必ず前request後のRouteとfile bytesを更新し、常時成功応答を返すだけのfakeは禁止する。
 
 **補助固定vector：** canonical JSONは `{"b":2,"a":1}` → `{"a":1,"b":2}`、duplicate keyは拒否。matrix {os:[linux,other],v:[1,2]}はaxis ASCII順で4tuple、exclude={v:2}で2tuple。leaseはnow=untilで失効、approvalもnow=expiresで失効。freezeはfrom含む/until含まない。AES-GCMは [Go標準AEAD仕様](https://pkg.go.dev/crypto/cipher#NewGCM) に加え、[NIST GCM-AES256 Example #1〜4](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/AES_GCM.pdf) のkey/IV/AAD/plaintext/ciphertext/tagを固定独立oracleとして用い、Seal結果をciphertext||tagへbyte完全一致させOpen結果も比較する。空/非空AAD・plainの両方を含め、key/nonce/AAD/tag各1bit反転を拒否する。製品固有AADはsecurity正本の区切りを含むbyte列を別oracleで検査し、roundtripだけでAAD不使用を見逃さない、Ed25519は [RFC8032 §7.1](https://www.rfc-editor.org/rfc/rfc8032#section-7.1) のTEST1〜3を独立既知値として取り込み、公開鍵/署名/message改竄を拒否する。既知値は実装出力で再生成しない。
+
+<a id="phase-19-operation-vectors"></a>
+**operation文書入力：** 受付は [docs/details/api.md 詳細本文責務](api.md#phase-19-operation-admission)、保存進行・GCは [docs/details/statefile.md 詳細本文責務](statefile.md#phase-19-operation-lifecycle)、対象処理の完了は [docs/details/runner.md 詳細本文責務](runner.md#phase-19-operation-completion) を正本とする。以下はTestPhase19OperationSpecificationVectorsの純粋なdocument oracleであり、製品のlock/認可/通信/復旧を実行した証跡ではない。全key必須、unknown/duplicate/null拒否、case IDは全配列で一意。admissionは認可済みscopeの最新検査をauthorizedで、既存keyのsubject/digest一致と新規revisionをbooleanで与える。transitionのsame_resultはstateだけでなくcode/対象結果/不変fieldが完全一致する場合だけtrue。GCの時刻はcreated_atからの秒数。期待値は固定であり製品出力から生成しない。
+
+```json
+{
+  "schema_version": 1,
+  "admission_cases": [
+    {
+      "id": "new-create",
+      "authorized": true,
+      "existing": false,
+      "same_subject": true,
+      "same_digest": true,
+      "revision_matches": true,
+      "expected": "create"
+    },
+    {
+      "id": "new-denied",
+      "authorized": false,
+      "existing": false,
+      "same_subject": true,
+      "same_digest": true,
+      "revision_matches": true,
+      "expected": "forbidden"
+    },
+    {
+      "id": "replay-denied",
+      "authorized": false,
+      "existing": true,
+      "same_subject": true,
+      "same_digest": true,
+      "revision_matches": true,
+      "expected": "forbidden"
+    },
+    {
+      "id": "replay-stale-revision",
+      "authorized": true,
+      "existing": true,
+      "same_subject": true,
+      "same_digest": true,
+      "revision_matches": false,
+      "expected": "replay"
+    },
+    {
+      "id": "replay-current",
+      "authorized": true,
+      "existing": true,
+      "same_subject": true,
+      "same_digest": true,
+      "revision_matches": true,
+      "expected": "replay"
+    },
+    {
+      "id": "digest-conflict",
+      "authorized": true,
+      "existing": true,
+      "same_subject": true,
+      "same_digest": false,
+      "revision_matches": false,
+      "expected": "idempotency"
+    },
+    {
+      "id": "subject-conflict",
+      "authorized": true,
+      "existing": true,
+      "same_subject": false,
+      "same_digest": true,
+      "revision_matches": true,
+      "expected": "idempotency"
+    },
+    {
+      "id": "new-stale",
+      "authorized": true,
+      "existing": false,
+      "same_subject": true,
+      "same_digest": true,
+      "revision_matches": false,
+      "expected": "revision"
+    }
+  ],
+  "transition_cases": [
+    {
+      "id": "accept-success",
+      "from": "accepted",
+      "to": "succeeded",
+      "same_result": false,
+      "expected": "advance"
+    },
+    {
+      "id": "accept-failure",
+      "from": "accepted",
+      "to": "failed",
+      "same_result": false,
+      "expected": "advance"
+    },
+    {
+      "id": "accept-uncertain",
+      "from": "accepted",
+      "to": "recovery_required",
+      "same_result": false,
+      "expected": "advance"
+    },
+    {
+      "id": "recover-success",
+      "from": "recovery_required",
+      "to": "succeeded",
+      "same_result": false,
+      "expected": "advance"
+    },
+    {
+      "id": "recover-failure",
+      "from": "recovery_required",
+      "to": "failed",
+      "same_result": false,
+      "expected": "advance"
+    },
+    {
+      "id": "accept-noop",
+      "from": "accepted",
+      "to": "accepted",
+      "same_result": true,
+      "expected": "unchanged"
+    },
+    {
+      "id": "recover-noop",
+      "from": "recovery_required",
+      "to": "recovery_required",
+      "same_result": true,
+      "expected": "unchanged"
+    },
+    {
+      "id": "success-noop",
+      "from": "succeeded",
+      "to": "succeeded",
+      "same_result": true,
+      "expected": "unchanged"
+    },
+    {
+      "id": "failure-noop",
+      "from": "failed",
+      "to": "failed",
+      "same_result": true,
+      "expected": "unchanged"
+    },
+    {
+      "id": "terminal-reverse",
+      "from": "succeeded",
+      "to": "failed",
+      "same_result": false,
+      "expected": "stale"
+    },
+    {
+      "id": "terminal-change",
+      "from": "failed",
+      "to": "failed",
+      "same_result": false,
+      "expected": "stale"
+    },
+    {
+      "id": "recover-reaccept",
+      "from": "recovery_required",
+      "to": "accepted",
+      "same_result": false,
+      "expected": "stale"
+    }
+  ],
+  "gc_cases": [
+    {
+      "id": "gc-before",
+      "state": "succeeded",
+      "now": 2591999,
+      "expires_at": 2592000,
+      "protected_reference": false,
+      "expected_collect": false
+    },
+    {
+      "id": "gc-at",
+      "state": "succeeded",
+      "now": 2592000,
+      "expires_at": 2592000,
+      "protected_reference": false,
+      "expected_collect": true
+    },
+    {
+      "id": "gc-after",
+      "state": "succeeded",
+      "now": 2592001,
+      "expires_at": 2592000,
+      "protected_reference": false,
+      "expected_collect": true
+    },
+    {
+      "id": "gc-failure",
+      "state": "failed",
+      "now": 2592000,
+      "expires_at": 2592000,
+      "protected_reference": false,
+      "expected_collect": true
+    },
+    {
+      "id": "gc-accepted",
+      "state": "accepted",
+      "now": 3000000,
+      "expires_at": 2592000,
+      "protected_reference": false,
+      "expected_collect": false
+    },
+    {
+      "id": "gc-recovery",
+      "state": "recovery_required",
+      "now": 3000000,
+      "expires_at": 2592000,
+      "protected_reference": false,
+      "expected_collect": false
+    },
+    {
+      "id": "gc-protected",
+      "state": "succeeded",
+      "now": 3000000,
+      "expires_at": 2592000,
+      "protected_reference": true,
+      "expected_collect": false
+    },
+    {
+      "id": "gc-protected-failure",
+      "state": "failed",
+      "now": 3000000,
+      "expires_at": 2592000,
+      "protected_reference": true,
+      "expected_collect": false
+    }
+  ]
+}
+```
+
+schema negative controlはmissing/unknown/duplicate/null/trailing/invalid UTF-8の6種を個別に拒否する。API catalogのmutation全25件を受付HTTP分類へ1対1結合し、wrong-status/missing-kind/duplicate-kind/read-kindの4負例を拒否する。Operation.target_idのDigest許可とtarget_attemptの型はregistry checkerでも検査する。assertion IDはapi.operation-spec.<case>.result / statefile.operation-spec.<case>.result、schema負例はstatefile.operation-spec.schema-<case>.reject、HTTP分類負例はapi.operation-spec.http-<case>.rejectとする。
+
+将来のP19-ACCESSには同一keyの並行2要求・異subject・失効後再送・body key順差・配列順差・古いrevisionの再送・変更入力同key・一度だけのcredential生成・result消失・202終端応答を追加し、各応答/Root/監査/外部call数を比較する。P19-DURABILITYには期限前/一致/後、active/recovery/保護参照、operationとAuditの同commit GC、容量満杯、Head不確定と再照会を追加する。P19-RETRY/CANCEL/DEPLOYにはtarget_attempt固定、旧attempt遅延、自然終了との競合、承認操作と配備成否の分離、復旧前のOperation終端禁止を追加する。P19-LOG-UIにはsubmit応答消失/404/秘密値破棄/新key自動再送0を追加し、SDK/CLIはkey/kind/attempt不一致をprotocol errorにする。これらの実runtimeケースは正式root実装時の必須条件であり、文書oracle成功でclosedとしない。
 
 <a id="phase-19-log-boundary-vectors"></a>
 **streaming log・page境界の文書入力：** 生成処理は [docs/details/runner.md 詳細本文責務](runner.md#phase-19-streaming-log-contract)、保存invariantは [docs/details/statefile.md 詳細本文責務](statefile.md#phase-19-log-invariants)、wireは [docs/details/api.md 詳細本文責務](api.md#phase-19-log-page-contract) を正本とする。次のJSONは現在のmain_test.goのTestPhase19LogSpecificationVectorsで読む純粋な文書oracleであり、製品のpipe/停止/復旧/実diskを検証した証拠ではない。各objectの列挙keyは全必須/unknown・duplicate・null禁止、page_cases.cursor_offsetだけnullを許可する。hexはlowercase偶数桁、空byte列だけ空文字を許可する。patternは既にsecurityで作成済みの合成pattern byte列として与え、secret登録のUTF-8入力条件や本物のsecretではない。
@@ -453,7 +692,7 @@ assertion IDはrunner.log-spec.<case>.result、api.log-spec.<case>.result、stat
 <a id="specification-reference-checker"></a>
 全仕様文書の参照検査は `TestSpecificationReferenceIntegrity` とし、AGENTS/README/CONTRIBUTING/SECURITYとdocs配下全Markdownの説明文linkを対象に、実在path、固定anchor、同一file内anchor一意性を検査する。fenced/inline code内の構文例は参照と混同しない。missing-path/missing-anchor/duplicate-anchorの3負例と構文例を除外する正例でcheckerを検証する。assertion IDは `statefile.spec-reference.positive.accept`、`statefile.spec-reference.<case>.reject`、`statefile.spec-reference.examples.accept`、失敗診断は検出path/line/anchorへ接続する。同じrootでROADMAPのPhase行を唯一の登録集合として、現在のPhase1〜21の欠落/重複/未登録行を拒否し、全対象文書のPhase番号参照を照合する。単独番号だけでなくslash/comma/rangeの連記、path表記、英字大小、フェーズ表記も対象にし、番号末尾と日本語本文の間にword boundaryを要求しない。syntheticな次の未登録番号は最大登録番号+1で作り、joined-list/comma-list/range/spaced/path/japanese/leading-zero/zero/unregistered-row/duplicate-rowの10負例を実行する。assertion IDはstatefile.spec-phase.positive.acceptとstatefile.spec-phase.<case>.reject、負例を通すchecker-source mutationは検証失敗とする。この検査は意味上の重複・機能完全性を証明しない。
 
-現時点の文書checker `TestPhase19SpecificationContracts` はregistryのstrict JSON/型式arity/range/参照cycle/環境map/atomic SiteState構造/保持時刻/観測record/通知attempt結合、53操作のSDK/UI/CLI接続、状態表の一致を検査する。negative controlは未知型、arity不足、逆転range、未知関数、duplicate JSON key/enum、型cycle、環境map差替、SiteState counter欠落、SiteOperation保持時刻型差替、Deployment観測数差替、Notification対象attempt上限差替、状態逆戻り、SDK/UI/CLI欠落、route/anchor重複。これらは文書入力の負例であり、製品runtimeのmutation成功件数へ加算しない。checker自体の常時成功化も隔離copyでコンパイル・実行し、負例testが失敗することを確認する。現在のdocument assertionは `runner.phase19-spec.positive.accept` と `runner.phase19-spec.<negative-case>.reject`、fixture前提不足は `runner.phase19-spec.<negative-case>.fixture`。display用subtest名/行番号とは別の安定IDで期待値/実値を診断する。
+現時点の文書checker `TestPhase19SpecificationContracts` はregistryのstrict JSON/型式arity/range/参照cycle/環境map/atomic SiteState構造/保持時刻/観測record/通知attempt結合、53操作のSDK/UI/CLI接続、状態表の一致を検査する。negative controlは未知型、arity不足、逆転range、未知関数、duplicate JSON key/enum、型cycle、環境map差替、SiteState counter欠落、SiteOperation保持時刻型差替、Operation対象Digest型/attempt型差替、Deployment観測数差替、Notification対象attempt上限差替、状態逆戻り、SDK/UI/CLI欠落、route/anchor重複。これらは文書入力の負例であり、製品runtimeのmutation成功件数へ加算しない。checker自体の常時成功化も隔離copyでコンパイル・実行し、負例testが失敗することを確認する。現在のdocument assertionは `runner.phase19-spec.positive.accept` と `runner.phase19-spec.<negative-case>.reject`、fixture前提不足は `runner.phase19-spec.<negative-case>.fixture`。display用subtest名/行番号とは別の安定IDで期待値/実値を診断する。
 
 実装時のchecker入口は `go test ./... -run TestPhase19InhouseCICDEvidence -count=1`。内部subtest名はcase ID/variant/assertion、全384 assertionを実体観測し、件数定数だけでpassを出さない。mutationは表の各制御を1つずつ除去して同じ入口を走らせ、oracleがfailすること、未適用/compile failureをkilled扱いしない。isolation propertyは各property1mutation、最低16ではなく実selection件数を記録しsurvived=0を要求する。
 

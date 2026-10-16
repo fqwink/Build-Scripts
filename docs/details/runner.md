@@ -65,6 +65,24 @@ retryはP19_TRANSPORT/P19_LEASEで、かつ外部副作用なしを照合でき�
 
 cancel受付は202 Operationであって完了ではない。coordinatorが新割当停止→worker停止要求→process group TERM→5秒待機→KILL→Wait→log drain→workspace cleanup→終端保存を行う。cleanup失敗はP19_CLEANUPでworkerをdrainし、processが生存/照合不能ならrecovery_required。実体停止前にcancelledを返さない。再起動時assigned/runningをlease照合し、未起動と確認できる場合だけqueueへ戻し、実行済み不明はrecovery_required。
 
+<a id="phase-19-operation-completion"></a>
+**受付operationと処理結果の接続：** API受付は [docs/details/api.md 詳細本文責務](api.md#phase-19-operation-admission)、保存更新・対象attempt・保持は [docs/details/statefile.md 詳細本文責務](statefile.md#phase-19-operation-lifecycle) を参照する。coordinatorは再起動時にもRootの未終端Operationを対象identityで照合し、最新attemptや別配備の結果を流用しない。次表の完了境界で対象の最終状態・Operation・finished監査を同一Root commitにする。外部副作用不明はOperationもrecovery_requiredとし、acceptedのまま成功推定しない。recovery_requiredの解消には対象の照合・復旧完了が必要で、Operationだけの状態修正は行わない。
+
+| API operation.kind | 成功・失敗の確定境界 |
+|---|---|
+| runStart/runRetry/runResume | 固定run_id/attemptのsucceededでOperation.succeeded。failed/cancelledはOperation.failedと対象code（cancelledはP19_CANCELLED）、recovery_requiredは同状態。旧attempt終端と新attempt受付を同一結果に混ぜない。 |
+| runCancel | 固定attemptの実体停止・cleanup・終端保存を照合してsucceeded。自然完了が先行した場合も停止済みなら取消要求の処理完了であり、Runの実際の終端をcancelledへ書き換えない。実体不明はrecovery_required。cleanup不良だが停止確認済みはfailed/P19_CLEANUP。 |
+| deploymentStart/deploymentRollback | 固定deploymentのsucceededだけをOperation.succeeded。failed/自動復旧のrolled_backはOperation.failed（元code保持）、cancelledはfailed/P19_CANCELLED、未照合はrecovery_required。rollback要求による新配備と、失敗配備の自動復旧を同一視しない。 |
+| deploymentCancel | 固定deploymentのcancelledと全target解放照合でsucceeded。自然succeededが先行した場合はfailed/P19_STALEであり、新しいrollbackを起こさない。照合不能はrecovery_required。 |
+| deploymentApprove/deploymentReject | 承認追加または拒否状態と監査のdurable保存でsucceeded。後続配備の成功を待たず、承認人数不足でも承認操作自体の成功とする。失効・重複・staleは受付前拒否。 |
+| deploymentReconcile | 全site照合とblocked解除可否・対象状態のdurable保存でsucceeded。照合不能はrecovery_requiredでblockedを保持し、復旧操作の成功を元配備成功と読み替えない。 |
+| workerResume | drain中のprobe/capability/残存process/lease検査とdraining解除のdurable保存でsucceeded。既存leaseを推測破棄しない。判明した能力不良はfailed/P19_CAPABILITY、不明な実体はrecovery_required。 |
+| cacheDelete | 参照なしをlock下で再照合しdeleting claim→実体削除→metadata削除のdurable確定でsucceeded。開始後のI/O失敗はfailed/P19_CLEANUP、成否不明はrecovery_required。再送を新しい削除処理へ流さない。 |
+
+同一対象に複数の取消要求がある場合は各要求IDを保持し、実体停止を一度だけ行い、各Operationの完了を同じ観測結果から個別に保存する。終端後の進行再処理では追加通知・監査・世代更新を発生させない。対象の必須Log保存や停止確認が未完了ならOperationだけを先に成功へ進めない。
+
+Runはcode fieldを持たないため、Operationへの集約codeは次の順で確定する。cancelledはP19_CANCELLED、全job skippedによるfailedはP19_EMPTY、その他failedはPlanのtopological順で最初のrequired failed JobResult.code、recovery_requiredは同順で最初のrecovery_required JobResult.codeを採用する。該当job不在または必要code=nullはP19_STATE_CORRUPTとしてcommitを拒否し、勝手にP19_EXITや成功へ補完しない。optional jobだけの失敗を集約失敗codeに採用しない。targetのterminal保存とそれを待つ複数Operationの終端を同一snapshotで確定し、いずれかの容量不足で部分終端しない。
+
 <a id="phase-19-worker-protocol"></a>
 **worker / transport / lease：**
 

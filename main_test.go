@@ -118,6 +118,223 @@ func phase19LogRingOracle(data []byte, first int64) ([]byte, int64, int64) {
 	return data[drop:], first + int64(drop), first + int64(len(data))
 }
 
+type phase19OperationSpecificationVector struct {
+	SchemaVersion int `json:"schema_version"`
+	Admission     []struct {
+		ID              string `json:"id"`
+		Authorized      bool   `json:"authorized"`
+		Existing        bool   `json:"existing"`
+		SameSubject     bool   `json:"same_subject"`
+		SameDigest      bool   `json:"same_digest"`
+		RevisionMatches bool   `json:"revision_matches"`
+		Expected        string `json:"expected"`
+	} `json:"admission_cases"`
+	Transitions []struct {
+		ID         string `json:"id"`
+		From       string `json:"from"`
+		To         string `json:"to"`
+		SameResult bool   `json:"same_result"`
+		Expected   string `json:"expected"`
+	} `json:"transition_cases"`
+	GC []struct {
+		ID        string `json:"id"`
+		State     string `json:"state"`
+		Now       int64  `json:"now"`
+		ExpiresAt int64  `json:"expires_at"`
+		Protected bool   `json:"protected_reference"`
+		Expected  bool   `json:"expected_collect"`
+	} `json:"gc_cases"`
+}
+
+func decodePhase19OperationSpecification(input []byte) (phase19OperationSpecificationVector, error) {
+	var v phase19OperationSpecificationVector
+	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	encoded, err := json.Marshal(v)
+	var before, after any
+	if err != nil || json.Unmarshal(input, &before) != nil || json.Unmarshal(encoded, &after) != nil ||
+		!bytes.Equal(iacSpecificationCanonical(before), iacSpecificationCanonical(after)) {
+		return v, fmt.Errorf("required fields and null boundary")
+	}
+	if v.SchemaVersion != 1 || v.Admission == nil || v.Transitions == nil || v.GC == nil {
+		return v, fmt.Errorf("vector identity")
+	}
+	seen := map[string]bool{}
+	validID := func(id string) bool {
+		if !regexp.MustCompile(`^[a-z][a-z0-9-]*$`).MatchString(id) || seen[id] {
+			return false
+		}
+		seen[id] = true
+		return true
+	}
+	validState := func(state string) bool {
+		return state == "accepted" || state == "succeeded" || state == "failed" || state == "recovery_required"
+	}
+	for _, c := range v.Admission {
+		if !validID(c.ID) || !phase17StringInSlice(c.Expected, []string{"create", "forbidden", "replay", "idempotency", "revision"}) {
+			return v, fmt.Errorf("admission schema")
+		}
+	}
+	for _, c := range v.Transitions {
+		if !validID(c.ID) || !validState(c.From) || !validState(c.To) ||
+			!phase17StringInSlice(c.Expected, []string{"advance", "unchanged", "stale"}) {
+			return v, fmt.Errorf("transition schema")
+		}
+	}
+	for _, c := range v.GC {
+		if !validID(c.ID) || !validState(c.State) || c.Now < 0 || c.ExpiresAt != 2592000 {
+			return v, fmt.Errorf("gc schema")
+		}
+	}
+	return v, nil
+}
+
+func phase19OperationAdmissionOracle(authorized, existing, sameSubject, sameDigest, revisionMatches bool) string {
+	if !authorized {
+		return "forbidden"
+	}
+	if existing {
+		if !sameSubject || !sameDigest {
+			return "idempotency"
+		}
+		return "replay"
+	}
+	if !revisionMatches {
+		return "revision"
+	}
+	return "create"
+}
+
+func phase19OperationTransitionOracle(from, to string, sameResult bool) string {
+	if from == to && sameResult {
+		return "unchanged"
+	}
+	if (from == "accepted" && (to == "succeeded" || to == "failed" || to == "recovery_required")) ||
+		(from == "recovery_required" && (to == "succeeded" || to == "failed")) {
+		return "advance"
+	}
+	return "stale"
+}
+
+func phase19OperationGCOracle(state string, now, expiresAt int64, protected bool) bool {
+	return (state == "succeeded" || state == "failed") && now >= expiresAt && !protected
+}
+
+func TestPhase19OperationSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	match := regexp.MustCompile("(?s)<a id=\"phase-19-operation-vectors\"></a>.*?\x60\x60\x60json\\n(.*?)\\n\x60\x60\x60").FindStringSubmatch(document)
+	if len(match) != 2 {
+		t.Fatal("statefile.operation-spec.presence: missing fixed input")
+	}
+	input := []byte(match[1])
+	v, err := decodePhase19OperationSpecification(input)
+	if err != nil || len(v.Admission) != 8 || len(v.Transitions) != 12 || len(v.GC) != 8 {
+		t.Fatalf("statefile.operation-spec.schema: expected 8/12/8 valid vectors, actual %v", err)
+	}
+	for _, c := range v.Admission {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			got := phase19OperationAdmissionOracle(c.Authorized, c.Existing, c.SameSubject, c.SameDigest, c.RevisionMatches)
+			if got != c.Expected {
+				t.Fatalf("api.operation-spec.%s.result: spec=docs/details/api.md#phase-19-operation-admission expected=%s actual=%s input=%+v", c.ID, c.Expected, got, c)
+			}
+		})
+	}
+	for _, c := range v.Transitions {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			got := phase19OperationTransitionOracle(c.From, c.To, c.SameResult)
+			if got != c.Expected {
+				t.Fatalf("statefile.operation-spec.%s.result: spec=docs/details/statefile.md#phase-19-operation-lifecycle expected=%s actual=%s input=%+v", c.ID, c.Expected, got, c)
+			}
+		})
+	}
+	for _, c := range v.GC {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			got := phase19OperationGCOracle(c.State, c.Now, c.ExpiresAt, c.Protected)
+			if got != c.Expected {
+				t.Fatalf("statefile.operation-spec.%s.result: spec=docs/details/statefile.md#phase-19-operation-lifecycle expected=%t actual=%t input=%+v", c.ID, c.Expected, got, c)
+			}
+		})
+	}
+	for _, bad := range []struct {
+		id    string
+		input []byte
+	}{
+		{"missing", []byte(strings.Replace(string(input), `"schema_version": 1,`, "", 1))},
+		{"unknown", []byte(strings.Replace(string(input), `"schema_version": 1,`, `"schema_version": 1, "unknown": true,`, 1))},
+		{"duplicate", []byte(strings.Replace(string(input), `"schema_version": 1,`, `"schema_version": 1, "schema_version": 1,`, 1))},
+		{"null", []byte(strings.Replace(string(input), `"authorized": true`, `"authorized": null`, 1))},
+		{"trailing", append(append([]byte{}, input...), []byte("{}")...)},
+		{"utf8", append(append([]byte{}, input...), 0xff)},
+	} {
+		t.Run("schema-"+bad.id, func(t *testing.T) {
+			if _, err := decodePhase19OperationSpecification(bad.input); err == nil {
+				t.Fatalf("statefile.operation-spec.schema-%s.reject: expected rejected actual accepted", bad.id)
+			}
+		})
+	}
+	api := phase11MustReadText(t, "docs/details/api.md")
+	if err := phase19OperationHTTPPartition(api); err != nil {
+		t.Fatalf("api.operation-spec.http-partition.result: %v", err)
+	}
+	for _, bad := range []struct{ id, from, to string }{
+		{"wrong-status", "| 202: workerResume/", "| 200: workerResume/"},
+		{"missing-kind", "| 200: passwordChange/projectPut/", "| 200: projectPut/"},
+		{"duplicate-kind", "| 202: workerResume/", "| 202: projectPut/workerResume/"},
+		{"read-kind", "| 202: workerResume/", "| 202: plan/workerResume/"},
+	} {
+		t.Run("http-"+bad.id, func(t *testing.T) {
+			if !strings.Contains(api, bad.from) {
+				t.Fatalf("api.operation-spec.http-%s.fixture: missing control target", bad.id)
+			}
+			if err := phase19OperationHTTPPartition(strings.Replace(api, bad.from, bad.to, 1)); err == nil {
+				t.Fatalf("api.operation-spec.http-%s.reject: expected rejected actual accepted", bad.id)
+			}
+		})
+	}
+}
+
+func phase19OperationHTTPPartition(api string) error {
+	section := strings.Split(api, "<a id=\"phase-19-error-catalog\"></a>")[0]
+	classes := regexp.MustCompile("(?m)^\\| (200|202): ([A-Za-z/]+) \\|").FindAllStringSubmatch(section, -1)
+	classified := map[string]string{}
+	for _, row := range classes {
+		for _, kind := range strings.Split(row[2], "/") {
+			if classified[kind] != "" {
+				return fmt.Errorf("duplicate kind %s", kind)
+			}
+			classified[kind] = row[1]
+		}
+	}
+	catalog := regexp.MustCompile("(?m)^\\| ([A-Za-z][A-Za-z0-9]*) \\| (GET|POST|PUT|DELETE) [^|]+ \\| [^|]+ \\| ([^|]+) \\|").FindAllStringSubmatch(section, -1)
+	mutationCount := 0
+	for _, row := range catalog {
+		kind := row[1]
+		if row[2] == "GET" || phase17StringInSlice(kind, []string{"login", "logout", "plan", "deploymentPlan", "artifactCompare"}) {
+			if classified[kind] != "" {
+				return fmt.Errorf("read/auth kind %s", kind)
+			}
+			continue
+		}
+		want := "200"
+		if strings.TrimSpace(row[3]) == "Operation" {
+			want = "202"
+		}
+		if classified[kind] != want {
+			return fmt.Errorf("kind=%s expected=%s actual=%s", kind, want, classified[kind])
+		}
+		mutationCount++
+	}
+	if mutationCount != 25 || len(classified) != mutationCount {
+		return fmt.Errorf("expected 25 kinds actual catalog=%d classified=%d", mutationCount, len(classified))
+	}
+	return nil
+}
+
 type phase19LogSpecificationVector struct {
 	SchemaVersion int `json:"schema_version"`
 	MaskCases     []struct {
@@ -1509,6 +1726,8 @@ func TestPhase19SpecificationContracts(t *testing.T) {
 		{"environment-key-type", "docs/details/statefile.md", `"env": "envmap(EnvValue,0,64)"`, `"env": "map(EnvValue,0,64)"`},
 		{"site-atomic-state", "docs/details/statefile.md", `"counters": "SiteCounters"`, `"wrong_counters": "SiteCounters"`},
 		{"site-retention-clock", "docs/details/statefile.md", `"committed_at": "Time"`, `"committed_at": "Id"`},
+		{"operation-attempt", "docs/details/statefile.md", `"target_attempt": "nullable(int(1,100))"`, `"target_attempt": "nullable(Id)"`},
+		{"operation-digest-target", "docs/details/statefile.md", `"target_id": "nullable(text(1,64))"`, `"target_id": "nullable(Id)"`},
 		{"deployment-observation", "docs/details/statefile.md", `"observations": "list(StageObservation,0,512)"`, `"observations": "list(StageObservation,0,32)"`},
 		{"notification-attempt", "docs/details/statefile.md", `"target_attempt": "int(1,100)"`, `"target_attempt": "int(1,3)"`},
 		{"roadmap-inventory-state", "docs/ROADMAP.md", "| 仕様化済み・未実装 | CI / CD | Phase 19", "| 改訂予定 | CI / CD | Phase 19"},
@@ -1742,6 +1961,7 @@ func phase19ValidateSpecification(documents map[string]string) error {
 		"Root":            {"secrets": "list(SecretMeta,0,10000)"},
 		"WorkerExecution": {"job": "JobResult", "lease_generation": "int(1,9007199254740991)"},
 		"SiteOperation":   {"committed_at": "Time"},
+		"Operation":       {"target_id": "nullable(text(1,64))", "target_attempt": "nullable(int(1,100))"},
 		"Deployment":      {"observations": "list(StageObservation,0,512)"},
 		"Notification":    {"target_attempt": "int(1,100)", "source_revision": "int(1,2147483647)"},
 	} {

@@ -10,7 +10,7 @@ ownerは `api`、実装主体は [components/api/](../../components/api/)。型�
 
 **共通wire契約：** 管理APIは既存loopback/TLS tunnel境界。全bodyはUTF-8 JSON、Content-Type application/json必須、Content-Encoding拒否、最大1048576 bytes（超過413）、decode depth32、duplicate/unknown key拒否、末尾token拒否。GET/DELETE queryは列挙keyだけ、同名重複禁止、pathは一度だけpercent decodeしslash/backslash/dotdot/制御文字拒否。attemptは1〜100、ID/digestはschemaで検査する。method不一致405/Allow、未知route404。認証前のparseでscope情報を返さない。
 
-成功envelopeは `{data:T,request_id:Id,authorization:Authorization}`、errorは `{error:string,code:string,request_id:Id,details:[],authorization:null|Authorization}`（detailsは常に空）。Authorization=`{subject_kind:enum(user,service),subject_id:Id,generation:int(1,9007199254740991),grants:Grant[],expires_at:Time}`。認証済subject自身の有効grantだけをRoot.generationと同じsnapshotから返す。unauthenticated errorはnull、authenticated 403も自分のgrant以外を含めない。loginは発行sessionに対応し、logoutは失効直前の認証snapshotを返す。正規化Authorization長は65536 bytes以下（grant保存時にsubjectごと検査）とし、他subject/grant/credentialを列挙しない。全応答no-store、JSON nosniff。request_idはserver発行o-ID。login/logout以外の副作用requestは `Idempotency-Key: o-32hex` 必須、digest対象は `{subject,method,path,body}` のcanonical bytes。acceptedは202、完了済み同期変更は200、作成も200。read-only POSTはplan/deploymentPlan/artifactCompareの3操作で、idempotency/Operation生成/認可済み状態変更を行わない。SDKのmutation判定もこのoperation分類に固定する。mutationのdataは一律OperationResult=`{operation:Operation,result:T|null,one_time:null|string}` とし、下表data列はresultの論理型を示す（Operation行はresult=null）。Operation.idはIdempotency-Keyと一致する。初回同期成功だけresultを返し、user/service作成時だけone_timeに初期password/tokenを一度返す。再送同digestは保存済みOperationを同じ200/202で返すがresult=null/one_time=nullとし、clientはoperationとtargetのGET/listを再取得する。秘密応答やrequest本文をidempotency保存しない。operationは30日照会可能。login/logoutはmemory-only認証操作でOperationResult対象外、loginだけ認証前body decodeを許可する。認証・rate-limit拒否はidempotency保存せず、監査の機密境界に従う。
+成功envelopeは `{data:T,request_id:Id,authorization:Authorization}`、errorは `{error:string,code:string,request_id:Id,details:[],authorization:null|Authorization}`（detailsは常に空）。Authorization=`{subject_kind:enum(user,service),subject_id:Id,generation:int(1,9007199254740991),grants:Grant[],expires_at:Time}`。認証済subject自身の有効grantだけをRoot.generationと同じsnapshotから返す。unauthenticated errorはnull、authenticated 403も自分のgrant以外を含めない。loginは発行sessionに対応し、logoutは失効直前の認証snapshotを返す。正規化Authorization長は65536 bytes以下（grant保存時にsubjectごと検査）とし、他subject/grant/credentialを列挙しない。全応答no-store、JSON nosniff。request_idはserver発行o-IDで、clientの要求IDとは別。mutationのdataは一律OperationResult=`{operation:Operation,result:T|null,one_time:null|string}` とし、下表data列はresultの論理型を示す（Operation行はresult=null）。受付・再送・照会は [docs/details/api.md 詳細本文責務 operation受付境界](#phase-19-operation-admission) を適用する。login/logoutはmemory-only認証操作でOperationResult対象外、loginだけ認証前body decodeを許可する。認証・rate-limit拒否はidempotency保存せず、監査の機密境界に従う。
 
 全JSON response（envelope込み）は1048576 bytes以下。公開entityのcanonical read projectionは921600 bytes以下を保存前に検査し、超過入力は422 P19_SCHEMA。PageEnvelopeは件数limitとbyte上限の小さい方で分割し、返却した最後のkeyからcursorを作る。0件で次cursorを作ることは禁止。単一entityや既存保存値が上限を超える場合はP19_STATE_CORRUPTであり、黙ってfield/配列を省略して成功にしない。
 
@@ -97,6 +97,18 @@ PasswordChange=`{current_password:text(1,4096),new_password:text(1,4096),totp:nu
 
 ProjectViewは全Project keyを持ち、platform-adminまたは当該viewer以上ならProject値を返す。approverだけのsubjectにはid/name/revision/enabledのみ実値、source_owner/source_repo/definition_id/quota/toolchain_digestはnull、definition_revisionは0とする。このprojectionをWrite<Project>の入力へ流用しない。WorkerView/TargetViewは保存型からSSH user/host/pathを除きhost_registered=trueだけを追加する（platform-admin自身には保存型を返せる）。UserViewはcredential/totpを含めず `{id,name,revision,enabled,created_at,totp_enabled}`。ServiceViewはtoken_sha256を含めず `{id,revision,enabled,expires_at}`。tokenはOperationResult.one_timeだけへ返す。UserInput=`{id:Id,name:text(1,128),revision:int(1,2147483647),enabled:bool}`、ServiceInput=`{id:Id,revision:int(1,2147483647),enabled:bool,expires_at:Time}` をWrite.valueの完全key集合とする。credential/totp/created_at/token_sha256は入力へ含めず、送信した場合はP19_SCHEMA。資格情報は作成時だけserver生成し、更新で再発行しない。User.created_atは作成commit時刻。User.enabled変更では当該sessionを全失効する。Serviceの初回expiryは発行時から30日以内、更新では元の期限延長を拒否し、再発行が必要なら別IDを作る。Workerのtoolchain_digest/total_memory_mb/leases/last_seenはprobe/runner所有、新規要求はprobe確認値と一致を要求する。Targetを含めserver所有fieldの変更を拒否する。Worker/Targetのleases/last_seenはserver所有で新規は空/null、変更拒否。Root全体・master・暗号文はroute非公開。
 
+<a id="phase-19-operation-admission"></a>
+**operation受付・再送・照会：** login/logout以外のmutationは、単一の `Idempotency-Key: o-32lowercasehex` を必須とする。欠落・重複header・不正形式は400/P19_INPUT。GET、login/logout、およびread-only POSTのplan/deploymentPlan/artifactCompareに同headerを付けた場合も400/P19_INPUTとし、黙って無視しない。副作用routeのqueryは空を要求する。digestはcanonical `{subject:{kind:"user"|"service",id:Id},method,path,body}` のSHA256。methodはcatalogの大文字、pathはroute placeholderを検証済IDで置換したpercent-encoding不要の正規形、bodyはstrict decode後の型付きJSON値（object順序・空白は同一視、配列順・文字列・整数・nullは区別）とする。秘密本文・canonical bytesを保存せずdigestだけをOperationへ渡す。
+
+認証・scope認可・resource lookup・body検証の後、statefile受付lock内で最新のidentity/grant/expiryを再評価する。既存key照合はentity revision・plan再計算・quota予約・secret生成・外部callより先。同一subject/kind/digestの再送は現在の保存済Operationを返し、初回処理を繰り返さない。他subjectまたは異digestのkey衝突は409/P19_IDEMPOTENCY、他subjectのOperationを含めない。認証・権限失効時は既存keyでも401/403で、結果を返さない。新規keyだけ最新revision/plan/容量を検査して受付する。受付前拒否はOperationを作らず、拒否監査の扱いは [docs/details/security.md 詳細本文責務](security.md#phase-19-secret-crypto) に従う。lock外でsource/SSH取得が必要なら一旦lockを解放し、再取得後に上記照合を最初からやり直す。保持中のnetworkは禁止。
+
+| 受付HTTP / Operation.kindの閉集合 | 初回成功body / 再送 |
+|---|---|
+| 200: passwordChange/projectPut/workerPut/targetPut/userPut/servicePut/definitionPut/templatePut/environmentPut/grantPut/secretPut/workerDrain/artifactPin | durable commit済みsucceeded Operationとresult。userPut/servicePutの新規作成時だけone_timeを1回返す。再送は200、result=null/one_time=null。 |
+| 202: workerResume/runStart/runRetry/runResume/runCancel/cacheDelete/deploymentStart/deploymentApprove/deploymentReject/deploymentCancel/deploymentRollback/deploymentReconcile | result=null/one_time=null。処理が応答前に終端化しても202。再送も202で、Operation.stateをHTTP statusから推測しない。 |
+
+Operation.idはclient key、kindは上表のoperation ID。返却Authorization/request_idは当該HTTP requestの最新値であり初回応答の再掲ではない。replayは最新Operationだけを返し、秘密応答・result・旧Authorizationを再生しない。Operationのtarget_id/target_attempt、内部進行、保持・回収は [docs/details/statefile.md 詳細本文責務 operation lifecycle](statefile.md#phase-19-operation-lifecycle) を参照する。GET operationGetは権限行列のoperation-readerを最新状態で確認し、存在しないkeyは404、保存中ならexpires_at経過だけで隠さない。404・通信断・timeout・abortは未受付または副作用なしの証明ではない。clientは新keyでの自動再送をせず、同key照会と対象実体の再取得で確認する。一度消えたone_timeは再表示できず、結果照会のために資格情報を再発行しない。
+
 <a id="phase-19-log-page-contract"></a>
 **log page固定契約：**
 
@@ -130,7 +142,7 @@ wire errorは下表のmessageだけ、stderr/path/secretを足さない。code�
 | 503 | P19_TRANSPORT, P19_LEASE, P19_STATE_CORRUPT, P19_STATE_UNCERTAIN, P19_SHUTDOWN | unavailable |
 | 507 | P19_STORAGE | storage unavailable |
 
-P19_CANCELLEDはcancel終端のJobResultだけ、受付HTTP成功を500へ変えない。P19_CLEANUPは実体状態に応じfailed/recovery_requiredであってcleanup warningがbusiness成功を遡及変更しない。時刻/entropy/leaseなど環境failureも成功に丸めない。429/503はRetry-After:1を返すがclient自動再実行を許可する意味ではない。
+P19_CANCELLEDはcancel終端のJobResultまたは取消されたRun/Deploymentを追跡するfailed Operationのcodeであり、受付HTTP成功を500へ変えない。P19_CLEANUPは実体状態に応じfailed/recovery_requiredであってcleanup warningがbusiness成功を遡及変更しない。時刻/entropy/leaseなど環境failureも成功に丸めない。429/503はRetry-After:1を返すがclient自動再実行を許可する意味ではない。
 
 <a id="phase-19-site-serving"></a>
 **site専用配信mode：**

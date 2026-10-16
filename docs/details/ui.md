@@ -74,6 +74,11 @@ projectsはproject設定、definition/templateのJSON editor、入力型editor�
 
 開始/取消/rollback/秘密更新/権限変更/drainはconfirmationでproject/対象ID/revision/digest/環境世代を固定する。確認後のselection変化で無効化。submit中二重押下禁止、o-IDはフォーム1回の操作に固定。secret入力は送信/close/logoutで消去しDOM再描画へ残さない。one-time credentialはそのresponse内でだけ表示しview離脱で破棄する。approveとdeploy開始は別action、受付を配備完了や復旧成功と表示しない。
 
+<a id="phase-19-ui-operation-uncertainty"></a>
+**応答消失時の表示：** submitting中の通信断/timeout/abortはerrorと結果未確認の両方を表示し、同じフォームへ新しいo-IDを割り当てて再送しない。memoryに保持するのは要求key・operation名・非秘密の対象identity/attemptだけで、body/secret/credentialを再送用に残さない。利用者の結果確認actionは同keyのoperationGetを行い、保存済みならOperationの実状態と対象GET/listを再取得する。404は未受付の断定に使わず、保持期限経過・応答消失を含む未確認状態として自動再実行を止める。再loginやview変更でも秘密入力を復元しない。ページ再読み込みでmemoryのkeyを失った場合は対象一覧・監査の再取得から確認し、operationを自動合成しない。新しい操作には別の利用者確認と新keyを要求し、元操作の照合ができなければ二重実行リスクを表示する。Operationのtarget_attemptと選択attemptを比較し、旧attemptの完了を新attemptの成功へ表示しない。
+
+recovery_required表示は未終端の要照合状態であり成功ではない。通常pollを停止して対象再取得とplatform-adminの明示reconcile入口を残し、照合操作の成功だけで元操作を完了表示しない。利用者の結果確認で元operationGetを再取得し、succeeded/failedになった場合だけ終端表示へ遷移する。
+
 全フォームlabel、errorのaria-describedby、status role=status、dialog focus trap/escape/close後focus復帰、table caption/th scope、icon aria-labelを必須にする。キーボードだけで全操作可能、色だけで状態を伝えない。検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)。
 
 UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) を参照する。標準管理 UI の色、寸法、余白、配置、responsive、focus の視覚値は [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) を参照する。[`docs/details/ui.md`](ui.md) 詳細本文責務は UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。

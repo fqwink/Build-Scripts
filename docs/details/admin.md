@@ -8,6 +8,9 @@ ownerは `admin`、実装主体は [components/admin/](../../components/admin/)�
 
 exact形は `adlaire-ci-admin --api-url URL --token-file ABS --json cicd COMMAND --params-file ABS --body-file ABS`。token-fileと既存token-stdinは排他、loginだけtoken不要。params-fileはpath/query keyのJSON object（Emptyなら{}）、body-fileはrequest JSON（body不要ならnull）、各1 MiBまでregular0600・symlink拒否、secret含むfileはcheckout外。body-fileに `-` を指定してstdin読取可、token-stdinとの併用禁止。未知/重複/省略optionを拒否、--name valueだけ。login/logout以外のmutationには `--idempotency-key o-HEX` 必須。--waitは受け付けず、operation-getで明示照会する。
 
+<a id="phase-19-admin-operation-result"></a>
+**CLIの要求結果境界：** key分類・HTTP結果は [docs/details/api.md 詳細本文責務 operation受付](api.md#phase-19-operation-admission) と一致させ、不要な--idempotency-keyはnetwork前入力拒否する。mutation応答はoperation.id/kind/target_attemptと送信対象を照合し、不一致をprotocol失敗とする。timeout/通信断は非zero終了であり未実行の証明ではない。固定診断だけを出し、keyを付け替えた自動再送、stdin再読込、秘密bodyのcacheを行わない。照会は既知keyをparams-fileへ指定したoperation-getで行い、404を「再実行可」に変換しない。user/service作成のone_time消失は再表示不可として扱い、照会のために別user/serviceを作成しない。
+
 | COMMAND | operation結合key |
 |---|---|
 | `login` | login |

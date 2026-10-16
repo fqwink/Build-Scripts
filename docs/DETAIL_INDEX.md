@@ -51,6 +51,7 @@ owner component 別詳細本文、作業ルール、または Pull Request 本�
 | 開発 Actions 定義 / 実行 / 適用証跡 | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions 証跡固定契約](details/fixture.md#development-actions-evidence-contract) |
 | 既存 7 workflow required gate / 入力 fixture / checker / 正例・負例 | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions required gate 固定契約](details/fixture.md#development-actions-required-gate-contract) |
 | streaming log / UTF-8 page / 出力上限 / 保存容量の文書oracle | [docs/details/fixture.md fixture証跡責務 log境界入力](details/fixture.md#phase-19-log-boundary-vectors) |
+| operation再送 / 内部進行 / 期限GC / attempt結合の文書oracle | [docs/details/fixture.md fixture証跡責務 operation境界入力](details/fixture.md#phase-19-operation-vectors) |
 | Phase 19 策定対象 / 故障・復旧・並行実行の受け入れ設計 | [`docs/details/fixture.md` fixture 証跡責務 Phase 19 検証策定契約](details/fixture.md#phase-19-cicd-evidence-contract) |
 | Phase20 IaC / plan意味整合 / 適用受付時刻 / 文書入力oracle | [docs/details/fixture.md fixture証跡責務 IaC検証入口](details/fixture.md#inhouse-iac-fixture-contract)、[完全入力と中断oracle](details/fixture.md#inhouse-iac-concrete-oracles)、[適用受付境界入力](details/fixture.md#inhouse-iac-admission-vectors) |
 | traceability / owner routing / fixture coverage | [`docs/details/fixture.md` fixture 証跡責務 test artifact traceability 固定契約](details/fixture.md#test-artifact-traceability-contract)、[`non-dedicated owner test routing 固定契約`](details/fixture.md#non-dedicated-owner-test-routing-contract)、[`fixture root coverage matrix 固定契約`](details/fixture.md#fixture-root-coverage-matrix-contract) |
@@ -441,6 +442,9 @@ Phase 19 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状�
 | 成果物登録・重複排除・検証・保持・回収・比較 | `archive` | [`docs/details/archive.md` 詳細本文責務 Phase 19 成果物契約](details/archive.md#phase-19-artifact-contract) |
 | 利用者・role・環境 grant・承認者・secret・audit | `security` | [`docs/details/security.md` 詳細本文責務 Phase 19 権限契約](details/security.md#phase-19-security-contract) |
 | profile起動・endpoint・request / response・JSON log / metrics | `api` | [`docs/details/api.md` 詳細本文責務 Phase 19 API 接続](details/api.md#phase-19-api-contract) |
+| operation受付・再送・結果照会 | `api` | [docs/details/api.md 詳細本文責務 受付](details/api.md#phase-19-operation-admission) |
+| operation内部進行・保持・GC・対象identity | `statefile` | [docs/details/statefile.md 詳細本文責務 lifecycle](details/statefile.md#phase-19-operation-lifecycle) |
+| operationと実体処理の完了接続 | `runner` | [docs/details/runner.md 詳細本文責務 完了](details/runner.md#phase-19-operation-completion) |
 | SDK method・transport 接続 | `sdk` | [`docs/details/sdk.md` 詳細本文責務 Phase 19 SDK 接続](details/sdk.md#phase-19-sdk-contract) |
 | view・操作・DOM・非同期表示 | `ui` | [`docs/details/ui.md` 詳細本文責務 Phase 19 管理画面](details/ui.md#phase-19-ui-contract) |
 | CLI・静的 package 接続 | `admin` | [`docs/details/admin.md` 詳細本文責務 Phase 19 管理クライアント](details/admin.md#phase-19-admin-contract) |

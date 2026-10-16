@@ -397,7 +397,8 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "request_digest": "Digest",
       "kind": "text(1,64)",
       "state": "enum(accepted,succeeded,failed,recovery_required)",
-      "target_id": "nullable(Id)",
+      "target_id": "nullable(text(1,64))",
+      "target_attempt": "nullable(int(1,100))",
       "created_at": "Time",
       "expires_at": "Time",
       "code": "nullable(text(1,64))"
@@ -665,7 +666,7 @@ secret / SSH / master はsnapshot export、成果物、cache、通常backup、AP
 
 process内mutex → `state.lock` の非blocking flock(LOCK_EX)を10ms間隔、最大2秒で取得する。保持中にnetwork / child / response送信を待たない。read-onlyはHeadから一つのimmutable snapshotを読み、hash / schema / generationを検証し、書込・修復・migrationをしない。snapshot不在でHeadが既に進んだ場合だけ新Headで最大3回読み直す（GC競合）。同Headで不在/不正hashなら即corrupt、3回すべて世代更新ならP19_BUSY。
 
-1. lock下でHeadと現在snapshotを再読込し、entity revision・要求識別子を照合する。同一operation ID / digestなら元Operationを返し、内容違いは P19_IDEMPOTENCY。
+1. lock下でHeadと現在snapshotを再読込し、要求識別子を先に照合してから新規受付のentity revisionを検査する。受付再送と内部進行は [operation lifecycle](#phase-19-operation-lifecycle) の別interfaceとする。
 2. 全制約と容量を検証する。新しい進行中operationにつき終端用262144 bytesとOperation/Audit終端1行ずつを予約し、snapshot byte数 + 予約総量 <= 33554432 を満たさなければ P19_STORAGE。active対象、監査、保護参照を容量対策で消さない。
 3. generation+1のsnapshotを `snapshots/.{o-id}.tmp` にO_EXCLで作成、write-all、chmod、fsync、close、未存在のg-nameへrename、snapshots directory fsync。
 4. 新Headを `cicd/.head.{o-id}.tmp` に同順で書き、head.jsonへatomic renameし、cicd directory fsync。この完了だけをdurable commitとする。
@@ -674,14 +675,21 @@ process内mutex → `state.lock` の非blocking flock(LOCK_EX)を10ms間隔、�
 
 手順3以前の失敗はHead不変。3成功・4rename前のcrashは未参照snapshotだけを次回lock下で回収する。4rename後のfsync失敗は P19_STATE_UNCERTAIN とし、commit不成立・副作用なしを断言しない。runnerは外部副作用前に別のdurable claimを必ずcommitする。Head破損、参照先不在、hash不一致、世代逆転は P19_STATE_CORRUPT とし通常処理を停止、旧世代への推測fallbackを禁止する。明示 `cicd-recover` だけが、対象generationとdigest、外部operation照合を受け、検証したsnapshotを新世代へ復元する。
 
-Root内operationは30日保持、run / deploymentは各project retention経過かつ非active・非参照だけをcreated_at,id昇順で回収する。全監査をoperationと同時に保持する。期限切れ要求IDの再利用は新規要求となるため、clientは再利用しない。過去Runのattemptは上書きしない。schema_version=1以外は拒否し自動upgradeしない。legacy状態の自動importは行わない。新規projectと環境を明示作成し、既存Release/成果物はarchive検証を通した明示登録だけを許可する。legacy fileを変更しない。cicd-v1開始後のlegacyへの逆migrationは非対応であり、進行中処理を終端化・exportしたうえでprofile無効化する。
+operation/監査の回収は [operation lifecycle](#phase-19-operation-lifecycle) に従う。run / deploymentは各project retention経過かつ非active・非参照だけをcreated_at,id昇順で回収する。過去Runのattemptは上書きしない。schema_version=1以外は拒否し自動upgradeしない。legacy状態の自動importは行わない。新規projectと環境を明示作成し、既存Release/成果物はarchive検証を通した明示登録だけを許可する。legacy fileを変更しない。cicd-v1開始後のlegacyへの逆migrationは非対応であり、進行中処理を終端化・exportしたうえでprofile無効化する。
 
 named user loginの認証更新は内部o-ID付きUpdateCICDAuth(userID,credentialFingerprint,mutate)でlock下に最新Credentialを再照合し、count/time/Auditだけを一つのRoot更新にする。Operationは作らず、commit後だけmemory sessionを公開する。admin aliasは既存credential adapterの保存順を使用し、失敗時sessionを発行しない。login/logoutをOperationResult対象外とするAPI例外は、認証記録の永続化省略を意味しない。
+
+<a id="phase-19-operation-lifecycle"></a>
+**受付と内部進行の分離：** `UpdateCICD(opID,requestDigest,mutate)` は新規受付専用。最新認可の再評価・既存key照合後、新規だけmutateを1回適用し、Operationと業務差分とaccepted/finished監査を一つのRoot commitにする。既存同digestはmutateを呼ばず現Operationを返す。API側の照合順とkind集合は [docs/details/api.md 詳細本文責務 operation受付](api.md#phase-19-operation-admission) を参照する。IDはRoot全体で一意、subject/kind/request_digest/created_at/expires_at/target_id/target_attemptは初回commit後不変。target_idはartifactPin/cacheDeleteではDigest、grantPutでは変更対象subjectのId、passwordChangeでは本人Id、他のAPI mutationでは作成・変更するentityのIdを要求し、API mutationでnullは禁止する。内部eventで対象なしの場合だけnullを許す。text型を任意文字列targetの許可と解釈しない。runStart/runRetry/runResume/runCancelではtarget_attemptを対象Run.attemptで固定し、それ以外はnull。runRetry/runResumeは新attempt、runCancelはpathで指定したattemptであり、latestへ読み替えない。target_id/attemptが参照する保存値はoperation保持中に回収しない。保持中のrun/deploymentのGCを防止する参照であり、対象設定のrevision更新、grant変更、cacheDeleteによる実体削除、security正本の旧secret版回収を禁止する参照ではない。対象identifierを別entityへ再利用しない。
+
+内部進行は `AdvanceCICDOperation(opID,expectedGeneration,mutate) (Operation,error)` を使用する。呼出元はrunnerのdurable claimを所有するcoordinator、または受付済operationを完了するapi ownerに限定し、HTTP入力から直接呼ばない。lock下のRoot.generation不一致はP19_REVISIONでmutate未実行、callerは再読取・lease/target状態再照合後だけ再構成する。新key作成や受付digestの再判定へ流さない。Operationの状態変更・対象進捗・必要監査・予約容量解放を同一commitにする。accepted監査は受付時に1行、finished監査はsucceeded/failedへの終端時に1行だけとし、recovery_requiredへの進行や結果一致の再照合でfinishedを追加しない。acceptedはcode=null、accepted→succeeded/failed/recovery_required、recovery_required→succeeded/failedを許可する。recovery_requiredは未終端で参照と容量予約を維持する。succeededはcode=null、failed/recovery_requiredはcatalogの非null code必須。終端後は完全同一結果の照合だけを許し、別状態/codeへの上書きをP19_STALEで拒否する。結果一致の内部再送は監査・世代を増やさない。対象state machineの追加制約は [docs/details/runner.md 詳細本文責務 operation完了接続](runner.md#phase-19-operation-completion) を参照する。
+
+**期限とGC：** expires_atはcreated_at+2592000秒、期限加算がTime範囲を超える入力時刻はP19_STATE_CORRUPT。最終更新時刻や再送で延長しない。GCはlock下でnowを1回固定し、succeeded/failedかつnow>=expires_atかつactive claim/lease/復旧/他entityからの保護参照なし、の全条件を満たすOperationだけをexpires_at,id順で回収する。accepted/recovery_requiredは期限超過でも回収・自動失敗化しない。対応するAudit全行を同commitで回収し、operationだけ先に消さない。容量不足でも保護中operation/監査/対象を捨てずP19_STORAGEで新規受付を止める。GC前なら期限後でも元keyは再送照合され、GC後に同keyが来れば新規受付になる。clientは一度使用したkeyを別操作や新しい受付へ再利用しない。読取APIはGCを起動しない。
 
 <a id="phase-19-log-invariants"></a>
 **Logの保存整合：** 全read/writeでschemaに加え `0<=first_offset<=next_offset<=9007199254740991`、UTF-8有効、`next_offset-first_offset=len(data bytes)`、truncated=(first_offset>0)を検証する。同一identityの更新はfirst/nextを減算せず、gap=trueをfalseへ戻さない。terminal=trueは封印済みであり、以後は完全同一Logの再送を既存値として返すだけとし、byte/offset/flagを更新しない。terminal=false同士でも保存済みと重なる絶対offset区間のbyte不一致を拒否する。新規は両offset=0/data空/truncated=false/gap=false/terminal=false。空streamもEOF時にterminal=trueを保存する。破損はP19_STATE_CORRUPTで自動修復しない。容量はJSON escapeと全fieldを含むserialized byte長で検証し、既存fileを置換する前に上限超過をP19_STORAGEで拒否する。全NULのdata最大長はescapeだけで6291456 bytesを使うため、path表のenvelope込み上限を適用し、schema上有効な最大dataをheader分で欠落させない。書込失敗時のjob停止は [docs/details/runner.md 詳細本文責務 streaming log](runner.md#phase-19-streaming-log-contract) を参照する。
 
-**adapter interface：** `ReadCICD() (Root,Head,error)`、`UpdateCICD(opID,requestDigest,mutate) (Operation,error)`、`WriteCICDLog(Log) error`、`ReadCICDLog(identity) (Log,error)`。mutateは既に検証した入力を用いる純粋なRoot更新だけで、I/Oを呼ばない。ログ単体は同directoryのO_EXCL temporary → write / fsync / close → rename / directory fsyncで更新する。caller固有の直接書込は許可しない。全error codeの公開対応は [`docs/details/api.md` 詳細本文責務 Phase 19 error](api.md#phase-19-error-catalog)、検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
+**adapter interface：** `ReadCICD() (Root,Head,error)`、[operation lifecycleの受付/内部進行interface](#phase-19-operation-lifecycle)、`WriteCICDLog(Log) error`、`ReadCICDLog(identity) (Log,error)`。mutateは既に検証した入力を用いる純粋なRoot更新だけで、I/Oを呼ばない。ログ単体は同directoryのO_EXCL temporary → write / fsync / close → rename / directory fsyncで更新する。caller固有の直接書込は許可しない。全error codeの公開対応は [`docs/details/api.md` 詳細本文責務 Phase 19 error](api.md#phase-19-error-catalog)、検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
 
 **canonical bytes：** digest対象JSONはobject keyをUTF-8 byte昇順、配列順維持、空白なし、整数10進、stringはquotation/backslashをそれぞれbackslashでescapeし、U+0008/U+0009/U+000A/U+000C/U+000Dは順に `\b` / `\t` / `\n` / `\f` / `\r`、その他U+0000〜001Fはlowercase hex4桁の `\u00xx` とする（入力で禁止されたcodepointの許可にはならない）。それ以外は元のUTF-8 byteを維持し、HTML escapeなし、slash非escape、Unicode正規化なし、末尾LFなし、UTF-8でencodeする。浮動小数は全schemaで不使用。HTTP送受信bytesとcanonical bytesを混同しない。\u2028/\u2029はUTF-8のままとする。
 
