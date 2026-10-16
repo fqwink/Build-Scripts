@@ -230,6 +230,19 @@ Phase 17 の fixture 証跡へ接続する future target 分類は、`xserver-vp
 
 同一source SHAでsimulation1回→隔離VPS導入/再起動/更新/切戻し/権限不正拒否/通信断復旧/secret非露出/cleanupを2回実行し、2回目は別のclean stateで行う。失敗・未実行・provider由来の制限はopen、同じ実行の再集計を2回と数えない。結果は [fixture証跡責務のXserver受入専用record](fixture.md#xserver-acceptance-evidence-contract) へ接続し、Phase17/18のrecordへmodeやcounterを追加しない。secret漏えい、unexpected public listener、rollback不明、production data混入で即停止し自動再実行しない。操作前後のVM自体の存続を確認し、削除をcleanupに含めない。実在VPS/credentialの取得・操作は本仕様策定では実施しない。
 
+<a id="xserver-acceptance-authorization"></a>
+**実機受入の操作承認入力：** ownerは本番検証責務。環境inputのenvironment_idは `[a-z][a-z0-9-]{0,63}`、source_shaは40桁lowercase hex、ssh_host_key_sha256は64桁lowercase hexに固定する。数値はJSON integerだけを許可し、bool/小数/nullを拒否する。inputはUTF-8の単一object、全key必須、unknown/duplicate key禁止、最大65536byte。実機host/SSH接続情報は運用者準備の安全fileからだけ取得し、opaque environment_idに対応する固定host keyと照合する。public inputからhost/pathを組み立てない。
+
+接続fileは `/etc/adlaire-ci/xserver-acceptance/environments/<environment_id>.json`、UTF-8 JSON最大65536byte、全key必須/unknown・duplicate禁止で `{environment_id:string,host:string,port:integer,user:string,identity_file:string,known_hosts_file:string}` とする。environment_idは要求と一致、host/port/user/pathの型・範囲・安全検査・接続argvは [runner詳細本文責務 SSH transport](runner.md#phase-19-worker-protocol) と [setup詳細本文責務 config/identity検査](setup.md#phase-19-setup-input) へ委譲する。file/ancestorの所有権・mode・no-followは下記承認fileと同じ条件で、environment directoryも0750とする。private key本文をJSON/dispatch/env/argvへ置かない。運用者の既知snapshotと復旧手段の確認は実機preflightの必須入力であり、未確認を成功として補完しない。
+
+実機dispatchは追加input `approval_id` を必要とする。形式はenvironment_idと同じgrammar、simulationだけなら空文字を許可する。運用者が事前に `/etc/adlaire-ci/xserver-acceptance/approvals/<approval_id>.json` を配置する。これは実行操作の権限入力であり開発変更履歴ではない。repository/workspace/artifact/cache/dispatch本文に承認fileを作成・複製せず、エージェントやworkflowが自己発行してはならない。運用者はユーザー本人の明示的な `承認`、対象source/environment、下記操作とroot操作の範囲を確認してから配置する。PR承認・environment通過・comment URLの存在だけではこの確認を代替しない。
+
+承認fileはUTF-8 JSON単一object、最大65536byte、全key必須/unknown・duplicate禁止で `{schema_version:1,approval_id:string,repository:"fqwink/Build-Scripts",workflow_ref:"fqwink/Build-Scripts/.github/workflows/phase22-xserver-acceptance.yml@refs/heads/main",source_sha:Digest40,environment_id:string,approved_at:Time,expires_at:Time,human_approval_ref:string,allow_root_operations:true}`。human_approval_refは確認した本人承認の `https://github.com/fqwink/Build-Scripts/pull/<positive-integer>#issuecomment-<positive-integer>`、時刻はUTC秒精度Z。approved_at <= now < expires_at、0 < expires_at-approved_at <= 3600秒を必須とし、許可操作は同じ受入cycleのinstall/restart/update/rollback/permission-denied/connection-loss/secret-redaction/cleanupだけ。provider操作、別環境、別source、任意root commandを許可しない。同一承認の再利用は有効期間内の同じsource/environmentの直列受入に限り、単一使用tokenと呼ばない。
+
+fileはroot所有・専用runner groupの0640、全ancestorはroot所有かつgroup/otherからwrite不可、専用承認directoryは0750。runnerはnon-rootで読取り権限だけを持ち、通常file・nlink=1・no-follow・open前後のinode/UID/GID/mode一致を確認する。欠損、symlink、hardlink、permission不一致、読取失敗は拒否し、自動作成/修復しない。root操作は既存setup正本の固定操作だけを運用者が許可し、runnerへの無制限sudoを前提にしない。runner割当と清浄化は [SPECポリシー責務 self-hosted安全契約](../SPEC.md#development-actions-runner-security) に従う。
+
+信頼判定はrepository完全一致、dispatch ref=`refs/heads/main`、source_sha=`GITHUB_SHA`、workflow SHA=source_shaをcheckout前に確認する。mainという入力文字列やrunner labelだけでは許可しない。approval_id/file内容/source/environment/workflow_refの完全一致は各cycle開始前と各変更直前に再確認する。file消失・失効・内容変更時は新規操作を停止し、既に開始した操作の実状態照合、child停止、自身の一時物削除、検証済み旧cohortへの安全な補償だけを行う。再開には有効な新承認を必要とし、停止したcycleをpassedへ変換しない。実行途中の期限切れを自動再承認しない。
+
 <a id="phase-17-production-validation-evidence-connection"></a>
 <a id="phase-17-production-validation-completion"></a>
 

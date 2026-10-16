@@ -7565,12 +7565,74 @@ test harnessはJavaScript実行をDeno stable runtimeだけで行い、native fe
 | failure / xs-stop | unexpected public listener、rollback観測不明、production_data=trueを各注入 | stopped、後続case/auto retry0。該当recordはpassed禁止、最終受入open。 |
 | failure / xs-evidence | simulationだけ、isolated cycle1だけ、同stateをcycle2へ再利用、source違い、case欠落を独立入力 | 全体rejected、未実行をpassedへ補完0、Phase17/18完了counterへ混入0。 |
 
-実行recordはこのfixture責務で閉じた `{record_id,provider_target,environment_id,source_sha,mode,cycle_id,stage,result,started_at,ended_at,stdout_sha256,stderr_sha256,effects_ref,security_ref}` とする。全key必須/未知key禁止。cycle_idはinteger、時刻/digestは下記のnullable string、それ以外はstringとする。record_idはxs-<mode>-<cycle_id>-<stage>、provider/environment/sourceは入力とexact一致、cycle_idはsimulation=0/isolated-vps=1|2、stageはpreflight/install/restart/update/rollback/permission-denied/connection-loss/secret-redaction/cleanupの9値。resultはpassed/failed/rejected/stopped/not_executed、時刻はUTC秒精度（not_executedだけ両null可）、digestは64lowercasehex（出力未作成だけnull）、effects_ref/security_refは同fixtureの実在expected/effects.json・expected/security.jsonへの相対pathとする。裸の説明文、実host/IP/契約id/secret、Phase17 check名を入れない。
+実行recordはこのfixture責務で閉じた `{record_id,provider_target,environment_id,source_sha,mode,cycle_id,stage,result,started_at,ended_at,stdout_sha256,stderr_sha256,effects_ref,security_ref}` とする。全key必須/未知key禁止。cycle_idはinteger、時刻/digestは下記のnullable string、それ以外はstringとする。record_idはxs-<mode>-<cycle_id>-<stage>、provider/environment/sourceは入力とexact一致、cycle_idはsimulation=0/isolated-vps=1|2、stageはpreflight/install/restart/update/rollback/permission-denied/connection-loss/secret-redaction/cleanupの9値でこの順。resultはpassed/failed/rejected/stopped/not_executed、時刻はUTC秒精度（not_executedだけ両null可）、started_at <= ended_at <= 次stage.started_at、digestは64lowercasehex（出力未作成だけnull）。裸の説明文、実host/IP/契約id/secret、Phase17 check名を入れない。
+
+effects_ref/security_refは実行package相対の `evidence/cycle-<cycle_id>/<stage>/effects.json` / `evidence/cycle-<cycle_id>/<stage>/security.json` に固定する。これらはharnessが観測したactualであり、fixtureのexpectedを参照・copyして実測に代用しない。同directoryのstdout.bin/stderr.binのraw byte SHA-256をrecordのdigestと照合し、空出力もfileを作成して空byteのdigestを記録する。passed recordでは4file全件を必須とし、通常file/nlink=1/no-follow、package外参照・絶対path・`..`・symlinkを拒否する。effects/securityは共通expected schemaと同型で、固定expectedとの差分と禁止副作用を比較した後だけpassedとする。各cycle専用rootで実行し、cycle1/2のroot再利用は禁止する。初期stateが同じならdigestが一致してもよく、digestの相違だけを分離の証明にしない。開始時の未配置pathと終了時の残存0を各cycleのeffectsで確認する。
 
 success fixtureのmanifest.categoryはsuccess、failureはpartial、securityはsecurity。全3fixtureにexpected/effects.json・expected/security.json、CLI到達caseにexpected/stdout.txt・expected/stderr.txt、state変更caseにexpected/state/state-diff.json、HTTP到達caseにexpected/response.jsonを必須とする。assertionsは共通schemaで実在expectedだけを宣言する。record群の保存先は各実行artifactのrecords/xserver-acceptance.jsonl、harnessは既存main_test.go/owner testへ接続し新owner Go fileを追加しない。
 
-受入closureは同一source/environmentでsimulation cycle0の全9stageと、互いに別clean stateのisolated cycle1/2の各9stage、合計27passed record、重複0/未実行0/secret検出0/VM削除0を必要とする。negative-control記録はこの27件へ算入しない。cycleのstate分離は各case開始前のstate-tree digest/未配置pathをeffects evidenceで示す。実機証跡のenvironment_idを固定fixture idで偽装しない。正式runは開発Actions標準契約の実行recordへ接続する。将来workflow pathは `.github/workflows/phase22-xserver-acceptance.yml`、workflow名phase22-xserver-acceptance、triggerは信頼済みrepository branchへのworkflow_dispatchだけ、permissions=contents:read、第三者uses/Node0。入力source_shaは40lowercasehex、environment_idは本番検証正本のopaque値、run_isolatedはboolean/default=false。sourceが承認済みrefのcommitと一致しない場合checkout実行前に拒否し、fork/未信頼ref/PR自動triggerから実機jobを起動しない。
-jobはsimulation（ubuntu-24.04、既存native bootstrap/固定Go・Deno検証）とisolated-acceptance（needs=simulation、run_isolated=trueだけ、専用self-hosted/Linux/X64/adlaire-xserver-isolated label）に固定する。後者はapproval参照と同じsource/environmentを確認し、clean state cycle1/2を直列実行して27recordを照合する。承認なし/能力不足/SSH鍵未配置/前提snapshot未確認はfailed、skipを実機成功にしない。専用runnerは外部PR/通常buildと共有せず、provider credential不要、SSH入力は安全file/FDだけとしenv/argv/logへ出さない。workflow_dispatch runはrequired PR gateの代替にせず、専用required checkを設定する変更は別の運用承認対象。現時点ではworkflow/runner/rootとも未作成・未適用であり、仕様input checker成功を運用runとして扱わない。
+受入closureは同一source/environmentでsimulation cycle0の全9stageと、互いに別clean stateのisolated cycle1/2の各9stage、合計27passed record、重複0/未実行0/secret検出0/VM削除0を必要とする。negative-control記録はこの27件へ算入しない。permission-denied/connection-lossのpassedは、期待した拒否・照合復旧と禁止副作用0を確認した意味であり、失敗commandの握りつぶしではない。stage故障後は新規stageをnot_executedとし、安全なcleanupは実施してその成否を記録する。cleanupが成功しても故障recordをpassedにしない。実機証跡のenvironment_idを固定fixture idで偽装しない。正式runは [開発Actions実行record](#development-actions-evidence-contract) へ接続する。
+
+<a id="xserver-acceptance-workflow-contract"></a>
+**将来workflowの閉じた受入ゲート：** pathは `.github/workflows/phase22-xserver-acceptance.yml`、nameはphase22-xserver-acceptance、ownerはrepository maintainer。triggerはworkflow_dispatchだけ、permissions=contents:read、第三者uses/Node0。入力はsource_sha（required string）、environment_id（required string）、run_isolated（boolean/default=false）、approval_id（string/default空）の4件だけ。各値・信頼ref・承認照合は [本番検証詳細本文責務 操作承認入力](production-validation.md#xserver-acceptance-authorization) へ委譲し、fork/PR自動triggerからself-hostedへ割当てない。concurrency groupはworkflow名+environment_id、cancel-in-progress=false、全jobで自動retryなし。前回操作の状態が不明な環境はbusyとして新実機cycleを拒否する。
+
+| job id / needs / timeout-minutes | runner / command / 完了条件 |
+|---|---|
+| simulation / なし / 30 | ubuntu-24.04。既存native checkout・verified Go/Deno bootstrap後、`go test . -run '^TestPhase22XserverAcceptance$' -count=1 -v` をmode=simulationで実行する。全9stageとnegative controlを検査し、source/environment/approval_idをoutputsへ返す。実SSH/systemd/provider通信0。 |
+| isolated-acceptance / simulation / 90 | self-hosted/Linux/X64/adlaire-xserver-isolated。simulation成功、信頼ref、run_isolated=trueのときだけ割当てる。同じcommandをmode=isolated-vpsで実行し、操作承認再照合後にcycle1/2を直列実行。18record/actual/clean rootを検査し、下記receiptを出す。専用runner groupは通常build・外部PRと非共有、provider credential不要、SSH秘密値は安全file/FDのみ、接続argvは [runner詳細本文責務 SSH transport](runner.md#phase-19-worker-protocol) を使用する。 |
+| phase22-required-gate / simulationとisolated-acceptance / 10 | ubuntu-24.04、if=always()。native checkout/Go bootstrap後、`go test . -run '^TestPhase22XserverRequiredGate$' -count=1 -v`。needsのexact 2jobと各result=success、source/environment/approval_id一致、simulation9件+実機18件のreceipt、計27件の証跡接続を確認する。欠損・skip・neutral・cancelled・failure・型不正は失敗。 |
+
+上記root testは将来実装名であり、現在は未作成。各jobはcommand終了0だけでなく対応rootの `--- PASS: <test-name> (` と成功時だけの `xserver-acceptance-receipt` markerを必須とし、test不在/no tests to run/marker欠損/tee失敗を拒否する。mode/source/environment/approval_id/needsは検証済み非secret環境変数 `ADLAIRE_XS_MODE` / `ADLAIRE_XS_SOURCE_SHA` / `ADLAIRE_XS_ENVIRONMENT_ID` / `ADLAIRE_XS_APPROVAL_ID` / `ADLAIRE_XS_NEEDS` でdataとして渡し、event文字列をshell本文へ展開しない。gate modeはgate、simulation時のneedsは空、他はtoJSON(needs)。productionの入力interfaceとしてこの環境変数を流用しない。
+
+receiptの全keyは `{record_type:"xserver-acceptance-receipt",source_sha:string,environment_id:string,approval_id:string,mode:"simulation"|"isolated-vps"|"gate",cycle_ids:integer[],record_count:integer,evidence_sha256:string}`。cycle_ids/countはsimulationで[0]/9、isolatedで[1,2]/18、gateで[0,1,2]/27。harnessが検査済みactual file全件とrecordのpath/digestをASCII path昇順で持つJSON package（最大512KiB）を作り、secret scan後だけ `xserver-acceptance-evidence` marker付きbase64としてjob logへ出す。evidence_sha256はそのdecode後raw byte digest。stdout/log保存失敗時はreceipt/outputを確定しない。job outputsはreceiptのcompact JSONだけとし、gateは各receiptのexact schema/値/非空digestと成功job logへの接続を検査する。実測比較は各harnessの責務で、counterだけを実測の代替にしない。log保持日数はrun時のrepository実設定を取得して開発Actions証跡へ記録し、期限切れ/欠落で未到達なら受入未完了とする。承認file・実host・秘密値はpackage/logへ含めない。
+
+run_isolated=falseはsimulation補助実行だけであり、isolated jobのskipによりgateは失敗する。simulation成功の証跡は利用できるが、workflow全体または実機受入の合格へ変換しない。全jobはalways cleanupでtemporary toolchain/work/processを破棄し、承認file/保持state/旧cohort/VPS自体を削除しない。cleanup failureはjob失敗・runner隔離、再利用停止。workflow_dispatchはPR required gateの代替にせず、check設定・runner・workflowの運用適用は別承認。現在はworkflow/runner/root/将来root testとも未作成・未適用。
+
+<a id="xserver-acceptance-authorization-vectors"></a>
+**承認・ゲート仕様入力の固定正例：** 次のJSONは現在の `main_test.go` の `TestXserverAcceptanceSpecificationVectors` が読む純粋な文書oracleであり、本人承認、承認file配置、実機run、actual file検査の証拠ではない。rootのstagesは受入stageの順序を固定し、cyclesは展開すべき閉じたcycle集合を固定する。負例は下表の独立変更を正例のfresh copyへ適用する。artifact専用rootはこの文書oracleではnot_applicableとし、将来の正式rootは変更しない。
+
+```json
+{
+  "now": "2026-01-02T00:00:00Z",
+  "repository": "fqwink/Build-Scripts",
+  "ref": "refs/heads/main",
+  "source_sha": "0123456789abcdef0123456789abcdef01234567",
+  "workflow_sha": "0123456789abcdef0123456789abcdef01234567",
+  "environment_id": "fixture-xserver-acceptance-1",
+  "approval_id": "xs-fixture-1",
+  "run_isolated": true,
+  "approval": {
+    "schema_version": 1,
+    "approval_id": "xs-fixture-1",
+    "repository": "fqwink/Build-Scripts",
+    "workflow_ref": "fqwink/Build-Scripts/.github/workflows/phase22-xserver-acceptance.yml@refs/heads/main",
+    "source_sha": "0123456789abcdef0123456789abcdef01234567",
+    "environment_id": "fixture-xserver-acceptance-1",
+    "approved_at": "2026-01-02T00:00:00Z",
+    "expires_at": "2026-01-02T01:00:00Z",
+    "human_approval_ref": "https://github.com/fqwink/Build-Scripts/pull/100#issuecomment-1",
+    "allow_root_operations": true
+  },
+  "job_results": {"simulation": "success", "isolated-acceptance": "success"},
+  "stages": ["preflight", "install", "restart", "update", "rollback", "permission-denied", "connection-loss", "secret-redaction", "cleanup"],
+  "cycles": [
+    {"mode": "simulation", "cycle_id": 0, "evidence_root": "evidence/cycle-0"},
+    {"mode": "isolated-vps", "cycle_id": 1, "evidence_root": "evidence/cycle-1"},
+    {"mode": "isolated-vps", "cycle_id": 2, "evidence_root": "evidence/cycle-2"}
+  ]
+}
+```
+
+| 負例class | 独立変更 / 拒否code |
+|---|---|
+| trust | repository差、refをPR/別branchへ、workflow/source SHA差、source大文字/長さ不正 / trust |
+| approval | id/source/environment/repository/workflow_ref差、root=false、本人承認refを別repo/空/任意URLへ / approval |
+| time | now=expires_at、now<approved_at、期限逆転、期間3601秒、offset/小数秒 / time |
+| jobs | run_isolated=false、job欠損/余分、各jobをfailure/skipped/neutral/cancelled/timed_outへ / jobs |
+| coverage | cycle欠損/重複/順不同、root再利用、stage欠損/重複/順不同 / coverage |
+| schema | unknown/duplicate/missing key、null、型差、trailing JSON、invalid UTF-8 / schema |
+
+再発防止の実ソースmutationはtrust比較、承認束縛、期限のexclusive上限、job success、cycle/root閉包、stage順序の各判定除去を対象にし、このroot testがcompile可能な変異をfailにすることを既存PRのtest evidence packageへ記録する。実機file/permission/失効再読込/actual差分/cleanupは将来受入harnessの必須負例であり、この純粋oracleの成功で実装済みにしない。
 
 <a id="mcp-fixture-contract"></a>
 **[fixture 証跡責務 §30-F MCP fixture 固定契約](fixture.md#mcp-fixture-contract)：**
