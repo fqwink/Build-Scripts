@@ -157,6 +157,235 @@ func TestSpecificationReferenceIntegrity(t *testing.T) {
 	}
 }
 
+type phase19SpecificationGroup struct {
+	Anchor string `json:"anchor"`
+	Group  string `json:"group"`
+	Cases  int    `json:"case_count"`
+}
+
+// This shape is independent of the case-ID registry being checked.
+func phase19SpecificationRequiredGroups() []phase19SpecificationGroup {
+	return []phase19SpecificationGroup{
+		{"phase-19-status-vectors", "cases", 21},
+		{"phase-19-plan-vectors", "input_cases", 22},
+		{"phase-19-plan-vectors", "matrix_cases", 11},
+		{"phase-19-plan-vectors", "dag_cases", 7},
+		{"phase-19-plan-vectors", "selector_cases", 7},
+		{"phase-19-plan-vectors", "event_cases", 3},
+		{"phase-19-worker-vectors", "ack_cases", 12},
+		{"phase-19-worker-vectors", "chunk_cases", 16},
+		{"phase-19-worker-vectors", "lease_cases", 12},
+		{"phase-19-content-vectors", "chunk_cases", 11},
+		{"phase-19-content-vectors", "query_cases", 8},
+		{"phase-19-content-vectors", "wire_cases", 12},
+		{"phase-19-content-vectors", "cache_cases", 9},
+		{"phase-19-content-vectors", "key_cases", 3},
+		{"phase-19-content-vectors", "envelope_cases", 13},
+		{"phase-19-operation-vectors", "admission_cases", 8},
+		{"phase-19-operation-vectors", "transition_cases", 12},
+		{"phase-19-operation-vectors", "gc_cases", 8},
+		{"phase-19-log-boundary-vectors", "mask_cases", 12},
+		{"phase-19-log-boundary-vectors", "page_cases", 13},
+		{"phase-19-log-boundary-vectors", "budget_cases", 4},
+	}
+}
+
+func phase19SpecificationRegistryIntegrity(registry map[string]map[string]string) error {
+	required := phase19SpecificationRequiredGroups()
+	want := map[string]map[string]int{}
+	total := 0
+	for _, r := range required {
+		if want[r.Anchor] == nil {
+			want[r.Anchor] = map[string]int{}
+		}
+		if r.Anchor == "" || r.Group == "" || r.Cases < 2 || want[r.Anchor][r.Group] != 0 {
+			return fmt.Errorf("case registry: requirements")
+		}
+		want[r.Anchor][r.Group] = r.Cases
+		total += r.Cases
+	}
+	if len(required) != 21 || len(want) != 6 || total != 224 {
+		return fmt.Errorf("case registry: requirements count")
+	}
+	if len(registry) != len(want) {
+		return fmt.Errorf("case registry: scope count")
+	}
+	seen := map[string]map[string]bool{}
+	validID := regexp.MustCompile("^[a-z][a-z0-9-]*$")
+	for _, r := range required {
+		groups, exists := registry[r.Anchor]
+		if !exists || len(groups) != len(want[r.Anchor]) {
+			return fmt.Errorf("case registry: %s group set", r.Anchor)
+		}
+		ids, exists := groups[r.Group]
+		if !exists {
+			return fmt.Errorf("case registry: %s/%s missing group", r.Anchor, r.Group)
+		}
+		fields := strings.Fields(ids)
+		if len(fields) != r.Cases {
+			return fmt.Errorf("case registry: %s/%s expected %d cases actual %d", r.Anchor, r.Group, r.Cases, len(fields))
+		}
+		if seen[r.Anchor] == nil {
+			seen[r.Anchor] = map[string]bool{}
+		}
+		for _, id := range fields {
+			if !validID.MatchString(id) || seen[r.Anchor][id] {
+				return fmt.Errorf("case registry: %s/%s invalid or duplicate identity", r.Anchor, r.Group)
+			}
+			seen[r.Anchor][id] = true
+		}
+	}
+	return nil
+}
+
+func phase19SpecificationExecutionPlan() []string {
+	plan := []string{"canonical-number-token", "canonical-array-order", "canonical-object-order", "canonical-string-escape"}
+	seen := map[string]bool{}
+	for _, r := range phase19SpecificationRequiredGroups() {
+		if !seen[r.Anchor] {
+			plan = append(plan, r.Anchor+"-baseline")
+			seen[r.Anchor] = true
+		}
+		for _, control := range []string{"unknown-id", "clone-body", "missing-case", "duplicate-id", "reorder"} {
+			plan = append(plan, strings.TrimPrefix(r.Anchor, "phase-19-")+"-"+strings.ReplaceAll(r.Group, "_", "-")+"-"+control)
+		}
+	}
+	return plan
+}
+
+func phase19SpecificationExecutionIntegrity(planned, completed []string) error {
+	want := map[string]bool{}
+	if len(planned) == 0 || len(completed) != len(planned) {
+		return fmt.Errorf("case execution: count")
+	}
+	for _, id := range planned {
+		if id == "" || want[id] {
+			return fmt.Errorf("case execution: plan identity")
+		}
+		want[id] = true
+	}
+	seen := map[string]bool{}
+	for _, id := range completed {
+		if !want[id] || seen[id] {
+			return fmt.Errorf("case execution: missing, extra or duplicate identity")
+		}
+		seen[id] = true
+	}
+	return nil
+}
+
+func TestSpecificationVectorRegistryIntegrity(t *testing.T) {
+	t.Parallel()
+	doc := phase11MustReadText(t, "docs/details/fixture.md")
+	_, block, found := strings.Cut(doc, "<a id=\"specification-vector-registry-integrity\"></a>")
+	_, block, jsonFound := strings.Cut(block, "```json\n")
+	block, _, endFound := strings.Cut(block, "\n```")
+	var declared []phase19SpecificationGroup
+	if !found || !jsonFound || !endFound {
+		t.Fatal("statefile.spec-registry.document.fixture: fixture.md#specification-vector-registry-integrity missing fixed input")
+	}
+	err := developmentActionsDecodeJSON([]byte(block), &declared, 65536, true)
+	actual, _ := json.Marshal(declared)
+	expected, _ := json.Marshal(phase19SpecificationRequiredGroups())
+	if err != nil || !bytes.Equal(expected, actual) {
+		t.Fatalf("statefile.spec-registry.document.match: fixture.md#specification-vector-registry-integrity expected=%s actual=%s error=%v", expected, actual, err)
+	}
+	if err := phase19SpecificationRegistryIntegrity(phase19SpecificationCaseGroups()); err != nil {
+		t.Fatalf("statefile.spec-registry.original.accept: expected valid registry actual=%v", err)
+	}
+	controls := []struct{ anchor, group, operation string }{{"", "", "extra-suite"}}
+	seen := map[string]bool{}
+	for _, r := range phase19SpecificationRequiredGroups() {
+		if !seen[r.Anchor] {
+			for _, op := range []string{"drop-suite", "rename-suite", "empty-suite", "extra-group"} {
+				controls = append(controls, struct{ anchor, group, operation string }{r.Anchor, "", op})
+			}
+			seen[r.Anchor] = true
+		}
+		for _, op := range []string{"drop", "rename", "short", "long", "duplicate", "invalid", "empty"} {
+			controls = append(controls, struct{ anchor, group, operation string }{r.Anchor, r.Group, op})
+		}
+	}
+	if len(controls) != 172 {
+		t.Fatalf("statefile.spec-registry.controls.fixture: expected 172 controls actual=%d", len(controls))
+	}
+	for _, c := range controls {
+		name := strings.TrimPrefix(c.anchor, "phase-19-") + "-" + strings.ReplaceAll(c.group, "_", "-") + "-" + c.operation
+		name = strings.Trim(name, "-")
+		t.Run(name, func(t *testing.T) {
+			registry := phase19SpecificationCaseGroups()
+			groups := registry[c.anchor]
+			switch c.operation {
+			case "extra-suite":
+				registry["unknown-suite"] = map[string]string{"cases": "one two"}
+			case "drop-suite":
+				delete(registry, c.anchor)
+			case "rename-suite":
+				registry["unknown-suite"] = groups
+				delete(registry, c.anchor)
+			case "empty-suite":
+				registry[c.anchor] = nil
+			case "extra-group":
+				groups["unknown_cases"] = "one two"
+			case "drop":
+				delete(groups, c.group)
+			case "rename":
+				groups["unknown_cases"] = groups[c.group]
+				delete(groups, c.group)
+			case "empty":
+				groups[c.group] = ""
+			default:
+				ids := strings.Fields(groups[c.group])
+				switch c.operation {
+				case "short":
+					ids = ids[1:]
+				case "long":
+					ids = append(ids, "extra-case")
+				case "duplicate":
+					ids[0] = ids[1]
+				case "invalid":
+					ids[0] = "INVALID_CASE"
+				}
+				groups[c.group] = strings.Join(ids, " ")
+			}
+			err := phase19SpecificationRegistryIntegrity(registry)
+			if err == nil || !strings.HasPrefix(err.Error(), "case registry:") {
+				t.Fatalf("statefile.spec-registry.%s.reject: fixture.md#specification-vector-registry-integrity expected case registry rejection actual=%v; reproduce go test . -run TestSpecificationVectorRegistryIntegrity -count=1", name, err)
+			}
+		})
+	}
+}
+
+func TestSpecificationVectorExecutionIntegrity(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		id                 string
+		planned, completed []string
+		valid              bool
+	}{
+		{"original", []string{"one", "two"}, []string{"one", "two"}, true},
+		{"reorder", []string{"one", "two"}, []string{"two", "one"}, true},
+		{"missing", []string{"one", "two"}, []string{"one"}, false},
+		{"extra", []string{"one", "two"}, []string{"one", "two", "three"}, false},
+		{"duplicate", []string{"one", "two"}, []string{"one", "one"}, false},
+		{"substitute", []string{"one", "two"}, []string{"one", "three"}, false},
+		{"empty-plan", nil, nil, false},
+		{"duplicate-plan", []string{"one", "one"}, []string{"one", "two"}, false},
+		{"empty-completed", []string{"one", "two"}, nil, false},
+	} {
+		t.Run(c.id, func(t *testing.T) {
+			err := phase19SpecificationExecutionIntegrity(c.planned, c.completed)
+			if (err == nil) != c.valid || err != nil && !strings.HasPrefix(err.Error(), "case execution:") {
+				outcome := "reject"
+				if c.valid {
+					outcome = "accept"
+				}
+				t.Fatalf("statefile.spec-execution.%s.%s: fixture.md#specification-vector-registry-integrity expected valid=%t actual=%v; reproduce go test . -run TestSpecificationVectorExecutionIntegrity -count=1", c.id, outcome, c.valid, err)
+			}
+		})
+	}
+}
+
 func phase19SpecificationCaseGroups() map[string]map[string]string {
 	return map[string]map[string]string{
 		"phase-19-status-vectors": {
@@ -260,6 +489,14 @@ func decodePhase19SpecificationVector(anchor string, input []byte) error {
 
 func TestSpecificationVectorCaseIntegrity(t *testing.T) {
 	t.Parallel()
+	planned := phase19SpecificationExecutionPlan()
+	completed := []string{}
+	if len(planned) != 115 {
+		t.Fatalf("statefile.spec-execution.plan.fixture: expected 115 identities actual=%d", len(planned))
+	}
+	if err := phase19SpecificationRegistryIntegrity(phase19SpecificationCaseGroups()); err != nil {
+		t.Fatalf("statefile.spec-registry.current.accept: expected complete registry actual=%v", err)
+	}
 	for _, c := range []struct {
 		id    string
 		input string
@@ -275,10 +512,17 @@ func TestSpecificationVectorCaseIntegrity(t *testing.T) {
 			if (err == nil) != c.valid {
 				t.Fatalf("statefile.spec-vector.%s.canonical: fixture.md#specification-vector-case-integrity expected valid=%t actual=%v; reproduce go test . -run TestSpecificationVectorCaseIntegrity -count=1", c.id, c.valid, err)
 			}
+			completed = append(completed, "canonical-"+c.id)
 		})
 	}
 	document := phase11MustReadText(t, "docs/details/fixture.md")
-	registry := phase19SpecificationCaseGroups()
+	registry := map[string]map[string]int{}
+	for _, r := range phase19SpecificationRequiredGroups() {
+		if registry[r.Anchor] == nil {
+			registry[r.Anchor] = map[string]int{}
+		}
+		registry[r.Anchor][r.Group] = r.Cases
+	}
 	anchors := make([]string, 0, len(registry))
 	for anchor := range registry {
 		anchors = append(anchors, anchor)
@@ -295,6 +539,7 @@ func TestSpecificationVectorCaseIntegrity(t *testing.T) {
 		if err := decodePhase19SpecificationVector(anchor, input); err != nil {
 			t.Fatalf("statefile.spec-vector.%s.accept: fixture.md#%s expected valid input actual=%v", anchor, anchor, err)
 		}
+		completed = append(completed, anchor+"-baseline")
 		keys := make([]string, 0, len(registry[anchor]))
 		for key := range registry[anchor] {
 			keys = append(keys, key)
@@ -345,9 +590,13 @@ func TestSpecificationVectorCaseIntegrity(t *testing.T) {
 					} else if err == nil || !strings.HasPrefix(err.Error(), "case coverage:") {
 						t.Fatalf("statefile.spec-vector.%s.reject: fixture.md#specification-vector-case-integrity expected case coverage rejection actual=%v; reproduce go test . -run TestSpecificationVectorCaseIntegrity -count=1", name, err)
 					}
+					completed = append(completed, name)
 				})
 			}
 		}
+	}
+	if err := phase19SpecificationExecutionIntegrity(planned, completed); err != nil {
+		t.Fatalf("statefile.spec-execution.complete.match: fixture.md#specification-vector-registry-integrity expected planned/completed set equality actual=%v; reproduce go test . -run TestSpecificationVectorCaseIntegrity -count=1", err)
 	}
 }
 

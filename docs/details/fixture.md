@@ -47,6 +47,123 @@ expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,tra
 
 実在入口は [main_test.go](../../main_test.go) の `TestSpecificationVectorCaseIntegrity` と各6decoder。元の入力を全件acceptし、各groupへunknown-id/clone-body/missing-case/duplicate-idの4負例（計84）をmemory copyだけに注入して固定reason `case coverage:` によるrejectを要求する。順序反転の正例21件もacceptする。helperには独立の完全JSON入力4件を与え、number-token（1/1e0）とarray-order（[1,2]/[2,1]）はaccept、object-orderとstring-escapeの同一本文はrejectとする。これらのassertion IDは `statefile.spec-vector.<case>.canonical` とする。assertion IDは `statefile.spec-vector.<anchor短縮名>-<group kebab名>-<control>.reject/accept`、原入力は `.accept`、前提不足は `.fixture`。対象anchor・expected reason・actual・再現commandをsecretなしで診断する。各decoder接続6箇所とhelperのidentity/body照合の削除をsource mutationとして隔離copyで検出し、compile failureをkillへ算入しない。製品runtimeの実行証跡へ換算しない。
 
+<a id="specification-vector-registry-integrity"></a>
+**registryと実行対象の独立照合：** case ID registryの正本との一致検査に加え、次の必須group入力を独立oracleとして [main_test.go](../../main_test.go) の `TestSpecificationVectorRegistryIntegrity` へ渡す。checker側のrequired group定義と全field・配列順を照合する。6anchor/21group/224caseの総数だけで代用せず、anchor/groupの完全な対応、groupごとのcase件数、suite内IDの形式・一意性を照合する。未知anchor/group、欠落、空集合、同数の改名・別groupへの移動を拒否する。required group定義自体も21件、anchor6件、case合計224、pair一意、case数2以上を要求する。case ID registryや文書vectorを走査してrequired group定義を自動生成しない。
+
+```json
+[
+  {
+    "anchor": "phase-19-status-vectors",
+    "group": "cases",
+    "case_count": 21
+  },
+  {
+    "anchor": "phase-19-plan-vectors",
+    "group": "input_cases",
+    "case_count": 22
+  },
+  {
+    "anchor": "phase-19-plan-vectors",
+    "group": "matrix_cases",
+    "case_count": 11
+  },
+  {
+    "anchor": "phase-19-plan-vectors",
+    "group": "dag_cases",
+    "case_count": 7
+  },
+  {
+    "anchor": "phase-19-plan-vectors",
+    "group": "selector_cases",
+    "case_count": 7
+  },
+  {
+    "anchor": "phase-19-plan-vectors",
+    "group": "event_cases",
+    "case_count": 3
+  },
+  {
+    "anchor": "phase-19-worker-vectors",
+    "group": "ack_cases",
+    "case_count": 12
+  },
+  {
+    "anchor": "phase-19-worker-vectors",
+    "group": "chunk_cases",
+    "case_count": 16
+  },
+  {
+    "anchor": "phase-19-worker-vectors",
+    "group": "lease_cases",
+    "case_count": 12
+  },
+  {
+    "anchor": "phase-19-content-vectors",
+    "group": "chunk_cases",
+    "case_count": 11
+  },
+  {
+    "anchor": "phase-19-content-vectors",
+    "group": "query_cases",
+    "case_count": 8
+  },
+  {
+    "anchor": "phase-19-content-vectors",
+    "group": "wire_cases",
+    "case_count": 12
+  },
+  {
+    "anchor": "phase-19-content-vectors",
+    "group": "cache_cases",
+    "case_count": 9
+  },
+  {
+    "anchor": "phase-19-content-vectors",
+    "group": "key_cases",
+    "case_count": 3
+  },
+  {
+    "anchor": "phase-19-content-vectors",
+    "group": "envelope_cases",
+    "case_count": 13
+  },
+  {
+    "anchor": "phase-19-operation-vectors",
+    "group": "admission_cases",
+    "case_count": 8
+  },
+  {
+    "anchor": "phase-19-operation-vectors",
+    "group": "transition_cases",
+    "case_count": 12
+  },
+  {
+    "anchor": "phase-19-operation-vectors",
+    "group": "gc_cases",
+    "case_count": 8
+  },
+  {
+    "anchor": "phase-19-log-boundary-vectors",
+    "group": "mask_cases",
+    "case_count": 12
+  },
+  {
+    "anchor": "phase-19-log-boundary-vectors",
+    "group": "page_cases",
+    "case_count": 13
+  },
+  {
+    "anchor": "phase-19-log-boundary-vectors",
+    "group": "budget_cases",
+    "case_count": 4
+  }
+]
+```
+
+`TestSpecificationVectorCaseIntegrity` はcase ID registryでなく上記required group定義から対象を列挙する。実行前にregistryを照合し、各caseの検証終了後だけ完了identityを記録する。予定集合はcanonical4件、原入力6件、21groupごとの既存5controlの105件、計115件とする。順序は比較対象外だが、予定/完了identityの欠落・余分・重複・空集合は `case execution:` で拒否する。件数だけの照合、未実行controlの完了記録、skipの成功変換をしない。
+
+registryの正例は全6suite/21group、負例は各suiteのdrop/rename/empty、各groupのdrop/rename/short/long/duplicate/invalid/empty、未知suite1件と未知group6件の計172件。各負例は新しいmemory copyで作り、`case registry:` による拒否を要求する。実行照合の正例は同順/逆順、負例は欠落/余分/重複/同数置換/空予定/重複予定/空完了の7件。入口は同fileの `TestSpecificationVectorExecutionIntegrity`。assertion IDは `statefile.spec-registry.<case>.reject/accept` と `statefile.spec-execution.<case>.reject/accept`、入力/前提不備は `.fixture`、文書照合は `statefile.spec-registry.document.match`、実行完了は `statefile.spec-execution.complete.match` とする。検出位置、期待reason、実値、再現commandを診断する。registry group削除、独立定義削除、scope/group/case-count/ID guard除去、実行記録省略、完了照合無効化を隔離copyのsource mutationで検出し、全byte復元を確認する。製品runtimeの網羅・潜在不具合不存在を保証する検査ではない。
+
 <a id="phase-19-status-vectors"></a>
 **Commit Statusの文書入力・中断oracle：** 処理は [docs/details/commitstatus.md 詳細本文責務 最新結果の送信契約](commitstatus.md#phase-19-status-delivery)、保存は [docs/details/statefile.md 詳細本文責務 StatusDelivery](statefile.md#phase-19-status-delivery-state) を参照する。以下21caseを `TestPhase19StatusSpecificationVectors` が読む。各run/eventはbaselineの完全なprojectionへ列挙fieldだけを上書きし、配列順は入力順、expectedは独立固定値とする。projectionのowner/repo/sha/definition_idは保存Plan.source/definition、他はRunの同名fieldであり、Rootをこの省略形で保存する契約ではない。existingは選択tupleに既存StatusDeliveryがあることを表し、sent/codeの値によらずdeduplicatedとする。全文UTF-8/65536byte以下、全key必須、unknown/duplicate/null/trailing拒否、case ID一意、run配列は空を許可するが本fixtureの21case集合を変更しない。候補のscope/順位/現在stateと期待decisionを完全比較し、HTTPや製品runtimeを動かした証跡には換算しない。
 

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "549ccdc6354b5e6f41c2ab346b058c7ad1cb527b6e433ffda49333fa74274c61",
+  "source_group_sha256": "3637ec1abf030a6f67caeb33750e1ea82b83f1d266e6d15d704c66f49c79c0bd",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -75,8 +75,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "4130cecce29fc087896a3b965060420fff949277b48483afb570db67b27eefca",
-      "size_bytes": 516925,
+      "sha256": "9f6b630074df57d62a89a9b77aac69dd084a6e4248f8e2c5afcedb0329576b5c",
+      "size_bytes": 526857,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [
@@ -155,8 +155,8 @@
     {
       "path": "docs/DETAIL_INDEX.md",
       "source_exists": true,
-      "sha256": "76b3b592a29a566bd38090dc9f50e54d5feead433610c1c096e278a8d7ba78d7",
-      "size_bytes": 183631,
+      "sha256": "211e061b89c8855e59ba55823736d5ae697202aae7b2c2088a6e89474fb36a8b",
+      "size_bytes": 183837,
       "owner_component": "runner",
       "area": "detail-index",
       "detected_terms": [
@@ -175,8 +175,8 @@
     {
       "path": "docs/DOCUMENT_INDEX.md",
       "source_exists": true,
-      "sha256": "319d9b870c9320ffe56530899695266ef85a872ca7bddf4faf66ca8fe12b17bb",
-      "size_bytes": 69335,
+      "sha256": "edb6c02d9788325558d1e5794798614fcb5693e1f2e950feed5b7c42f635e028",
+      "size_bytes": 69690,
       "owner_component": "runner",
       "area": "document-index",
       "detected_terms": [
@@ -195,8 +195,8 @@
     {
       "path": "docs/details/fixture.md",
       "source_exists": true,
-      "sha256": "a912d5a48f32d202162780e9712d7039bacd233b624d5a09ba86ff623b0f5f5a",
-      "size_bytes": 1330334,
+      "sha256": "7f1797c846d263188c7559d3b16b1c06d52501d95c664ded5bca002cc0388876",
+      "size_bytes": 1334954,
       "owner_component": "runner",
       "area": "fixture-spec",
       "detected_terms": [
