@@ -105,7 +105,7 @@ Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない�
 | Phase20内製IaC | 仕様化済み・未実装。[詳細入口](DETAIL_INDEX.md#phase-20-inhouse-iac-entry)、[config/service固定入力と27case](details/fixture.md#inhouse-iac-concrete-oracles)。 |
 | multi-user / RBAC / OIDC | 仕様化済み・未実装。[認証移行・失効・TOTP](details/security.md#multi-user-migration-contract)、[再署名50vector](details/fixture.md#oidc-signed-claim-vectors)、[HTTP具体入力](details/fixture.md#oidc-http-concrete-oracles)、[移行中断入力](details/fixture.md#additional-management-migration-inputs)。 |
 | 追加管理API / SDK / UI / 配布 / cache | 仕様化済み・未実装。[API機能入口](DETAIL_INDEX.md#0i6-追加管理api機能)、[50経路入力](details/fixture.md#additional-management-authorization-inputs)、[SDK入力](details/fixture.md#additional-management-sdk-inputs)、[UI操作入力](details/fixture.md#additional-management-ui-inputs)。 |
-| Xserver限定受入 | 仕様化済み・未実装。[Phase22入口](DETAIL_INDEX.md#phase-22-xserver-acceptance-entry)。承認入力・実測証跡・将来workflowは同入口の各正本へ接続し、現在の文書入力checkerと未作成の実機harnessを区別する。simulation/隔離VPSの実行証跡は未作成で、Phase17/18のfuture_plan分類を維持する。 |
+| Xserver限定受入 | 仕様化済み・未実装。[docs/DETAIL_INDEX.md 詳細仕様入口責務 Phase22入口](DETAIL_INDEX.md#phase-22-xserver-acceptance-entry)。承認入力・実測証跡・将来workflowは同入口の各正本へ接続し、現在の文書入力checkerと未作成の実機harnessを区別する。simulation/隔離VPSの実行証跡は未作成で、Phase17/18のfuture_plan分類を維持する。 |
 
 この判定は現行インベントリの要求範囲に対する仕様成熟度であり、将来の追加要求や潜在不具合不存在の保証ではない。実装着手可否と新たな未定義事項を発見した場合の扱いは [SPEC完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) / [active Phase条件](SPEC.md#policy-phase-unit) を参照する。active Phaseは引き続き未設定とする。
 
