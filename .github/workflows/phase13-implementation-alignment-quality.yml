@@ -27,7 +27,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -62,7 +62,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -95,7 +95,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -128,7 +128,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -161,7 +161,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -194,7 +194,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -227,7 +227,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -260,7 +260,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -293,7 +293,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -326,7 +326,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -359,7 +359,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -392,7 +392,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -425,7 +425,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -458,7 +458,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -491,7 +491,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -524,7 +524,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -557,7 +557,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -590,7 +590,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -623,7 +623,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -656,7 +656,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -689,7 +689,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -722,7 +722,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -755,7 +755,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -788,7 +788,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -821,7 +821,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -854,7 +854,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -887,7 +887,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"
@@ -949,7 +949,7 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
           test "$GITHUB_SERVER_URL" = https://github.com
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           workspace=$(pwd -P)
           expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
           test "$workspace" = "$expected_workspace"

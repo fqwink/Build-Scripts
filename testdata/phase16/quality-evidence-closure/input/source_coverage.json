@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "5cea04da97d66a0843d55377e9186295f90621ba408d9de160123ff478889c12",
+  "source_group_sha256": "e7a684cab757876c45434896a8040614fa9a55b0b3c105e3c7983fe9a5b3d943",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -75,8 +75,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "610e901aab7e7828867f5e6c0d606d64f76984d2e5ad2c4589d2e291f8dd7ee2",
-      "size_bytes": 490171,
+      "sha256": "3447ec117073e050decde86d0c5f8734772772467b4abd7803fd51ecab3de3af",
+      "size_bytes": 492579,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [
@@ -155,8 +155,8 @@
     {
       "path": "docs/DETAIL_INDEX.md",
       "source_exists": true,
-      "sha256": "6e3d3c5fe4ced95c59cce591ec19578494bd0f0dc7f6c9fdca8d35e85b24db84",
-      "size_bytes": 183019,
+      "sha256": "f15b887beb1cbd618fc080cf246ef94b265f23416ef05f73510771b1112387bc",
+      "size_bytes": 183052,
       "owner_component": "runner",
       "area": "detail-index",
       "detected_terms": [
@@ -175,8 +175,8 @@
     {
       "path": "docs/DOCUMENT_INDEX.md",
       "source_exists": true,
-      "sha256": "4ee9dc8bfa669f95bd79980b92d689a0366eb8ead17984c5a37afe70e55b7d2e",
-      "size_bytes": 68694,
+      "sha256": "226275e8a354fc0a8ef40708cd68e1ab445a6c2ee6f187d3be020c0c44a3ed7e",
+      "size_bytes": 68703,
       "owner_component": "runner",
       "area": "document-index",
       "detected_terms": [
@@ -195,8 +195,8 @@
     {
       "path": "docs/details/fixture.md",
       "source_exists": true,
-      "sha256": "fb0dafc87329d89547b281b147488aadde4234b2f708cdb77a5ccca62b2549b9",
-      "size_bytes": 1311008,
+      "sha256": "22dd60620193002c8eb8ecfae539c70f3775b99a19152454db11b4077657dfb7",
+      "size_bytes": 1312985,
       "owner_component": "runner",
       "area": "fixture-spec",
       "detected_terms": [
@@ -215,8 +215,8 @@
     {
       "path": ".github/workflows/phase16-quality-evidence-closure.yml",
       "source_exists": true,
-      "sha256": "012dd76e1501643979f0da71045346e8c6f0e1e940dcbf6594782bebbd38ccb1",
-      "size_bytes": 17135,
+      "sha256": "d8f098234b9ff4a4e84d9e70dd681939712a28190a90420505136c9e0ba5fa12",
+      "size_bytes": 17235,
       "owner_component": "runner",
       "area": "workflow",
       "detected_terms": [
@@ -255,8 +255,8 @@
     {
       "path": ".github/scripts/development-ci.sh",
       "source_exists": true,
-      "sha256": "2eafc9fe0aaa63f4290607d14a836a20ab635e2514db6a1a398d6d1b5ae47a46",
-      "size_bytes": 4183,
+      "sha256": "3e05589391fd1df04090dd682edb93f35f158cf35b19d2aefe9cd0adbacac25d",
+      "size_bytes": 4763,
       "owner_component": "release",
       "area": "workflow",
       "detected_terms": [

@@ -58,7 +58,23 @@ else
   bin="$root/deno"
 fi
 archive="$root/archive"
-curl --disable --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 15 --max-time 180 --retry 2 --retry-max-time 90 --max-filesize 200000000 --output "$archive" "$url" >/dev/null 2>&1 || fail download
+for attempt in 1 2 3; do
+  rm -f -- "$archive" || fail cleanup
+  curl_exit=0
+  http_status=$(curl --disable --fail --silent --location --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 15 --max-time 50 --retry 0 --max-filesize 200000000 --write-out '%{http_code}' --output "$archive" "$url" 2>/dev/null) || curl_exit=$?
+  [[ "$http_status" =~ ^[0-9]{3}$ ]] || http_status=000
+  printf 'ci-download:runtime=%s attempt=%s curl_exit=%s http_status=%s\n' "$1" "$attempt" "$curl_exit" "$http_status" >&2
+  if [[ "$curl_exit" == 0 && "$http_status" == 200 ]]; then
+    break
+  fi
+  retry=0
+  case "$curl_exit" in
+    5|6|7|18|28|35|52|55|56|92) retry=1 ;;
+    22) case "$http_status" in 408|429|5[0-9][0-9]) retry=1 ;; esac ;;
+  esac
+  [[ "$retry" == 1 && "$attempt" != 3 ]] || fail download
+  sleep 1 || fail download
+done
 digest_output=$(sha256sum -- "$archive" 2>/dev/null) || fail digest-read
 [[ "${digest_output%% *}" == "$expected" ]] || fail digest
 

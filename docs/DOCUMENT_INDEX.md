@@ -34,7 +34,7 @@
 | 開発 GitHub Actions 作業手順の所在 | [`AGENTS.md` 開発 GitHub Actions 作業手順](../AGENTS.md#agents-development-actions) |
 | Node 禁止契約 / 非依存開発準備の所在 | [`docs/SPEC.md` ポリシー責務 §4a](SPEC.md#policy-node-runtime-ban)、[`docs/details/fixture.md` fixture 証跡責務 Node 非依存開発検証契約](details/fixture.md#development-actions-node-free-contract)、[`.github/scripts/development-ci.sh`](../.github/scripts/development-ci.sh) |
 | 開発 Actions 定義・実行・適用証跡の所在 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route)、[`docs/details/fixture.md` fixture 証跡責務 開発 Actions 証跡固定契約](details/fixture.md#development-actions-evidence-contract) |
-| 開発 Actions required gate 定義 fixture / 検証 artifact | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions required gate 固定契約](details/fixture.md#development-actions-required-gate-contract)、[`main_test.go`](../main_test.go) |
+| 開発 Actions required gate / runtime取得・checkout control 所在 | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions required gate 固定契約](details/fixture.md#development-actions-required-gate-contract)、[`main_test.go`](../main_test.go) |
 | 方針、ポリシー、状態語彙、状態遷移条件 | [`docs/SPEC.md`](SPEC.md) |
 | 実装 artifact と各機能の現在状態、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
 | 詳細仕様入口、共通固定値、owner 対応表、collaborator 境界参照入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) |

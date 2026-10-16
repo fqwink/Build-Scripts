@@ -11095,7 +11095,7 @@ func TestDevelopmentActionsBootstrapControls(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, kind := range []string{"go", "deno"} {
-		for _, failure := range []string{"", "output-boundary", "staging", "download", "digest-read", "digest", "archive-list", "archive-entry", "archive-type", "extract", "executable", "version", "version-exit", "publish", "platform"} {
+		for _, failure := range []string{"", "download-timeout-recover", "download-http-recover", "download-last-recover", "download-certificate", "download-not-found", "download-invalid-status", "download-unknown-exit", "output-boundary", "staging", "download", "digest-read", "digest", "archive-list", "archive-entry", "archive-type", "extract", "executable", "version", "version-exit", "publish", "platform"} {
 			if kind == "deno" && failure == "archive-type" {
 				continue
 			}
@@ -11135,7 +11135,33 @@ func TestDevelopmentActionsBootstrapControls(t *testing.T) {
 				phase18WriteExecutable(t, filepath.Join(fake, "uname"), "#!/bin/sh\nif [ \"$FAKE_FAILURE\" = platform ] && [ \"$1\" = -s ]; then echo Linux; exit 7; fi\nif [ \"$1\" = -s ]; then echo Linux; else echo x86_64; fi\n")
 				phase18WriteExecutable(t, filepath.Join(fake, "mktemp"), "#!/bin/sh\nif [ \"$FAKE_FAILURE\" = staging ]; then exit 7; fi\nexec /usr/bin/mktemp \"$@\"\n")
 				phase18WriteExecutable(t, filepath.Join(fake, "rm"), "#!/bin/sh\nif [ \"$FAKE_FAILURE\" = cleanup-failure ]; then exit 7; fi\nexec /bin/rm \"$@\"\n")
-				phase18WriteExecutable(t, filepath.Join(fake, "curl"), "#!/bin/sh\nprintf 'download\\n' >> \"$FAKE_TRACE\"\nif [ \"$FAKE_FAILURE\" = download ]; then echo fixture-secret-canary >&2; exit 7; fi\nwhile [ \"$#\" -gt 0 ]; do if [ \"$1\" = --output ]; then shift; output=$1; fi; shift; done\nprintf archive > \"$output\"\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "sleep"), "#!/bin/sh\n[ \"$#\" = 1 ] && [ \"$1\" = 1 ]\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "curl"), `#!/bin/sh
+printf 'download\n' >> "$FAKE_TRACE"
+case "$*" in
+  "--disable --fail --silent --location --proto =https --proto-redir =https --tlsv1.2 --connect-timeout 15 --max-time 50 --retry 0 --max-filesize 200000000 --write-out %{http_code} --output "*) ;;
+  *) exit 88 ;;
+esac
+while [ "$#" -gt 0 ]; do if [ "$1" = --output ]; then shift; output=$1; fi; shift; done
+[ ! -e "$output" ] || exit 89
+count=0
+if [ -f "$FAKE_TRACE.count" ]; then read -r count < "$FAKE_TRACE.count"; fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$FAKE_TRACE.count"
+printf partial > "$output"
+case "$FAKE_FAILURE" in
+ download) echo fixture-secret-canary >&2; printf 000; exit 7 ;;
+ download-timeout-recover) if [ "$count" = 1 ]; then printf 000; exit 28; fi ;;
+ download-last-recover) if [ "$count" -lt 3 ]; then printf 000; exit 28; fi ;;
+ download-http-recover) if [ "$count" = 1 ]; then printf 503; exit 22; fi ;;
+ download-certificate) printf 000; exit 60 ;;
+ download-not-found) printf 404; exit 22 ;;
+ download-invalid-status) printf fixture-secret-canary; exit 0 ;;
+ download-unknown-exit) printf 000; exit 88 ;;
+esac
+printf archive > "$output"
+printf 200
+`)
 				phase18WriteExecutable(t, filepath.Join(fake, "sha256sum"), "#!/bin/sh\nprintf 'digest\\n' >> \"$FAKE_TRACE\"\nif [ \"$FAKE_FAILURE\" = digest-read ]; then echo fixture-secret-canary >&2; exit 7; fi\nif [ \"$FAKE_FAILURE\" = digest ]; then echo invalid; else printf '%s  %s\\n' \"$FAKE_DIGEST\" \"$2\"; fi\n")
 				phase18WriteExecutable(t, filepath.Join(fake, "tar"), "#!/bin/sh\n"+
 					"case \"$1\" in\n"+
@@ -11166,17 +11192,31 @@ func TestDevelopmentActionsBootstrapControls(t *testing.T) {
 					t.Fatal("bootstrap secret canary leaked")
 				}
 				traceData, traceErr := os.ReadFile(trace)
-				if failure == "" {
+				positive := failure == "" || failure == "download-timeout-recover" || failure == "download-http-recover" || failure == "download-last-recover"
+				attempts := 1
+				if failure == "download" || failure == "download-last-recover" {
+					attempts = 3
+				} else if failure == "download-timeout-recover" || failure == "download-http-recover" {
+					attempts = 2
+				}
+				if strings.Count(string(traceData), "download\n") != attempts && failure != "output-boundary" && failure != "staging" && failure != "platform" {
+					t.Fatalf("download attempt bound: expected=%d trace=%q", attempts, traceData)
+				}
+				if positive {
 					if err != nil || pathErr != nil || envErr != nil || len(stages) != 1 || !bytes.Contains(output, []byte(`"record_type":"development-actions-bootstrap"`)) {
 						t.Fatalf("bootstrap positive: err=%v output=%q stages=%v", err, output, stages)
 					}
 					root := stages[0]
+					if strings.Count(string(output), "ci-download:runtime=") != attempts || !bytes.Contains(output, []byte(fmt.Sprintf("attempt=%d curl_exit=0 http_status=200\n", attempts))) {
+						t.Fatalf("safe download diagnostic missing: %q", output)
+					}
 					expectedBin := root + "/go/bin\n"
 					expectedTrace := "download\ndigest\nlist\ntypes\nextract\nversion\n"
 					if kind == "deno" {
 						expectedBin = root + "/deno\n"
 						expectedTrace = "download\ndigest\nlist\nextract\nversion\n"
 					}
+					expectedTrace = strings.Repeat("download\n", attempts-1) + expectedTrace
 					if string(pathData) != expectedBin || traceErr != nil || string(traceData) != expectedTrace {
 						t.Fatalf("bootstrap order/path expected %q/%q got %q/%q", expectedTrace, expectedBin, traceData, pathData)
 					}
@@ -11201,11 +11241,17 @@ func TestDevelopmentActionsBootstrapControls(t *testing.T) {
 					}
 				} else {
 					reason := failure
+					if strings.HasPrefix(reason, "download-") {
+						reason = "download"
+					}
 					if reason == "version-exit" {
 						reason = "version"
 					}
 					if err == nil || !bytes.Contains(output, []byte("ci-setup:"+reason+"\n")) || bytes.Contains(output, []byte("record_type")) || len(stages) != 0 || len(envData) != 0 || len(pathData) != 0 {
 						t.Fatalf("bootstrap expected=%s err=%v output=%q stages=%v env=%q path=%q", reason, err, output, stages, envData, pathData)
+					}
+					if reason == "download" && (strings.Contains(string(traceData), "digest\n") || strings.Count(string(output), "ci-download:runtime=") != attempts) {
+						t.Fatal("download failure continued or lost attempt diagnostic")
 					}
 					for boundary, forbidden := range map[string]string{"download": "digest", "digest-read": "list", "digest": "list", "archive-list": "extract", "archive-entry": "extract", "archive-type": "extract", "extract": "version", "executable": "version"} {
 						if failure == boundary && strings.Contains(string(traceData), forbidden+"\n") {

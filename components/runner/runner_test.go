@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
@@ -20,6 +21,96 @@ import (
 	"testing"
 	"time"
 )
+
+type nativeBuilderFixture struct {
+	Code         int    `json:"code"`
+	Stdout       string `json:"stdout"`
+	Stderr       string `json:"stderr"`
+	VersionFault string `json:"version_fault"`
+	Trace        string `json:"trace"`
+}
+
+func TestMain(m *testing.M) {
+	if raw := os.Getenv("RUNNER_NATIVE_BUILDER_FIXTURE"); raw != "" {
+		var fixture nativeBuilderFixture
+		if err := json.Unmarshal([]byte(raw), &fixture); err != nil {
+			os.Exit(98)
+		}
+		stage := "build"
+		if len(os.Args) == 2 && os.Args[1] == "--version" {
+			stage = "version"
+		}
+		if fixture.Trace != "" {
+			file, err := os.OpenFile(fixture.Trace, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+			if err != nil {
+				os.Exit(98)
+			}
+			_, writeErr := fmt.Fprintln(file, stage)
+			closeErr := file.Close()
+			if writeErr != nil || closeErr != nil {
+				os.Exit(98)
+			}
+		}
+		if stage == "version" {
+			switch fixture.VersionFault {
+			case "timeout":
+				time.Sleep(time.Hour)
+			case "stderr":
+				fmt.Fprintln(os.Stderr, "warn")
+			case "empty_go_token":
+				fmt.Println("adlaire-ci-build V.0.0-dev go=")
+				os.Exit(0)
+			case "extra_token":
+				fmt.Println("adlaire-ci-build V.0.0-dev go=fake extra")
+				os.Exit(0)
+			}
+			fmt.Println("adlaire-ci-build V.0.0-dev go=fake")
+			os.Exit(0)
+		}
+		if fixture.Code == 0 {
+			out := os.Getenv("ADLAIRE_CI_OUT")
+			if out == "" || os.MkdirAll(filepath.Join(out, "assets"), 0755) != nil {
+				os.Exit(98)
+			}
+			for name, body := range map[string]string{"index.html": "<html></html>", "assets/style.css": "body{}", "assets/app.js": `console.log("ok")`, "assets/search-index.json": "[]"} {
+				if err := os.WriteFile(filepath.Join(out, name), []byte(body), 0644); err != nil {
+					os.Exit(98)
+				}
+			}
+		}
+		fmt.Fprint(os.Stdout, fixture.Stdout)
+		fmt.Fprint(os.Stderr, fixture.Stderr)
+		os.Exit(fixture.Code)
+	}
+	os.Exit(m.Run())
+}
+
+func useNativeBuilder(t *testing.T, fixture nativeBuilderFixture) {
+	t.Helper()
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ADLAIRE_CI_BUILD_BIN", executable)
+	t.Setenv("RUNNER_NATIVE_BUILDER_FIXTURE", string(data))
+	t.Setenv("GORACE", "atexit_sleep_ms=0")
+}
+
+func rejectShellStartup(t *testing.T) {
+	t.Helper()
+	startup := filepath.Join(t.TempDir(), "startup")
+	if err := os.WriteFile(startup, []byte("exit 97\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("BASH_ENV", startup)
+	if err := exec.Command("bash", "--noprofile", "--norc", "-c", "exit 0").Run(); err == nil {
+		t.Fatal("shell startup negative control did not fail")
+	}
+}
 
 func TestRunnerFixtureR1CLI(t *testing.T) {
 	var stdout, stderr bytes.Buffer
@@ -78,13 +169,23 @@ func TestRunnerFixtureR2NoChange(t *testing.T) {
 
 func TestRunnerFixtureR3BuildSuccessNoDeploy(t *testing.T) {
 	state := newRunnerState(t, "old-blob", nil)
-	writePipeline(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "")
+	rejectShellStartup(t)
+	trace := filepath.Join(state, "builder-trace")
+	useNativeBuilder(t, nativeBuilderFixture{Stdout: `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, Trace: trace})
 	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
 		code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr)
 		if code != 0 {
-			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+			log := onlyBuildLog(t, state)
+			problem := ""
+			if log.Error != nil {
+				problem = *log.Error
+			}
+			t.Fatalf("exit=%d stdout=%s stderr=%s status=%s error=%s", code, stdout.String(), stderr.String(), log.TargetStatus, problem)
+		}
+		if readFile(t, trace) != "version\nbuild\n" {
+			t.Fatal("native builder invocation order mismatch")
 		}
 		if readFile(t, filepath.Join(state, ".last_sha")) != "{\"sha\":\"new-blob\"}\n" {
 			t.Fatalf("sha not updated: %s", readFile(t, filepath.Join(state, ".last_sha")))
@@ -148,13 +249,18 @@ func TestRunnerFixtureR3BuildSuccessNoDeploy(t *testing.T) {
 
 func TestRunnerFixtureR4PipelineFailure(t *testing.T) {
 	state := newRunnerState(t, "old-blob", nil)
-	writePipeline(t, state, 7, "before fail", "failed")
+	rejectShellStartup(t)
+	trace := filepath.Join(state, "builder-trace")
+	useNativeBuilder(t, nativeBuilderFixture{Code: 7, Stdout: "before fail", Stderr: "failed", Trace: trace})
 	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
 		code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr)
 		if code != 1 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		if readFile(t, trace) != "version\nbuild\n" {
+			t.Fatal("native builder invocation order mismatch")
 		}
 		if readFile(t, filepath.Join(state, ".last_sha")) != "{\"sha\":\"old-blob\"}\n" {
 			t.Fatalf("sha changed on failure")
@@ -250,57 +356,41 @@ printf '[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=
 }
 
 func TestRunnerPhase2BuilderVersionPrecheckStrict(t *testing.T) {
-	oldTimeout := runnerBuilderVersionTimeout
-	runnerBuilderVersionTimeout = 20 * time.Millisecond
-	defer func() { runnerBuilderVersionTimeout = oldTimeout }()
-
-	cases := []struct {
-		name          string
-		versionScript string
-	}{
-		{
-			name:          "stderr",
-			versionScript: "printf 'adlaire-ci-build V.0.0-dev go=fake\\n'\nprintf 'warn\\n' >&2\nexit 0",
-		},
-		{
-			name:          "empty_go_token",
-			versionScript: "printf 'adlaire-ci-build V.0.0-dev go=\\n'\nexit 0",
-		},
-		{
-			name:          "extra_token",
-			versionScript: "printf 'adlaire-ci-build V.0.0-dev go=fake extra\\n'\nexit 0",
-		},
-		{
-			name:          "timeout",
-			versionScript: "sleep 1\nprintf 'adlaire-ci-build V.0.0-dev go=fake\\n'\nexit 0",
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, fault := range []string{"stderr", "empty_go_token", "extra_token", "timeout"} {
+		t.Run(fault, func(t *testing.T) {
+			if fault == "timeout" {
+				old := runnerBuilderVersionTimeout
+				runnerBuilderVersionTimeout = 20 * time.Millisecond
+				t.Cleanup(func() { runnerBuilderVersionTimeout = old })
+			}
 			state := newRunnerState(t, "old-blob", nil)
-			marker := filepath.Join(state, "builder-started")
-			buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
-			writeExecutable(t, buildBin, fmt.Sprintf(`#!/usr/bin/env bash
-set -u
-if [ "${1:-}" = "--version" ]; then
-%s
-fi
-printf started > %q
-exit 0
-`, tc.versionScript, marker))
-			t.Setenv("ADLAIRE_CI_BUILD_BIN", buildBin)
+			trace := filepath.Join(state, "builder-trace")
+			useNativeBuilder(t, nativeBuilderFixture{VersionFault: fault, Trace: trace})
+			prefix := "build binary version mismatch: "
+			if fault == "stderr" {
+				prefix = "build binary version wrote stderr: "
+			} else if fault == "timeout" {
+				prefix = "build binary version timeout: "
+			}
+			if _, err := precheckRunnerTarget(RunnerConfig{}, BranchTarget{Out: filepath.Join(state, "dist", "site")}); err == nil || !strings.HasPrefix(err.Error(), prefix) {
+				t.Fatalf("wrong internal precheck cause: expected=%s actual=%v", prefix, err)
+			}
 			server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 			withRunnerServer(t, server.URL, func() {
 				var stdout, stderr bytes.Buffer
 				if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 1 {
 					t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 				}
-				if _, err := os.Stat(marker); !os.IsNotExist(err) {
-					t.Fatalf("builder body must not start, marker err=%v", err)
+				data, err := os.ReadFile(trace)
+				if (err != nil && !os.IsNotExist(err)) || (fault != "timeout" && string(data) != "version\nversion\n") || strings.Contains(string(data), "build\n") {
+					t.Fatalf("builder must not start after precheck failure: trace=%q err=%v", data, err)
 				}
 				log := onlyBuildLog(t, state)
 				if log.TargetStatus != "failure_precheck" || log.FailureCategory == nil || *log.FailureCategory != "resource_error" || log.Environment.BuilderVersion != "" {
 					t.Fatalf("unexpected precheck log: %+v", log)
+				}
+				if log.Error == nil || *log.Error != "precheck failed" {
+					t.Fatal("public precheck error must remain fixed")
 				}
 			})
 		})
