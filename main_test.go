@@ -64,6 +64,30 @@ func TestSpecificationReferenceIntegrity(t *testing.T) {
 	if reason := specificationGovernanceIntegrity(documents["docs/SPEC.md"]); reason != "" {
 		t.Fatalf("statefile.spec-governance.positive.accept: fixture.md#specification-reference-checker expected valid responsibility routing, actual %s", reason)
 	}
+	if reason := specificationTestRoutingIntegrity(documents); reason != "" {
+		t.Fatalf("statefile.spec-routing.positive.accept: fixture.md#test-artifact-traceability-contract expected valid owners and test routing, actual %s", reason)
+	}
+	for _, control := range []struct{ id, from, to, reason string }{
+		{"owner-missing", "`mcp`、`obsidian` の14件", "`mcp` の14件", "assertion-owner"},
+		{"owner-extra", "`mcp`、`obsidian` の14件", "`mcp`、`obsidian`、`unknown` の14件", "assertion-owner"},
+		{"local-test", "../../components/commitstatus/commitstatus_test.go", "missing-local-test", "test-routing"},
+		{"obsidian-test", "../../components/obsidian/obsidian_test.go", "missing-obsidian-test", "test-routing"},
+		{"old-glob", "`components/*/*_test.go`", "`components/*_test.go`", "test-glob"},
+	} {
+		t.Run("routing-"+control.id, func(t *testing.T) {
+			changed := make(map[string]string, len(documents))
+			for path, content := range documents {
+				changed[path] = content
+			}
+			if !strings.Contains(changed["docs/details/fixture.md"], control.from) {
+				t.Fatalf("statefile.spec-routing.%s.fixture: expected mutation target, actual missing", control.id)
+			}
+			changed["docs/details/fixture.md"] = strings.ReplaceAll(changed["docs/details/fixture.md"], control.from, control.to)
+			if reason := specificationTestRoutingIntegrity(changed); reason != control.reason {
+				t.Fatalf("statefile.spec-routing.%s.reject: fixture.md#test-artifact-traceability-contract expected=%s actual=%s; reproduce go test . -run TestSpecificationReferenceIntegrity -count=1", control.id, control.reason, reason)
+			}
+		})
+	}
 	for _, control := range []struct{ id, anchor, from, to string }{
 		{"artifact-absence", "sec-4-2a", "", "単独の専用 Go 実装 artifact を持たない"},
 		{"layout-current-state", "sec-4-3", "", "実在化済み"},
@@ -131,6 +155,242 @@ func TestSpecificationReferenceIntegrity(t *testing.T) {
 	if err := specificationReferenceIntegrity(input, func(path string) bool { _, ok := input[path]; return ok }); err != nil {
 		t.Fatalf("statefile.spec-reference.examples.accept: expected literal examples ignored, actual %v", err)
 	}
+}
+
+type phase19StatusRun struct {
+	Owner      string `json:"owner"`
+	Repo       string `json:"repo"`
+	SHA        string `json:"sha"`
+	Project    string `json:"project_id"`
+	Definition string `json:"definition_id"`
+	Run        string `json:"run_id"`
+	Attempt    int    `json:"attempt"`
+	Created    string `json:"created_at"`
+	State      string `json:"state"`
+}
+
+type phase19StatusDecision struct {
+	Run      string `json:"run_id"`
+	Attempt  int    `json:"attempt"`
+	State    string `json:"state"`
+	Decision string `json:"decision"`
+}
+
+type phase19StatusSpecification struct {
+	Version  int              `json:"schema_version"`
+	Baseline phase19StatusRun `json:"baseline"`
+	Cases    []struct {
+		ID       string                       `json:"id"`
+		Runs     []map[string]json.RawMessage `json:"runs"`
+		Event    map[string]json.RawMessage   `json:"event"`
+		Existing bool                         `json:"existing"`
+		Expected phase19StatusDecision        `json:"expected"`
+	} `json:"cases"`
+}
+
+func phase19StatusProjection(runs []phase19StatusRun, event phase19StatusRun, existing bool) phase19StatusDecision {
+	fold := func(s string) string {
+		return strings.Map(func(r rune) rune {
+			if r >= 'A' && r <= 'Z' {
+				return r + ('a' - 'A')
+			}
+			return r
+		}, s)
+	}
+	candidates := []phase19StatusRun{}
+	for _, r := range runs {
+		if fold(r.Owner) == fold(event.Owner) && fold(r.Repo) == fold(event.Repo) && r.SHA == event.SHA && r.Project == event.Project && r.Definition == event.Definition && r.State != "queued" {
+			candidates = append(candidates, r)
+		}
+	}
+	if len(candidates) == 0 {
+		return phase19StatusDecision{Decision: "idle"}
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		a, b := candidates[i], candidates[j]
+		if a.Created != b.Created {
+			return a.Created < b.Created
+		}
+		if a.Run != b.Run {
+			return a.Run < b.Run
+		}
+		return a.Attempt < b.Attempt
+	})
+	latest := candidates[len(candidates)-1]
+	states := map[string]string{"running": "pending", "cancel_requested": "pending", "succeeded": "success", "failed": "failure", "cancelled": "error", "recovery_required": "error"}
+	result := phase19StatusDecision{Run: latest.Run, Attempt: latest.Attempt, State: states[latest.State], Decision: "send"}
+	if event.Run != latest.Run || event.Attempt != latest.Attempt || event.State != latest.State {
+		result.Decision = "superseded"
+	} else if existing {
+		result.Decision = "deduplicated"
+	}
+	return result
+}
+
+func phase19StatusExpand(base phase19StatusRun, patch map[string]json.RawMessage) (phase19StatusRun, error) {
+	var r phase19StatusRun
+	if patch == nil {
+		return r, fmt.Errorf("null projection")
+	}
+	data, _ := json.Marshal(base)
+	var fields map[string]json.RawMessage
+	_ = json.Unmarshal(data, &fields)
+	for k, v := range patch {
+		if _, ok := fields[k]; !ok || bytes.Equal(v, []byte("null")) {
+			return r, fmt.Errorf("projection field")
+		}
+		fields[k] = v
+	}
+	data, _ = json.Marshal(fields)
+	if err := developmentActionsDecodeJSON(data, &r, 65536, true); err != nil {
+		return r, err
+	}
+	clock, err := time.Parse("2006-01-02T15:04:05Z", r.Created)
+	if err != nil || clock.Year() < 1970 || clock.Format("2006-01-02T15:04:05Z") != r.Created || r.Attempt < 1 || r.Attempt > 100 || !regexp.MustCompile("^[0-9a-f]{40}$").MatchString(r.SHA) {
+		return r, fmt.Errorf("projection value")
+	}
+	for _, name := range []string{r.Owner, r.Repo} {
+		if !utf8.ValidString(name) || len(name) < 1 || len(name) > 100 || strings.ContainsRune(name, 0) {
+			return r, fmt.Errorf("projection source name")
+		}
+	}
+	for _, id := range []string{r.Project, r.Definition, r.Run} {
+		if !regexp.MustCompile("^[a-z][a-z0-9_-]{0,63}$").MatchString(id) {
+			return r, fmt.Errorf("projection identity")
+		}
+	}
+	if !phase17StringInSlice(r.State, []string{"queued", "running", "cancel_requested", "succeeded", "failed", "cancelled", "recovery_required"}) {
+		return r, fmt.Errorf("projection state")
+	}
+	return r, nil
+}
+
+func decodePhase19StatusSpecification(input []byte) (phase19StatusSpecification, error) {
+	var v phase19StatusSpecification
+	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	encoded, _ := json.Marshal(v)
+	var a, b any
+	if json.Unmarshal(input, &a) != nil || json.Unmarshal(encoded, &b) != nil || !bytes.Equal(iacSpecificationCanonical(a), iacSpecificationCanonical(b)) || v.Version != 1 || len(v.Cases) != 21 {
+		return v, fmt.Errorf("required fields / case set")
+	}
+	if _, err := phase19StatusExpand(v.Baseline, map[string]json.RawMessage{}); err != nil {
+		return v, err
+	}
+	seen := map[string]bool{}
+	for _, c := range v.Cases {
+		if !regexp.MustCompile("^[a-z][a-z0-9-]*$").MatchString(c.ID) || seen[c.ID] || c.Runs == nil || c.Event == nil {
+			return v, fmt.Errorf("case identity")
+		}
+		seen[c.ID] = true
+		for _, p := range append(append([]map[string]json.RawMessage{}, c.Runs...), c.Event) {
+			if _, err := phase19StatusExpand(v.Baseline, p); err != nil {
+				return v, err
+			}
+		}
+		if !phase17StringInSlice(c.Expected.Decision, []string{"send", "idle", "superseded", "deduplicated"}) {
+			return v, fmt.Errorf("expected decision")
+		}
+	}
+	return v, nil
+}
+
+func TestPhase19StatusSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	doc := phase11MustReadText(t, "docs/details/fixture.md")
+	_, block, found := strings.Cut(doc, `<a id="phase-19-status-vectors"></a>`)
+	_, block, jsonFound := strings.Cut(block, "```json\n")
+	block, _, endFound := strings.Cut(block, "\n```")
+	if !found || !jsonFound || !endFound {
+		t.Fatal("commitstatus.status-spec.presence.reject: fixture.md#phase-19-status-vectors expected fixed JSON input, actual missing")
+	}
+	input := []byte(block)
+	v, err := decodePhase19StatusSpecification(input)
+	if err != nil {
+		t.Fatalf("commitstatus.status-spec.schema.reject: expected valid fixed input, actual %v", err)
+	}
+	for _, c := range v.Cases {
+		t.Run(c.ID, func(t *testing.T) {
+			runs := []phase19StatusRun{}
+			for _, p := range c.Runs {
+				r, _ := phase19StatusExpand(v.Baseline, p)
+				runs = append(runs, r)
+			}
+			event, _ := phase19StatusExpand(v.Baseline, c.Event)
+			actual := phase19StatusProjection(runs, event, c.Existing)
+			if actual != c.Expected {
+				t.Fatalf("commitstatus.status-spec.%s.result: commitstatus.md#phase-19-status-delivery expected=%+v actual=%+v; reproduce go test . -run TestPhase19StatusSpecificationVectors -count=1", c.ID, c.Expected, actual)
+			}
+		})
+	}
+	for _, id := range []string{"unknown", "missing", "null", "duplicate-case", "projection-field", "projection-null"} {
+		t.Run("schema-"+id, func(t *testing.T) {
+			var raw map[string]any
+			_ = json.Unmarshal(input, &raw)
+			cases := raw["cases"].([]any)
+			switch id {
+			case "unknown":
+				raw["unknown"] = true
+			case "missing":
+				delete(raw, "baseline")
+			case "null":
+				raw["cases"] = nil
+			case "duplicate-case":
+				cases[1].(map[string]any)["id"] = cases[0].(map[string]any)["id"]
+			case "projection-field":
+				cases[0].(map[string]any)["event"] = map[string]any{"unknown": true}
+			case "projection-null":
+				cases[0].(map[string]any)["event"] = map[string]any{"state": nil}
+			}
+			changed, _ := json.Marshal(raw)
+			if _, err := decodePhase19StatusSpecification(changed); err == nil {
+				t.Fatalf("commitstatus.status-spec.%s.reject: fixture.md#phase-19-status-vectors expected schema rejection, actual accepted", id)
+			}
+		})
+	}
+}
+
+func specificationTestRoutingIntegrity(documents map[string]string) string {
+	detail := documents["docs/DETAIL_INDEX.md"]
+	_, detail, _ = strings.Cut(detail, `<a id="0b-詳細仕様参照表"></a>`)
+	detail, _, _ = strings.Cut(detail, `<a id="owner-detail-verification-route"></a>`)
+	owners := regexp.MustCompile("(?m)^\\| `([a-z]+)` \\|").FindAllStringSubmatch(detail, -1)
+	fixture := documents["docs/details/fixture.md"]
+	_, assertion, _ := strings.Cut(fixture, "owner segment は ")
+	assertion, _, _ = strings.Cut(assertion, "必要な場合だけ")
+	listed := regexp.MustCompile("`([a-z]+)`").FindAllStringSubmatch(assertion, -1)
+	want, got := []string{}, []string{}
+	for _, owner := range owners {
+		want = append(want, owner[1])
+	}
+	for _, owner := range listed {
+		got = append(got, owner[1])
+	}
+	sort.Strings(want)
+	sort.Strings(got)
+	if len(want) == 0 || !phase11StringSlicesEqual(want, got) {
+		return "assertion-owner"
+	}
+	_, routing, _ := strings.Cut(fixture, `<a id="test-artifact-traceability-contract"></a>`)
+	routing, _, _ = strings.Cut(routing, "\n以下は実在する実装 artifact")
+	paths := []string{"main_test.go"}
+	for _, owner := range want {
+		path := "components/" + owner + "/" + owner + "_test.go"
+		if owner == "sdk" || owner == "ui" {
+			path = owner + "_contract_test.go"
+		}
+		paths = append(paths, path)
+	}
+	for _, path := range paths {
+		if !strings.Contains(routing, "](../../"+path+")") {
+			return "test-routing"
+		}
+	}
+	if strings.Contains(fixture, "`components/*_test.go`") {
+		return "test-glob"
+	}
+	return ""
 }
 
 func specificationGovernanceIntegrity(spec string) string {

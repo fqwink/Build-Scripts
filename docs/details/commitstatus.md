@@ -8,7 +8,16 @@ ownerは `commitstatus`。cicd-v1の送信は既存.server_config.commit_status_
 
 source SHAを送信先とし、contextは `adlaire-cicd/PROJECT/DEFINITION`（ASCII<=140 bytes、超過設定拒否）、target_urlは既存明示設定値だけ（管理loopback/secret URLを自動公開しない）。pendingはdurable run running後、finalは全必須jobと配備の終端保存後。succeeded→success、failed→failure、cancelled/recovery_required→error、承認待ち/未確定配備はpending維持。descriptionはそれぞれCI/CD started、CI/CD succeeded、CI/CD failed、CI/CD cancelled、CI/CD recovery required（固定文字列）。
 
-送信直前に同project/definition/sourceの最新attemptをstatefileから読み、旧attemptは送信せずstale診断だけ残す。同scope送信は単一worker queueで直列化し、既に送信中の旧結果は取り消せないため完了後最新statusを必ず送信する。送信1回、timeout10秒、HTTP201だけ成功、retryなし、rate-limitは送信失敗として通知診断へ保存し実行結果を変えない。run/attempt/event identityとstatus結果はStatusDeliveryへ保存しNotificationのtargetとOperation監査へ対応付ける。
+送信対象の選択と中断後の扱いは [最新結果の送信契約](#phase-19-status-delivery) に従う。送信1回、timeout10秒、HTTP201だけ成功、retryなし、rate-limitは送信失敗として診断へ保存し実行結果を変えない。run/attempt/event identityとstatus結果はStatusDeliveryへ保存し、起点のNotification/Operationがある場合はその対象identityへ対応付ける。status送信のためだけに通知eventやAPI Operationを新設しない。
+
+<a id="phase-19-status-delivery"></a>
+**最新結果の送信契約：** 送信scopeは保存Run.planの `(source.owner,source.repo,source.sha,project_id,definition_id)` のtupleとし、owner/repoだけASCII A〜Zをa〜zへ正規化して比較する。他fieldは完全一致、輸送先は保存値を使用する。現在のProject設定から過去Runの送信先を作り直さず、異なるrepositoryを同じSHA文字列だけで集約しない。Definition revisionはcontextを変えないためscopeへ加えない。queuedを除くRunを候補とし、canonical UTCのcreated_at昇順、run idのASCII byte昇順、attempt数値昇順の辞書式最大を選ぶ。同じrunの最大attemptだけを見て別runを無視したり、異なるrunのattempt数だけを比較したりしない。これは保存時刻による順序であり、時計の逆行を補正して受付順を推定しない。
+
+選択Runの現在stateから上のstate/descriptionを生成し、running/cancel_requestedはpending、queuedだけなら送信対象なしとする。遅延eventのrun/attempt/stateが選択結果と一致しなければHTTPを発行しない。送信scopeごとにprocess内queueを1本にし、待機eventは再評価要求へ集約する。HTTP中に新Run/終端状態が現れた場合、旧HTTPを取消できるとは主張せず、完了後に最新Rootを再読込して選択・claimからやり直す。queueはRoot lockを保持してHTTPを待たず、scopeをまたぐ順序は保証しない。
+
+外部送信前に [docs/details/statefile.md 詳細本文責務 StatusDelivery保存](statefile.md#phase-19-status-delivery-state) の一意keyをdurable claimする。既存keyはsent/codeを問わず同じHTTPを再発行しない。claim成功後だけ最新選択を再照合し、既にsupersededならsent=false/code="delivery superseded"を保存してHTTP0件とする。送信中に新しい要求が来る競合窓は上記queueで収束させる。HTTP201はsent=true/code=null、他の結果はsent=false/既存adapterの固定reason、timeout/通信断は成否不明でも再送しない。claim後のcrashで結果がない記録は再起動時にsent=false/code="delivery result unknown"へ確定し、HTTPを自動再発行しない。新しい明示run/attemptは別keyとして扱えるが、同じtupleのretry経路を作らない。GitHubと状態保存の分散atomicity、exactly-once、必ず最新表示へ到達することは保証しない。
+
+claim前の容量・保存失敗ではHTTP0件。結果保存失敗は再送で隠さずstatefileのdurability失敗としてcoordinatorを停止し、既に確定したrun/deploymentの結果を反転しない。容量上限でstatusだけ送れない場合は固定診断P19_QUOTA、外部失敗は既存WARNに接続し、secret/raw errorを出さない。保持・回収とsent/codeの組合せはstatefile正本、固定入力・停止点・並行順序は [docs/DETAIL_INDEX.md 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
 
 製品statusは開発Actions required checkの代替ではない。source/base/tested SHAとrun identityが異なる証跡を成功へ流用しない。検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)。
 

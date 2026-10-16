@@ -55,6 +55,7 @@ owner component 別詳細本文、作業ルール、または Pull Request 本�
 | 固定Plan / 型付き入力 / matrix / DAG選択 / trigger識別の文書oracle | [docs/details/fixture.md fixture証跡責務 Plan固定入力](details/fixture.md#phase-19-plan-vectors) |
 | worker ACK / chunk完了 / lease期限 / 保存identityの文書oracle | [docs/details/fixture.md fixture証跡責務 worker固定入力](details/fixture.md#phase-19-worker-vectors) |
 | artifact/cache envelope / download byte範囲 / cache保持の文書oracle | [docs/details/fixture.md fixture証跡責務 content境界入力](details/fixture.md#phase-19-content-vectors) |
+| Commit Status / 最新run順位 / scope / claim中断 / 保持容量の文書oracle | [docs/details/fixture.md fixture証跡責務 Status固定入力](details/fixture.md#phase-19-status-vectors) |
 | Phase 19 策定対象 / 故障・復旧・並行実行の受け入れ設計 | [`docs/details/fixture.md` fixture 証跡責務 Phase 19 検証策定契約](details/fixture.md#phase-19-cicd-evidence-contract) |
 | Phase20 IaC / plan意味整合 / 適用受付時刻 / 文書入力oracle | [docs/details/fixture.md fixture証跡責務 IaC検証入口](details/fixture.md#inhouse-iac-fixture-contract)、[完全入力と中断oracle](details/fixture.md#inhouse-iac-concrete-oracles)、[適用受付境界入力](details/fixture.md#inhouse-iac-admission-vectors) |
 | traceability / owner routing / fixture coverage | [`docs/details/fixture.md` fixture 証跡責務 test artifact traceability 固定契約](details/fixture.md#test-artifact-traceability-contract)、[`non-dedicated owner test routing 固定契約`](details/fixture.md#non-dedicated-owner-test-routing-contract)、[`fixture root coverage matrix 固定契約`](details/fixture.md#fixture-root-coverage-matrix-contract) |

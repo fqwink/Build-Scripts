@@ -28,6 +28,7 @@ type nativeBuilderFixture struct {
 	Stderr       string `json:"stderr"`
 	VersionFault string `json:"version_fault"`
 	Trace        string `json:"trace"`
+	PipelineArgs string `json:"pipeline_args"`
 }
 
 func TestMain(m *testing.M) {
@@ -66,6 +67,21 @@ func TestMain(m *testing.M) {
 			}
 			fmt.Println("adlaire-ci-build V.0.0-dev go=fake")
 			os.Exit(0)
+		}
+		if fixture.PipelineArgs != "" {
+			for key, want := range map[string]string{"PIPELINE_ENV": "pipeline", "BRANCH_VALUE": "pipeline-wins", "BRANCH_ONLY": "branch-only"} {
+				if os.Getenv(key) != want {
+					fmt.Fprintln(os.Stderr, "pipeline environment mismatch")
+					os.Exit(6)
+				}
+			}
+			if err := os.WriteFile(fixture.PipelineArgs, []byte(strings.Join(os.Args[1:], "\n")+"\n"), 0600); err != nil {
+				os.Exit(98)
+			}
+			if err := os.WriteFile(filepath.Join(os.Getenv("ADLAIRE_CI_STATE_DIR"), ".pipeline_config"), []byte(`{"extra_args":[],"env":{"MUTATED":"yes"}}`), 0600); err != nil {
+				os.Exit(98)
+			}
+			fmt.Fprintln(os.Stdout, "secret="+os.Getenv("PIPELINE_SECRET"))
 		}
 		if fixture.Code == 0 {
 			out := os.Getenv("ADLAIRE_CI_OUT")
@@ -281,44 +297,9 @@ func TestRunnerFixtureR4PipelineFailure(t *testing.T) {
 func TestRunnerPhase2PipelineConfigAppliesArgsEnvAndMasksSecret(t *testing.T) {
 	state := newRunnerState(t, "old-blob", nil)
 	argsFile := filepath.Join(state, "args.txt")
-	buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
-	writeExecutable(t, buildBin, fmt.Sprintf(`#!/usr/bin/env bash
-set -u
-if [ "${1:-}" = "--version" ]; then
-  printf 'adlaire-ci-build V.0.0-dev go=fake\n'
-  exit 0
-fi
-out=""
-for arg in "$@"; do
-  printf '%%s\n' "$arg" >> %q
-  if [ "$arg" = "--out" ]; then
-    shift
-    out="${1:-}"
-  fi
-  shift || true
-done
-if [ "${PIPELINE_ENV:-}" != "pipeline" ]; then
-  printf 'pipeline env mismatch' >&2
-  exit 6
-fi
-if [ "${BRANCH_VALUE:-}" != "pipeline-wins" ]; then
-  printf 'pipeline env precedence mismatch' >&2
-  exit 7
-fi
-if [ "${BRANCH_ONLY:-}" != "branch-only" ]; then
-  printf 'branch env missing' >&2
-  exit 8
-fi
-printf '{"extra_args":[],"env":{"MUTATED":"yes"}}' > "$ADLAIRE_CI_STATE_DIR/.pipeline_config"
-mkdir -p "$out/assets"
-printf '<html></html>' > "$out/index.html"
-printf 'body{}' > "$out/assets/style.css"
-printf 'console.log("ok")' > "$out/assets/app.js"
-printf '[]' > "$out/assets/search-index.json"
-printf 'secret=%%s\n' "$PIPELINE_SECRET"
-printf '[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default'
-`, argsFile))
-	t.Setenv("ADLAIRE_CI_BUILD_BIN", buildBin)
+	trace := filepath.Join(state, "builder-trace")
+	useNativeBuilder(t, nativeBuilderFixture{PipelineArgs: argsFile, Trace: trace, Stdout: "[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default"})
+	rejectShellStartup(t)
 	var branches branchConfigFile
 	readJSON(t, filepath.Join(state, ".branch_config"), &branches)
 	branches.BranchTargets[0].Env = map[string]string{"BRANCH_VALUE": "branch", "BRANCH_ONLY": "branch-only"}
@@ -335,24 +316,69 @@ printf '[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
 		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
-			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+			t.Fatalf("runner.pipeline-env.native.result: expected exit0 actual=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		if got := readFile(t, trace); got != "version\nbuild\n" {
+			t.Fatalf("runner.pipeline-env.native.order: fixture.md#15a-f-runner-初期受け入れ-fixture-契約 expected version/build actual=%q", got)
 		}
 		args := strings.Split(strings.TrimSpace(readFile(t, argsFile)), "\n")
 		wantSuffix := []string{"--theme", "adlaire-alt", "--flag=value"}
 		if len(args) < len(wantSuffix) || strings.Join(args[len(args)-len(wantSuffix):], "\n") != strings.Join(wantSuffix, "\n") {
-			t.Fatalf("pipeline extra args not appended: %#v", args)
+			t.Fatalf("runner.pipeline-env.native.args: expected pipeline extra args appended actual=%#v", args)
+		}
+		var changed pipelineConfigFile
+		readJSON(t, filepath.Join(state, ".pipeline_config"), &changed)
+		if len(changed.Env) != 1 || changed.Env["MUTATED"] != "yes" {
+			t.Fatal("runner.pipeline-env.native.snapshot: expected fake config replacement, actual unchanged")
 		}
 		log := onlyBuildLog(t, state)
 		if strings.Contains(log.Pipeline.Stdout, "super-secret") || !strings.Contains(log.Pipeline.Stdout, "secret=***") {
-			t.Fatalf("pipeline secret was not masked: %q", log.Pipeline.Stdout)
+			t.Fatalf("runner.pipeline-env.native.mask: expected secret masked actual=%q", log.Pipeline.Stdout)
 		}
 		if log.Environment.BuilderVersion != "V.0.0-dev" || log.Environment.Hostname == "" || log.Environment.StateDir == "" || log.Environment.CapturedAt == "" || log.Environment.DiskFreeBytes == nil {
 			t.Fatalf("environment record incomplete: %+v", log.Environment)
 		}
 		if got, want := strings.Join(log.Environment.EnvKeys, ","), "BRANCH_ONLY,BRANCH_VALUE,PIPELINE_ENV,PIPELINE_SECRET"; got != want {
-			t.Fatalf("environment keys mismatch got=%q want=%q", got, want)
+			t.Fatalf("runner.pipeline-env.native.env-keys: expected=%q actual=%q", want, got)
 		}
 	})
+
+	for _, wrong := range []string{"PIPELINE_ENV", "BRANCH_VALUE", "BRANCH_ONLY"} {
+		t.Run("native-reject-"+wrong, func(t *testing.T) {
+			root := t.TempDir()
+			fixture := nativeBuilderFixture{PipelineArgs: filepath.Join(root, "args")}
+			data, err := json.Marshal(fixture)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command(os.Getenv("ADLAIRE_CI_BUILD_BIN"), "--out", filepath.Join(root, "out"))
+			for _, value := range os.Environ() {
+				key, _, _ := strings.Cut(value, "=")
+				if key != "RUNNER_NATIVE_BUILDER_FIXTURE" && key != "PIPELINE_ENV" && key != "BRANCH_VALUE" && key != "BRANCH_ONLY" && key != "ADLAIRE_CI_OUT" && key != "ADLAIRE_CI_STATE_DIR" {
+					cmd.Env = append(cmd.Env, value)
+				}
+			}
+			cmd.Env = append(cmd.Env, "RUNNER_NATIVE_BUILDER_FIXTURE="+string(data), "ADLAIRE_CI_OUT="+filepath.Join(root, "out"), "ADLAIRE_CI_STATE_DIR="+state)
+			for key, value := range map[string]string{"PIPELINE_ENV": "pipeline", "BRANCH_VALUE": "pipeline-wins", "BRANCH_ONLY": "branch-only"} {
+				if key == wrong {
+					value = "wrong"
+				}
+				cmd.Env = append(cmd.Env, key+"="+value)
+			}
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			err = cmd.Run()
+			var exit *exec.ExitError
+			if !errors.As(err, &exit) || exit.ExitCode() != 6 || stdout.Len() != 0 || stderr.String() != "pipeline environment mismatch\n" {
+				t.Fatalf("runner.pipeline-env.native.reject: fixture.md#15a-f-runner-初期受け入れ-fixture-契約 expected exit6/empty stdout/fixed reason actual=%v/%q/%q", err, stdout.String(), stderr.String())
+			}
+			for _, name := range []string{fixture.PipelineArgs, filepath.Join(root, "out")} {
+				if _, err := os.Lstat(name); !errors.Is(err, os.ErrNotExist) {
+					t.Fatalf("runner.pipeline-env.native.no-write: expected absent fake output actual=%v", err)
+				}
+			}
+		})
+	}
 }
 
 func TestRunnerPhase2BuilderVersionPrecheckStrict(t *testing.T) {

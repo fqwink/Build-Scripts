@@ -20,7 +20,7 @@ expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,tra
 | case | owner | 固定入力・故障 | oracle | 必須mutation |
 |---|---|---|---|---|
 | P19-PLAN | runner | 不正schema/未知key/入力型/duplicate ID/cycle/257展開 | P19_SCHEMA/P19_DAG/P19_MATRIX、process0、approval消費0 | DAG循環検査を除去 |
-| P19-EVENT | runner | 通知の同run別attemptと同遷移再送/同一watch2回/anchor境界/clock逆行/tree取得失敗/coalescing | run1件、cursor不変on失敗、assignedは取消されない | event_key照合を除去 |
+| P19-EVENT | runner | Commit Statusのscope/別run順位/claim中断/容量/通知の同run別attemptと同遷移再送/同一watch2回/anchor境界/clock逆行/tree取得失敗/coalescing | run1件、cursor不変on失敗、assignedは取消されない | event_key照合を除去 |
 | P19-DAG | runner | A→B、optional C失敗、matrix 2x2、parallel=2、fail-fast | BはA終端後、同時<=2、optionalはrun失敗へ反転しない | required依存判定を反転 |
 | P19-RETRY | runner | transport失敗2回/恒久失敗/attempt上限/resume digest不一致 | try列1,2,3、待機1,2秒、恒久retry0、旧attempt不変 | retry分類を全error許可 |
 | P19-CANCEL | runner | queued cancel/TERM無視child/cleanup失敗 | KILL後Wait/残存0でのみcancelled、不明はrecovery_required | process Waitを除去 |
@@ -39,6 +39,426 @@ expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,tra
 **fault / fakeの閉じた入力：** boundaryは `state.open/write/fsync-file/rename/fsync-directory/read-head/read-snapshot`、`archive.header/read/write/publish/gc`、`worker.assign/start/heartbeat/result/cleanup`、`site.stage/switch/finalize/health/query/restore`、`broker.peer/claim/unit-start/unit-wait/cleanup`、`http.request/response`、`log.mask/flush/read` だけ。callは同boundaryの1始まり累積呼出回数、未知名/未消費指定はtest失敗。advance_msは0〜7200000の非負値で順にfake clockだけを進める。entropy_hexは64hex seed、fake entropyはSHA256(seed bytes || uint64 big-endian counter)をcounter0から連結し必要長だけ返す。production crypto/randを置換するのはtest injection内だけ。process.argvはrunner exact argvのplaceholderをfixture identityで置換した配列、未登録argvは即test失敗。stateful network/site fakeは必ず前request後のRouteとfile bytesを更新し、常時成功応答を返すだけのfakeは禁止する。
 
 **補助固定vector：** canonical JSONは `{"b":2,"a":1}` → `{"a":1,"b":2}`、duplicate keyは拒否。matrix {os:[linux,other],v:[1,2]}はaxis ASCII順で4tuple、exclude={v:2}で2tuple。leaseはnow=untilで失効、approvalもnow=expiresで失効。freezeはfrom含む/until含まない。AES-GCMは [Go標準AEAD仕様](https://pkg.go.dev/crypto/cipher#NewGCM) に加え、[NIST GCM-AES256 Example #1〜4](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/AES_GCM.pdf) のkey/IV/AAD/plaintext/ciphertext/tagを固定独立oracleとして用い、Seal結果をciphertext||tagへbyte完全一致させOpen結果も比較する。空/非空AAD・plainの両方を含め、key/nonce/AAD/tag各1bit反転を拒否する。製品固有AADはsecurity正本の区切りを含むbyte列を別oracleで検査し、roundtripだけでAAD不使用を見逃さない、Ed25519は [RFC8032 §7.1](https://www.rfc-editor.org/rfc/rfc8032#section-7.1) のTEST1〜3を独立既知値として取り込み、公開鍵/署名/message改竄を拒否する。既知値は実装出力で再生成しない。
+
+<a id="phase-19-status-vectors"></a>
+**Commit Statusの文書入力・中断oracle：** 処理は [docs/details/commitstatus.md 詳細本文責務 最新結果の送信契約](commitstatus.md#phase-19-status-delivery)、保存は [docs/details/statefile.md 詳細本文責務 StatusDelivery](statefile.md#phase-19-status-delivery-state) を参照する。以下21caseを `TestPhase19StatusSpecificationVectors` が読む。各run/eventはbaselineの完全なprojectionへ列挙fieldだけを上書きし、配列順は入力順、expectedは独立固定値とする。projectionのowner/repo/sha/definition_idは保存Plan.source/definition、他はRunの同名fieldであり、Rootをこの省略形で保存する契約ではない。existingは選択tupleに既存StatusDeliveryがあることを表し、sent/codeの値によらずdeduplicatedとする。全文UTF-8/65536byte以下、全key必須、unknown/duplicate/null/trailing拒否、case ID一意、run配列は空を許可するが本fixtureの21case集合を変更しない。候補のscope/順位/現在stateと期待decisionを完全比較し、HTTPや製品runtimeを動かした証跡には換算しない。
+
+```json
+{
+  "schema_version": 1,
+  "baseline": {
+    "owner": "alice",
+    "repo": "site",
+    "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "project_id": "p",
+    "definition_id": "main",
+    "run_id": "ra",
+    "attempt": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "state": "running"
+  },
+  "cases": [
+    {
+      "id": "running",
+      "runs": [
+        {}
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "different-run-attempt",
+      "runs": [
+        {
+          "attempt": 100
+        },
+        {
+          "run_id": "rb",
+          "created_at": "2026-01-01T00:00:01Z"
+        }
+      ],
+      "event": {
+        "attempt": 100
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "rb",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "superseded"
+      }
+    },
+    {
+      "id": "new-run",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "created_at": "2026-01-01T00:00:01Z"
+        }
+      ],
+      "event": {
+        "run_id": "rb",
+        "created_at": "2026-01-01T00:00:01Z"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "rb",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "new-attempt",
+      "runs": [
+        {},
+        {
+          "attempt": 2,
+          "created_at": "2026-01-01T00:00:01Z"
+        }
+      ],
+      "event": {
+        "attempt": 2,
+        "created_at": "2026-01-01T00:00:01Z"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 2,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "same-time-id",
+      "runs": [
+        {},
+        {
+          "run_id": "rb"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "rb",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "superseded"
+      }
+    },
+    {
+      "id": "same-time-attempt",
+      "runs": [
+        {},
+        {
+          "attempt": 2
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 2,
+        "state": "pending",
+        "decision": "superseded"
+      }
+    },
+    {
+      "id": "scope-owner",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "created_at": "2026-01-01T00:00:01Z",
+          "owner": "bob"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "scope-repo",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "created_at": "2026-01-01T00:00:01Z",
+          "repo": "other"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "scope-sha",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "created_at": "2026-01-01T00:00:01Z",
+          "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "scope-project-id",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "created_at": "2026-01-01T00:00:01Z",
+          "project_id": "other"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "scope-definition-id",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "created_at": "2026-01-01T00:00:01Z",
+          "definition_id": "other"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "queued-only",
+      "runs": [
+        {
+          "state": "queued"
+        }
+      ],
+      "event": {
+        "state": "queued"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "",
+        "attempt": 0,
+        "state": "",
+        "decision": "idle"
+      }
+    },
+    {
+      "id": "queued-newer",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "state": "queued",
+          "created_at": "2026-01-01T00:00:01Z"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "cancel-requested",
+      "runs": [
+        {
+          "state": "cancel_requested"
+        }
+      ],
+      "event": {
+        "state": "cancel_requested"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "succeeded",
+      "runs": [
+        {
+          "state": "succeeded"
+        }
+      ],
+      "event": {
+        "state": "succeeded"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "success",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "failed",
+      "runs": [
+        {
+          "state": "failed"
+        }
+      ],
+      "event": {
+        "state": "failed"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "failure",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "cancelled",
+      "runs": [
+        {
+          "state": "cancelled"
+        }
+      ],
+      "event": {
+        "state": "cancelled"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "error",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "recovery-required",
+      "runs": [
+        {
+          "state": "recovery_required"
+        }
+      ],
+      "event": {
+        "state": "recovery_required"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "error",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "delayed-start",
+      "runs": [
+        {
+          "state": "failed"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "failure",
+        "decision": "superseded"
+      }
+    },
+    {
+      "id": "existing-claim",
+      "runs": [
+        {}
+      ],
+      "event": {},
+      "existing": true,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "deduplicated"
+      }
+    },
+    {
+      "id": "scope-ascii-case",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "owner": "ALICE",
+          "repo": "SITE",
+          "created_at": "2026-01-01T00:00:01Z"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "rb",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "superseded"
+      }
+    }
+  ]
+}
+```
+
+製品P19-EVENTのfault/restart/concurrentには次の独立oracleを追加する。全caseでrun/deploymentの確定値不変、raw secret/Authorization露出0を比較する。
+
+| 停止・競合入力 | 期待結果 |
+|---|---|
+| claim保存前のwrite/rename/fsync失敗、またはRoot commit不確定 | HTTP0。旧Headまたは不確定Headの復旧条件を保持、成功推定0。 |
+| claim成功直後のcrash、送信後応答消失、201後結果保存前crash | 同key再HTTP0。再起動でfalse/unknownへ確定、成功送信を推定しない。 |
+| claim後・送信直前の新run/終端更新 | 再選択で旧keyをfalse/superseded、HTTP0。 |
+| 旧HTTP中に同scopeで新run開始と終端、または別scopeの同SHA | 同scopeは旧完了後に最新を再選択、別scopeは混合0。両barrier順を固定。 |
+| 1024件が期限前または未確定、Runも同commit回収可能な適格1件だけ期限一致、clock後退 | 前者P19_QUOTA/HTTP0、適格1件を先に回収したcaseだけclaim1、後退で回収0。 |
+| sent=true/code非null、deliveryだけ残してRunを削除 | P19_STATE_CORRUPT、HTTP0。 |
+| HTTP429/500/timeout、または結果保存失敗 | HTTP1回のみ。既存固定reason、結果保存失敗はcoordinator停止、製品結果を反転0。 |
+
+文書oracleのmutationはscope照合除去、attemptだけで順位決定、queued採用、現在state照合除去、既存claim無視、schema拒否無効化を個別にkillする。routing regressionはassertion-owner/専用test/Obsidian test/旧globの各比較を除去してkillする。製品のHTTP順・durable claim・GC・crashは将来fixtureで観測し、文書checkerの成功で代替しない。
 
 <a id="phase-19-worker-vectors"></a>
 **worker通信の文書入力：** 処理の正本は [docs/details/runner.md 詳細本文責務 framing](runner.md#phase-19-ipc-framing)、[接続](runner.md#phase-19-worker-session)、[lease](runner.md#phase-19-worker-lease-deadlines)、保存identityは [docs/details/statefile.md 詳細本文責務](statefile.md#phase-19-worker-state-identity)。TestPhase19WorkerSpecificationVectorsは以下40case（ACK12/chunk16/lease12）を読む純粋な文書oracleであり、SSH/systemd/broker/製品runtimeの実行証跡ではない。全key必須、unknown/duplicate/null/trailing/invalid UTF-8を拒否、全配列を通じID一意。ACK入力は方向別の送信順で、expected_pendingはc2w/w2cの未ACK件数。errorは文書oracleでP19_TRANSPORTとして停止し、実際のerror.code照合は製品fixtureで行う。chunk.repeat>1だけはdataを標準base64で1回decodeした1byteをその回数反復して再encodeする入力generator、repeat=1は不正base64も加工しない。total_bytes/digestはfile全体、各chunk.digestも同じ全体値。固定SHA256はchecker作成前にnative Ruby標準Digestから独立確定した。leaseの時刻は固定epochからのms、proposed_ms=0は更新のない照会、durableはworker/brokerの必要保存がすべて成功したことを表す。期待値をcheckerの出力から更新しない。
@@ -1423,7 +1843,7 @@ assertion IDはrunner.log-spec.<case>.result、api.log-spec.<case>.result、stat
 **checker / workflow：**
 
 <a id="specification-reference-checker"></a>
-全仕様文書の参照検査は `TestSpecificationReferenceIntegrity` とし、AGENTS/README/CONTRIBUTING/SECURITYとdocs配下全Markdownの説明文linkを対象に、実在path、固定anchor、同一file内anchor一意性を検査する。fenced/inline code内の構文例は参照と混同しない。missing-path/missing-anchor/duplicate-anchorの3負例と構文例を除外する正例でcheckerを検証する。assertion IDは `statefile.spec-reference.positive.accept`、`statefile.spec-reference.<case>.reject`、`statefile.spec-reference.examples.accept`、失敗診断は検出path/line/anchorへ接続する。同じrootでROADMAPのPhase行を唯一の登録集合として、現在のPhase1〜21の欠落/重複/未登録行を拒否し、全対象文書のPhase番号参照を照合する。単独番号だけでなくslash/comma/rangeの連記、path表記、英字大小、フェーズ表記も対象にし、番号末尾と日本語本文の間にword boundaryを要求しない。syntheticな次の未登録番号は最大登録番号+1で作り、joined-list/comma-list/range/spaced/path/japanese/leading-zero/zero/unregistered-row/duplicate-rowの10負例を実行する。assertion IDはstatefile.spec-phase.positive.acceptとstatefile.spec-phase.<case>.reject、負例を通すchecker-source mutationは検証失敗とする。同じrootはSPEC内の既知の責務逸脱を限定したregression guardも実行する。入力は現行SPEC全体で、(1)責務原則に実装artifact不在を断定しない、(2)標準配置本文に現在の実在化済み状態を置かない、(3)凍結対応表が全詳細節/Phase19 owner/Phase20入口へ参照する、(4)Actionsの形式判断を技術方針へ接続し別本文で再定義しない、の4対象を比較する。負例は各sectionのmemory copyへ旧不在断定/実在化済み/部分表参照/形式正本参照消去/形式再定義を1件ずつ注入し、固定reason `artifact-absence / layout-current-state / freeze-route / format-source / format-restatement` と一致させる。assertion IDは `statefile.spec-governance.positive.accept`、`statefile.spec-governance.<case>.reject`、入力位置欠落は `.fixture`。5 guardの削除を各1source mutationとして隔離copyでコンパイル・実行し、負例assertionによる失敗と復元cmp0を要求する。これは既知の文言/参照境界の回帰検査であり、自然言語一般の意味上の重複・機能完全性を証明しない。
+全仕様文書の参照検査は `TestSpecificationReferenceIntegrity` とし、AGENTS/README/CONTRIBUTING/SECURITYとdocs配下全Markdownの説明文linkを対象に、実在path、固定anchor、同一file内anchor一意性を検査する。fenced/inline code内の構文例は参照と混同しない。missing-path/missing-anchor/duplicate-anchorの3負例と構文例を除外する正例でcheckerを検証する。assertion IDは `statefile.spec-reference.positive.accept`、`statefile.spec-reference.<case>.reject`、`statefile.spec-reference.examples.accept`、失敗診断は検出path/line/anchorへ接続する。同じrootでROADMAPのPhase行を唯一の登録集合として、現在のPhase1〜21の欠落/重複/未登録行を拒否し、全対象文書のPhase番号参照を照合する。単独番号だけでなくslash/comma/rangeの連記、path表記、英字大小、フェーズ表記も対象にし、番号末尾と日本語本文の間にword boundaryを要求しない。syntheticな次の未登録番号は最大登録番号+1で作り、joined-list/comma-list/range/spaced/path/japanese/leading-zero/zero/unregistered-row/duplicate-rowの10負例を実行する。assertion IDはstatefile.spec-phase.positive.acceptとstatefile.spec-phase.<case>.reject、負例を通すchecker-source mutationは検証失敗とする。同じrootはSPEC内の既知の責務逸脱を限定したregression guardも実行する。入力は現行SPEC全体で、(1)責務原則に実装artifact不在を断定しない、(2)標準配置本文に現在の実在化済み状態を置かない、(3)凍結対応表が全詳細節/Phase19 owner/Phase20入口へ参照する、(4)Actionsの形式判断を技術方針へ接続し別本文で再定義しない、の4対象を比較する。負例は各sectionのmemory copyへ旧不在断定/実在化済み/部分表参照/形式正本参照消去/形式再定義を1件ずつ注入し、固定reason `artifact-absence / layout-current-state / freeze-route / format-source / format-restatement` と一致させる。assertion IDは `statefile.spec-governance.positive.accept`、`statefile.spec-governance.<case>.reject`、入力位置欠落は `.fixture`。5 guardの削除を各1source mutationとして隔離copyでコンパイル・実行し、負例assertionによる失敗と復元cmp0を要求する。これは既知の文言/参照境界の回帰検査であり、自然言語一般の意味上の重複・機能完全性を証明しない。同じrootは [test artifact traceability](#test-artifact-traceability-contract) と [assertion id](#test-assertion-id-contract) も照合する。owner表の14件とassertion owner集合を一致させ、12Go ownerのlocal testとroot main/SDK/UIの計15pathをrouting表へ要求し、旧root配置globを拒否する。負例はObsidian owner消去/未知owner追加/専用commitstatus test消去/Obsidian test消去/旧globで、固定reason assertion-owner/test-routing/test-glob、assertion IDはstatefile.spec-routing.positive.acceptとstatefile.spec-routing.<case>.reject、前提不足は.fixtureとする。
 
 現時点の文書checker `TestPhase19SpecificationContracts` はregistry85型のstrict JSON/型式arity/range/参照cycle/環境map/atomic SiteState構造/保持時刻/観測record/通知attempt結合、53操作のSDK/UI/CLI接続、状態表の一致を検査する。negative controlは未知型、arity不足、逆転range、未知関数、duplicate JSON key/enum、型cycle、環境map差替、SiteState counter欠落、SiteOperation保持時刻型差替、Operation対象Digest型/attempt型差替、Audit対象Digest型差替、PlannedJob.selected欠落/PlannedTask差替/PlannedDeployTask参照型差替/TriggerCursor版型差替、Deployment観測数差替、Notification対象attempt上限差替、状態逆戻り、SDK/UI/CLI欠落、route/anchor重複。これらは文書入力の負例であり、製品runtimeのmutation成功件数へ加算しない。checker自体の常時成功化も隔離copyでコンパイル・実行し、負例testが失敗することを確認する。現在のdocument assertionは `runner.phase19-spec.positive.accept` と `runner.phase19-spec.<negative-case>.reject`、fixture前提不足は `runner.phase19-spec.<negative-case>.fixture`。display用subtest名/行番号とは別の安定IDで期待値/実値を診断する。
 
@@ -2593,7 +3013,7 @@ Phase 11 root coverage closure record は次のとおりとする。
 | [`testdata/commitstatus/`](../../testdata/commitstatus/) | `commitstatus` | `実在` | `formal_fixture` | [`success-commitstatus-phase11-root-coverage`](../../testdata/commitstatus/success-commitstatus-phase11-root-coverage/) | `[]` |
 | [`testdata/security/`](../../testdata/security/) | `security` | `実在` | `formal_fixture` | [`success-security-phase11-root-coverage`](../../testdata/security/success-security-phase11-root-coverage/) | `[]` |
 
-Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*_test.go`、`sdk_contract_test.go`、`ui_contract_test.go` を fixture 証跡の補助 source として扱う。これらの test / contract assertion は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry)、owner 詳細本文、fixture catalog、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、または [`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) の対象外理由へ到達できなければならない。test file 自体を仕様正本として扱ってはならず、fixture catalog と owner 詳細本文へ到達しない assertion は Phase 11 の未解消 drift とする。mutation test 証跡は [mutation test 証跡固定契約](#mutation-test-evidence-contract) に従い、Phase 11 では `survived=0` を満たすまで完了扱いにしない。
+Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*/*_test.go`、`sdk_contract_test.go`、`ui_contract_test.go` を fixture 証跡の補助 source として扱う。これらの test / contract assertion は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry)、owner 詳細本文、fixture catalog、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、または [`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) の対象外理由へ到達できなければならない。test file 自体を仕様正本として扱ってはならず、fixture catalog と owner 詳細本文へ到達しない assertion は Phase 11 の未解消 drift とする。mutation test 証跡は [mutation test 証跡固定契約](#mutation-test-evidence-contract) に従い、Phase 11 では `survived=0` を満たすまで完了扱いにしない。
 
 <a id="test-artifact-traceability-contract"></a>
 **test artifact traceability 固定契約：**
@@ -2602,7 +3022,7 @@ Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*
 
 | test artifact | owner / collaborator 接続 | fixture / 証跡接続 | drift 判定 |
 |---------------|---------------------------|---------------------|------------|
-| [`main_test.go`](../../main_test.go) | 起動入口 artifact と `builder`、`runner`、`api`、`admin`、`setup`、`release`、`mcp` の CLI 起動境界。owner 選択は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) の `main dispatch / binary version regression gate` を参照する。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract)、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | 起動名、`--help`、`--version`、未知 basename、binary version、dispatch 副作用なしの assertion が owner 詳細本文または共通固定契約へ到達できない場合は [test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) の孤立 test とする。 |
+| [`main_test.go`](../../main_test.go) | 起動入口 artifact と `builder`、`runner`、`api`、`admin`、`setup`、`release`、`mcp`、`obsidian` の CLI 起動境界。owner 選択は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) の `main dispatch / binary version regression gate` を参照する。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract)、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | 起動名、`--help`、`--version`、未知 basename、binary version、dispatch 副作用なしの assertion が owner 詳細本文または共通固定契約へ到達できない場合は [test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) の孤立 test とする。 |
 | [`components/builder/builder_test.go`](../../components/builder/builder_test.go) | `builder` owner。詳細本文は [`docs/details/builder.md` 詳細本文責務](builder.md) を参照する。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約)、[`§28-F`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)、[`testdata/builder/`](../../testdata/builder/)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | Markdown、HTML / CSS / JavaScript 生成、atomic output、URL safety、runtime fixture、manifest / expected 接続が `builder` 詳細本文または fixture catalog へ到達できない場合は未解消 drift とする。 |
 | [`components/runner/runner_test.go`](../../components/runner/runner_test.go) | `runner` owner、必要に応じて `statefile`、`archive`、`commitstatus`、`security` collaborator。詳細本文は [`docs/details/runner.md` 詳細本文責務](runner.md) を参照する。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約)、[`§27-F`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、`testdata/runner/`、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | GitHub / local target、pipeline、deploy、queue、lock、secret mask、state write、notification、Commit Status の assertion が owner 詳細本文、collaborator 詳細本文、または fixture catalog へ到達できない場合は未解消 drift とする。 |
 | [`components/api/api_test.go`](../../components/api/api_test.go) | `api` owner、必要に応じて `security`、`statefile`、`runner`、`archive` collaborator。詳細本文は [`docs/details/api.md` 詳細本文責務](api.md) を参照する。 | [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-api-fixture-契約)、`testdata/api/`、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | endpoint、HTTP status、response schema、認証・認可、rate limit、状態 read/write、audit / access log、副作用なしの assertion が API 詳細本文または fixture catalog へ到達できない場合は未解消 drift とする。 |
@@ -2612,20 +3032,21 @@ Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*
 | [`components/mcp/mcp_test.go`](../../components/mcp/mcp_test.go) | `mcp` owner、必要に応じて `api`、`security`、`statefile` collaborator。詳細本文は [`docs/details/mcp.md` 詳細本文責務](mcp.md) を参照する。 | [`docs/details/fixture.md` fixture 証跡責務 MCP fixture 固定契約](fixture.md#mcp-fixture-contract)、[`testdata/mcp/`](../../testdata/mcp/)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | CLI、HTTP、JSON-RPC、tools、resources、prompts、sampling、SSE、auth、scope、confirmation、audit、metrics の assertion が `mcp` 詳細本文または MCP fixture catalog へ到達できない場合は未解消 drift とする。 |
 | [`sdk_contract_test.go`](../../sdk_contract_test.go) | `sdk` owner、`api` collaborator。詳細本文は [`docs/details/sdk.md` 詳細本文責務](sdk.md) を参照する。 | [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-api-fixture-契約)、`testdata/sdk/`、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | public method、request shape、query encoding、error class、timeout、stream、binary response、禁止 API の assertion が `sdk` 詳細本文、API 詳細本文、または fixture catalog へ到達できない場合は未解消 drift とする。 |
 | [`ui_contract_test.go`](../../ui_contract_test.go) | `ui` owner、`sdk`、`api`、`security` collaborator。詳細本文は [`docs/details/ui.md` 詳細本文責務](ui.md) を参照する。 | [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-api-fixture-契約)、`testdata/ui/`、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | DOM 固定値、SDK 境界、base URL、one-time secret 消去、stream terminal、主要操作、status 別 error handling の assertion が `ui` 詳細本文、SDK / API 詳細本文、または fixture catalog へ到達できない場合は未解消 drift とする。 |
+| [`components/obsidian/obsidian_test.go`](../../components/obsidian/obsidian_test.go) | `obsidian` owner、`builder` / `statefile` collaborator。[docs/details/obsidian.md 詳細本文責務](obsidian.md)を参照する。 | [docs/details/fixture.md fixture証跡責務 Phase 14証跡](#phase-14-obsidian-vault-integration-evidence)、[Phase 15証跡](#phase-15-obsidian-local-sync-evidence)、`testdata/phase14/obsidian-vault-integration/`、`testdata/phase15/obsidian-local-sync/`。 | vault読取・正規化・plan/apply/rollbackのassertionとowner/fixtureの未接続をdriftとする。 |
 
 <a id="non-dedicated-owner-test-routing-contract"></a>
 **non-dedicated owner test routing 固定契約：**
 
-[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、単独 test artifact を持たない owner component の検証接続だけを固定する。owner component の責務本文、状態、入出力、異常系、完了可否は各 owner 詳細本文を正とし、本項では再定義しない。
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、cross-cutting owner のlocal testと呼出し元integration testの接続だけを固定する。既存anchor名は参照互換のため保持し、専用packageが存在しないという意味には使用しない。owner component の責務本文、状態、入出力、異常系、完了可否は各 owner 詳細本文を正とし、本項では再定義しない。
 
-単独 Go artifact を持たない owner component について、専用 `components/<owner>_test.go` が存在しないことだけを未検証または仕様不足として扱ってはならない。ただし、その owner の runtime assertion は、下表の routing test artifact、owner 詳細本文、fixture root、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、[mutation test 証跡固定契約](#mutation-test-evidence-contract) のすべてへ到達できなければならない。下表の routing test artifact 以外に同 owner の assertion を追加する場合は、本項の routing 表を同時に更新する。routing 表に存在しない assertion は孤立 test として扱う。
+標準Go ownerのlocal testは `components/<owner>/<owner>_test.go` に配置する。実在所在は [docs/DOCUMENT_INDEX.md 索引責務](../DOCUMENT_INDEX.md#実装ファイル一覧)、配置方針は [docs/SPEC.md 方針責務 §4.3](../SPEC.md#sec-4-3) を参照する。cross-owner integration testはlocal testの代替ではなく、下表の呼出し元境界を検証する。その owner の runtime assertion は、下表の routing test artifact、owner 詳細本文、fixture root、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、[mutation test 証跡固定契約](#mutation-test-evidence-contract) のすべてへ到達できなければならない。下表の routing test artifact 以外に同 owner の assertion を追加する場合は、本項の routing 表を同時に更新する。routing 表に存在しない assertion は孤立 test として扱う。
 
 | owner component | 実装包含 artifact | routing test artifact | fixture / 証跡接続 | drift 判定 |
 |-----------------|--------------------|-----------------------|---------------------|------------|
-| `statefile` | [`components/runner/`](../../components/runner/)、[`components/api/`](../../components/api/)。詳細本文は [`docs/details/statefile.md` 詳細本文責務](statefile.md) を参照する。 | [`components/runner/runner_test.go`](../../components/runner/runner_test.go)、[`components/api/api_test.go`](../../components/api/api_test.go)、[`components/mcp/mcp_test.go`](../../components/mcp/mcp_test.go)。 | `testdata/statefile/`、`testdata/runner/`、`testdata/api/`、`testdata/mcp/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | lock、atomic write、JSON object wrapper、direct runtime state write 禁止、state side effect order、read-only no-write、MCP state bridge の assertion が `statefile` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
-| `archive` | [`components/runner/`](../../components/runner/)、[`components/api/`](../../components/api/)。詳細本文は [`docs/details/archive.md` 詳細本文責務](archive.md) を参照する。 | [`components/runner/runner_test.go`](../../components/runner/runner_test.go)、[`components/api/api_test.go`](../../components/api/api_test.go)。 | `testdata/archive/`、`testdata/runner/`、`testdata/api/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | snapshot 作成、保存済み archive 検証、download、delete、rollback / diff 連携、破損 archive、状態不変の assertion が `archive` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
-| `commitstatus` | [`components/runner/`](../../components/runner/)。詳細本文は [`docs/details/commitstatus.md` 詳細本文責務](commitstatus.md) を参照する。 | [`components/runner/runner_test.go`](../../components/runner/runner_test.go)。 | `testdata/commitstatus/`、`testdata/runner/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | GitHub Commit Status request、state mapping、target URL、retry / rate-limit / failure handling、secret mask、副作用順序の assertion が `commitstatus` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
-| `security` | [`components/api/`](../../components/api/)、必要に応じて [`components/runner/`](../../components/runner/)、[`components/admin/`](../../components/admin/)、[`components/setup/`](../../components/setup/)、[`components/release/`](../../components/release/)、[`components/mcp/`](../../components/mcp/)、[`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js)、[`admin/index.html`](../../admin/index.html)。詳細本文は [`docs/details/security.md` 詳細本文責務](security.md) を参照する。 | [`components/api/api_test.go`](../../components/api/api_test.go)、[`components/runner/runner_test.go`](../../components/runner/runner_test.go)、[`components/admin/admin_test.go`](../../components/admin/admin_test.go)、[`components/setup/setup_test.go`](../../components/setup/setup_test.go)、[`components/release/release_test.go`](../../components/release/release_test.go)、[`components/mcp/mcp_test.go`](../../components/mcp/mcp_test.go)、[`sdk_contract_test.go`](../../sdk_contract_test.go)、[`ui_contract_test.go`](../../ui_contract_test.go)。 | `testdata/security/`、`testdata/api/`、`testdata/runner/`、`testdata/admin/cli/`、`testdata/setup/`、`testdata/release/`、`testdata/mcp/`、`testdata/sdk/`、`testdata/ui/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | authentication、authorization、session、TOTP、token、secret redaction、rate limit、audit / access log、credential file、external boundary、one-time secret の assertion が `security` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
+| `statefile` | [`components/statefile/`](../../components/statefile/) がowner実装。呼出し元境界は [`components/runner/`](../../components/runner/)、[`components/api/`](../../components/api/)。詳細本文は [`docs/details/statefile.md` 詳細本文責務](statefile.md) を参照する。 | [`components/statefile/statefile_test.go`](../../components/statefile/statefile_test.go)、[`components/runner/runner_test.go`](../../components/runner/runner_test.go)、[`components/api/api_test.go`](../../components/api/api_test.go)、[`components/mcp/mcp_test.go`](../../components/mcp/mcp_test.go)。 | `testdata/statefile/`、`testdata/runner/`、`testdata/api/`、`testdata/mcp/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | lock、atomic write、JSON object wrapper、direct runtime state write 禁止、state side effect order、read-only no-write、MCP state bridge の assertion が `statefile` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
+| `archive` | [`components/archive/`](../../components/archive/) がowner実装。呼出し元境界は [`components/runner/`](../../components/runner/)、[`components/api/`](../../components/api/)。詳細本文は [`docs/details/archive.md` 詳細本文責務](archive.md) を参照する。 | [`components/archive/archive_test.go`](../../components/archive/archive_test.go)、[`components/runner/runner_test.go`](../../components/runner/runner_test.go)、[`components/api/api_test.go`](../../components/api/api_test.go)。 | `testdata/archive/`、`testdata/runner/`、`testdata/api/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | snapshot 作成、保存済み archive 検証、download、delete、rollback / diff 連携、破損 archive、状態不変の assertion が `archive` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
+| `commitstatus` | [`components/commitstatus/`](../../components/commitstatus/) がowner実装。呼出し元境界は [`components/runner/`](../../components/runner/)。詳細本文は [`docs/details/commitstatus.md` 詳細本文責務](commitstatus.md) を参照する。 | [`components/commitstatus/commitstatus_test.go`](../../components/commitstatus/commitstatus_test.go)、[`components/runner/runner_test.go`](../../components/runner/runner_test.go)。 | `testdata/commitstatus/`、`testdata/runner/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | GitHub Commit Status request、state mapping、target URL、retry / rate-limit / failure handling、secret mask、副作用順序の assertion が `commitstatus` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
+| `security` | [`components/security/`](../../components/security/) がowner実装。呼出し元境界は [`components/api/`](../../components/api/)、必要に応じて [`components/runner/`](../../components/runner/)、[`components/admin/`](../../components/admin/)、[`components/setup/`](../../components/setup/)、[`components/release/`](../../components/release/)、[`components/mcp/`](../../components/mcp/)、[`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js)、[`admin/index.html`](../../admin/index.html)。詳細本文は [`docs/details/security.md` 詳細本文責務](security.md) を参照する。 | [`components/security/security_test.go`](../../components/security/security_test.go)、[`components/api/api_test.go`](../../components/api/api_test.go)、[`components/runner/runner_test.go`](../../components/runner/runner_test.go)、[`components/admin/admin_test.go`](../../components/admin/admin_test.go)、[`components/setup/setup_test.go`](../../components/setup/setup_test.go)、[`components/release/release_test.go`](../../components/release/release_test.go)、[`components/mcp/mcp_test.go`](../../components/mcp/mcp_test.go)、[`sdk_contract_test.go`](../../sdk_contract_test.go)、[`ui_contract_test.go`](../../ui_contract_test.go)。 | `testdata/security/`、`testdata/api/`、`testdata/runner/`、`testdata/admin/cli/`、`testdata/setup/`、`testdata/release/`、`testdata/mcp/`、`testdata/sdk/`、`testdata/ui/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | authentication、authorization、session、TOTP、token、secret redaction、rate limit、audit / access log、credential file、external boundary、one-time secret の assertion が `security` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
 
 以下は実在する実装 artifact と owner component 詳細本文を照合した、現行実装整合の追加検証候補である。Phase 2 runner、Phase 3 api request lifecycle、Phase 4 api operations、Phase 5 sdk、Phase 6 ui、Phase 7 admin CLI、Phase 8 setup、Phase 9 release、および Phase 10 mcp の実装済み状態を取り消す一覧ではない。本表は [Phase 11 完了 closure](#phase-11-quality-gate-closure) の open item ではなく、将来計画または改訂予定へ分類する場合に使う追加検証候補だけを記録する。
 
@@ -2820,7 +3241,7 @@ race trigger matrix は、変更 artifact が並行処理へ影響しない場�
 
 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、test、subtest、contract assertion、fixture assertion、expected 比較、security assertion、state diff assertion を安定識別する assertion id の形式だけを固定する。assertion id がない test の完了禁止は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、failure diagnostics evidence set は [test assertion identity / failure diagnostics evidence set 固定契約](#test-assertion-failure-diagnostics-evidence-set-contract) を参照する。
 
-assertion id は `owner.feature.case.assertion` を最小 4 segment とする lowercase dot notation に固定する。各 segment は `^[a-z][a-z0-9-]*$` とし、owner segment は `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`release`、`security`、`mcp` のいずれかにする。必要な場合だけ 5 segment 目以降に field、boundary、mutation class を追加できる。最大 segment 数は 7 とする。
+assertion id は `owner.feature.case.assertion` を最小 4 segment とする lowercase dot notation に固定する。各 segment は `^[a-z][a-z0-9-]*$` とし、owner segment は `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`release`、`security`、`mcp`、`obsidian` の14件のいずれかにする。必要な場合だけ 5 segment 目以降に field、boundary、mutation class を追加できる。最大 segment 数は 7 とする。
 
 | 対象 | assertion id の条件 | 禁止形式 |
 |------|---------------------|----------|
@@ -3810,7 +4231,7 @@ Fixture A〜V は fixture ごとに `manifest.json`、`expected/stdout.txt`、`e
 
 [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) は、[`docs/details/runner.md` 詳細本文責務 §15a](runner.md#15a-runner-受け入れ検証条件) の runner 初期受け入れ fixture、入力状態、expected、fake GitHub / fake ssh / fake notifier / fake filesystem、実装検証証跡を扱う正本である。[`docs/details/runner.md` 詳細本文責務 §15a](runner.md#15a-runner-受け入れ検証条件) は検証観点だけを持ち、fixture 本文を再定義しない。
 
-runner R3/R4のbuilder fakeは現在のGo test executableを再実行し、テスト専用環境でversion/exit/stdout/stderrを固定する。Bash起動、PATH検索、shell startup fileを正例の成功条件にしない。versionとbuildの実process境界、呼出順、出力assetは維持する。version異常controlも同じnative childを使用し、stderr/空go token/余剰token/期限超過を個別に比較する。期限短縮はtimeout caseだけとし、他caseの期待失敗を偶発timeoutで満たさない。R3/R4失敗時はbuild logのtarget status/failure category/固定precheck errorを診断へ接続する。異常controlは内部precheckを直接呼び出して詳細causeを照合し、別の実行入口では公開logが固定 `precheck failed` のままであることを確認する。
+runner R3/R4とpipeline config引数/環境/maskのbuilder fakeは現在のGo test executableを再実行し、テスト専用環境でversion/exit/stdout/stderrを固定する。Bash起動、PATH検索、shell startup fileを正例の成功条件にしない。versionとbuildの実process境界、呼出順、出力assetは維持する。version異常controlも同じnative childを使用し、stderr/空go token/余剰token/期限超過を個別に比較する。期限短縮はtimeout caseだけとし、他caseの期待失敗を偶発timeoutで満たさない。R3/R4失敗時はbuild logのtarget status/failure category/固定precheck errorを診断へ接続する。異常controlは内部precheckを直接呼び出して詳細causeを照合し、別の実行入口では公開logが固定 `precheck failed` のままであることを確認する。pipeline fakeは受領argvを保存し、PIPELINE_ENV=pipeline/BRANCH_VALUE=pipeline-wins/BRANCH_ONLY=branch-onlyを検査する。実行中にpipeline configをMUTATEDだけのobjectへ置換し、実file変更と実行環境の元key集合の両方を照合して単回読取を証明する。stdoutは実際のPIPELINE_SECRETを出し、logではsecret=***だけとなる。version/buildの順序一致、BASH_ENV起動拒否を注入した正例成功、3環境値を各1件誤らせた子processのexit6/stdout空/固定stderrとargs/output未作成を比較する。assertion IDはrunner.pipeline-env.native.order/result/snapshot/reject/no-write/args/mask/env-keys。shell起動失敗や負荷下の偶発precheck timeoutを正例の合否へ混在させず、製品timeout値は変えない。
 
 **runner fixture 共通 expected：**
 

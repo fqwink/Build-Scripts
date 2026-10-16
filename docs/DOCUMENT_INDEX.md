@@ -134,6 +134,7 @@
 | Phase 19 profile起動interface | [`docs/details/runner.md` 詳細本文責務 runner mode](details/runner.md#phase-19-runner-cli)、[`docs/details/api.md` 詳細本文責務 API mode](details/api.md#phase-19-api-cli)。実装は既存owner package内（未実装）。 |
 | Phase 19 sandbox broker / local状態の将来配置 | 専用追加実装fileは作らず既存runner/setup/statefile package内（未実装）。[setup詳細本文責務 broker](details/setup.md#phase-19-sandbox-broker)、[statefile詳細本文責務 保存path](details/statefile.md#phase-19-state-paths)を参照。 |
 | 全仕様文書の参照checker | [`main_test.go`](../main_test.go) の `TestSpecificationReferenceIntegrity` は参照・Phase登録・既知の責務境界regression guardとして実在。[fixture証跡責務 参照検査](details/fixture.md#specification-reference-checker)を参照。 |
+| Commit Status送信順と中断の文書oracle | [`main_test.go`](../main_test.go) の `TestPhase19StatusSpecificationVectors`。[fixture証跡責務 Status固定入力](details/fixture.md#phase-19-status-vectors)。HTTP/製品runtime checkerの実在を意味しない。 |
 | Phase 19 専用 checker / required workflow / required check | `main_test.go` の文書契約検査は実在。製品checker関数と `.github/workflows/phase19-inhouse-cicd.yml` は未作成。[fixture証跡責務 checker](details/fixture.md#phase-19-checker-entry)を参照。 |
 
 <a id="文書一覧"></a>
