@@ -5260,7 +5260,42 @@ confidential追加caseはprovider.client_secret_ref=.external_auth_secrets/fixtu
 | crash | intent確定前、enable後/start前、start後/観測前、applied保存前でそれぞれ停止→recoverはbefore/after/混在を区別、混在だけrecovery_required、command再発行0。 |
 | unsafe | type=vm、provider=terraform、unit=sshd.service、重複id、symlink、target違い、unknown key→exit2、state write/command0。 |
 
-各caseはresponse/state/effects/security/orderを共通manifestへ接続する。必須mutationはdigest照合skip、expiry<=を<へ変更、再観測skip、intent保存順反転、第三者変更上書き、未知type受理。raceは同じplanを2processでapplyするscheduleで一方だけが変更を開始すること、lock解放・全fake process終了を検証する。config-resource payloadとcrash/fault別expectedは [完全入力と中断oracle](#inhouse-iac-concrete-oracles) を参照し、製品実装の実行証跡が揃うまで完了扱いにしない。
+各caseはresponse/state/effects/security/orderを共通manifestへ接続する。必須mutationはdigest照合skip、expiry<=を<へ変更、再観測skip、intent保存順反転、第三者変更上書き、未知type受理。raceは同じplanを2processでapplyするscheduleで一方だけが変更を開始すること、lock解放・全fake process終了を検証する。config-resource payloadとcrash/fault別expectedは [完全入力と中断oracle](#inhouse-iac-concrete-oracles)、時刻とplan改変は [適用受付境界入力](#inhouse-iac-admission-vectors) を参照し、製品実装の実行証跡が揃うまで完了扱いにしない。
+
+<a id="inhouse-iac-admission-vectors"></a>
+**IaC適用受付境界入力：** 正本は [`docs/details/setup.md` 詳細本文責務 plan整合と適用受付時刻](setup.md#inhouse-iac-admission)。下記は `TestIaCSpecificationAdmissionVectors` の文書入力であり、実clock/lock/systemctl/状態writeを起動しない。全key必須・null/unknown/duplicate拒否、schema_versionは整数1、modeはapply/noop/rollback/recover、残りfieldは正本Time型。4 checkpointはpreflight_at/lock_acquired_at/observations_finished_at/admission_atに対応し、execution_atはprepared開始後の観測用である。
+
+```json
+{
+  "schema_version": 1,
+  "mode": "apply",
+  "created_at": "2026-01-02T00:00:00Z",
+  "expires_at": "2026-01-02T00:05:00Z",
+  "preflight_at": "2026-01-02T00:00:01Z",
+  "lock_acquired_at": "2026-01-02T00:00:02Z",
+  "observations_finished_at": "2026-01-02T00:00:03Z",
+  "admission_at": "2026-01-02T00:00:04Z",
+  "execution_at": "2026-01-02T00:05:01Z"
+}
+```
+
+| case ID / 差分 | 文書oracleの期待結果 / 将来実行fixtureの必須観測 |
+|---|---|
+| apply-baseline / noop-baseline | baselineとmode=noopはok。applyはpreparedを1回開始、noopはjournal/snapshot0。 |
+| lower-inclusive / last-second | 4 checkpointすべてcreated_at、またはadmission_at=00:04:59Zはok。execution_atが期限後でも同一operationを継続し、新id/新apply0。 |
+| rollback-expired / recover-expired | modeを対応値、4 checkpointを00:05:01Zへ変更してok。実行fixtureは元plan期限だけの拒否0。 |
+| checkpoint-before / checkpoint-equal / checkpoint-after | 各checkpointを独立に2026-01-01T23:59:59Z / 2026-01-02T00:05:00Z / 00:05:01Zへ変更した12caseはstale_plan。prepared/resource変更/journal/snapshot0、id=null/status=failed/exit3。 |
+| ttl-short / ttl-long | expires_atを00:04:59Z / 00:05:01Zへ変更してinvalid_input/exit2。 |
+| invalid-time / offset-time / fractional-time / pre-epoch / invalid-mode | created_atをnot-time / 2026-01-02T00:00:00+00:00 / 2026-01-02T00:00:00.1Z / 1969-01-02T00:00:00Z、またはmode=resumeへ変更してinvalid_input/exit2。 |
+| schema-unknown / schema-missing / schema-null / schema-duplicate / schema-utf8 / schema-trailing | x=true追加 / execution_at削除 / mode=null / mode重複 / 末尾不正UTF-8 / 追加JSON値はschema拒否。実行0。 |
+| plan-after / plan-missing / plan-duplicate / plan-order / plan-unknown | [2resource固定plan](#inhouse-iac-concrete-oracles) のchanges先頭after.allow_http=false / 末尾削除 / 先頭複製 / 逆順 / id=otherへ変更。各々自己hashとconfirmationを再計算してもinvalid_input。変更command0。 |
+| plan-observed-missing / plan-observed-order / plan-observed-type / plan-before-key | 同planのobserved末尾削除 / 逆順 / api.type=config / api.before.extra=true。再hash後もinvalid_input。 |
+| plan-noop-extra / plan-noop-valid | api.beforeをtrue/trueへ変更。元api changeが残るとinvalid_input、api changeを除去した再hash planはok。configだけ1変更として扱う。 |
+| plan-self-hash / plan-manifest-hash / plan-target | 自己hashを0×64 / manifest_sha256を0×64 / target_idをotherへ変更して拒否。hash一致を意味整合の代替にしない。 |
+
+文書oracleのokは受付入力の整合だけを表し、実際のapply/rollback/recover成功ではない。plan caseはmanifest/before/desiredの固定ASCII入力だけを独立比較し、全production schemaの検証済み宣言にしない。実行fixtureではlockの取得まで時刻を進める場合、再観測の最終応答で進める場合、prepared直前に進める場合を別fake transcriptとし、clock errorはstate_failed/exit4・副作用0、10秒lock timeoutはbusy/exit3と比較する。時間を固定したpreflight成功だけで後段を代用しない。
+
+assertion idは `setup.iac-admission.<case-id>.result` に固定し、診断に正本anchor/期待code/実code/再現commandを含める。schema caseも固定case名を使う。必須文書oracle mutationはlock/観測完了/最終受付の各時刻判定skip、上限一致受理、changes比較skip、常時ok、常時invalid_input。全変異は隔離copyだけで行い、baselineの正例と負例で検出する。将来製品fixtureは既存のrace/cleanup証跡へ接続し、文書oracleを実OS排他・副作用の証跡へ換算しない。
 
 <a id="inhouse-iac-concrete-oracles"></a>
 **IaC config/service完全入力と中断oracle：** 次のJSONは上のservice単独caseに加える2resourceの固定入力である。各fileはcanonical JSON byte（末尾LFなし）、CLI入力はfake root所有0600、configのowner/group/modeはJSONのmetadata、config親はroot/991/0750。実OS所有権・systemctlは変更しない。toolchains=[]はjobを実行しないcoordinatorの入力として使用し、worker能力のfixtureへ転用しない。command fakeはsetupの固定argvと環境をexact比較し、未登録argvは即失敗する。下表の省略項目はこのJSONの値を保持し、表にないfile write、command、network、sleepは0件とする。
@@ -5437,6 +5472,9 @@ success journalはdirection=applyと上記plan/id/target/created_at=updated_at=n
 | iac-rollback-success | 成功後にrollback_confirmation | direction=rollback/rolling_back sync→api intent→disable→stop→readback→api reverted→main intent→元config復元/readback→main reverted→rolled_back/index0。exit0/ok、snapshot保持。 |
 | iac-rollback-crash | api復元後reverted保存前停止、またはmain復元後保存前停止 | 前者recoverはmain applied/api reverted/failed/index1、後者reverted/reverted/rolled_back/index0。resource変更0、明示rollbackは残appliedだけ処理。 |
 | iac-rollback-foreign | rollback前config.release_id="V.2.0.0" | preflight拒否recovery_required/exit5、serviceも変更0。 |
+| iac-rollback-repeat | rolled_back/reverted/reverted、またはfailed/pending/pendingでbefore全一致 | 同status/id・exit0/noop、journal byte/updated_at/direction不変、変更command0。 |
+| iac-rollback-unresolved | prepared/applying/rolling_back/recovery_required、または未確定intentありを独立入力 | busy/exit3、journal/resource不変。recoverでfailed/succeeded/rolled_backへ確定後にだけ明示再要求する。 |
+| iac-rollback-other-operation | 対象succeededと別idのrecovery_requiredを配置 | busy/exit3、両journal不変、変更command0。対象だけを照合して別operationを無視しない。 |
 | iac-recovery-direction | main applied/api intentのrecovery_requiredへdirection=apply、別caseはmain intent/api revertedへdirection=rollback、観測は全afterまたは全before | applyは対応forward行へ確定、rollbackは対応reverse行へ確定、resource command0。direction欠落/不正status組はschema拒否、実値から方向推測0。 |
 | iac-snapshot-raw | before_configのcanonical byteへ先頭ASCII space2byteと末尾LF1byteを付加してfile化、canonical値は不変 | plan観測hashは同じ、snapshot digestは元raw byteの独立SHA256、rollbackは元raw byteへ一致。canonical digestとraw digestの混同を検出する入力。 |
 | iac-lock-race | 2processともpreflight後、process1だけlock取得 | process2はbusy/exit3/command0/journal0。process1完了後も旧planの再使用はstale_plan。両process終了/lock解放確認。 |

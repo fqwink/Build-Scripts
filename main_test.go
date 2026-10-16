@@ -776,6 +776,316 @@ func TestAdditionalIaCSpecificationVectors(t *testing.T) {
 	}
 }
 
+type iacSpecificationAdmissionVector struct {
+	SchemaVersion          int    `json:"schema_version"`
+	Mode                   string `json:"mode"`
+	CreatedAt              string `json:"created_at"`
+	ExpiresAt              string `json:"expires_at"`
+	PreflightAt            string `json:"preflight_at"`
+	LockAcquiredAt         string `json:"lock_acquired_at"`
+	ObservationsFinishedAt string `json:"observations_finished_at"`
+	AdmissionAt            string `json:"admission_at"`
+	ExecutionAt            string `json:"execution_at"`
+}
+
+func decodeIaCSpecificationAdmission(input []byte) (iacSpecificationAdmissionVector, error) {
+	var v iacSpecificationAdmissionVector
+	object, err := additionalOIDCJSONObject(input)
+	if err != nil || len(object) != 9 {
+		return v, fmt.Errorf("closed object required")
+	}
+	for _, key := range []string{"schema_version", "mode", "created_at", "expires_at", "preflight_at", "lock_acquired_at", "observations_finished_at", "admission_at", "execution_at"} {
+		value, exists := object[key]
+		if !exists || bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+			return v, fmt.Errorf("required field %s", key)
+		}
+	}
+	decoder := json.NewDecoder(bytes.NewReader(input))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&v); err != nil {
+		return v, err
+	}
+	return v, nil
+}
+
+// These oracles evaluate published vectors, not the future privileged IaC implementation.
+func iacSpecificationAdmissionOracle(v iacSpecificationAdmissionVector) string {
+	if v.SchemaVersion != 1 || (v.Mode != "apply" && v.Mode != "noop" && v.Mode != "rollback" && v.Mode != "recover") {
+		return "invalid_input"
+	}
+	texts := []string{v.CreatedAt, v.ExpiresAt, v.PreflightAt, v.LockAcquiredAt, v.ObservationsFinishedAt, v.AdmissionAt, v.ExecutionAt}
+	times := make([]time.Time, len(texts))
+	for index, value := range texts {
+		parsed, err := time.Parse(time.RFC3339, value)
+		if err != nil || !regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$`).MatchString(value) || parsed.Year() < 1970 {
+			return "invalid_input"
+		}
+		times[index] = parsed
+	}
+	if !times[1].Equal(times[0].Add(300 * time.Second)) {
+		return "invalid_input"
+	}
+	if v.Mode == "rollback" || v.Mode == "recover" {
+		return "ok"
+	}
+	for _, now := range times[2:6] {
+		if now.Before(times[0]) || !now.Before(times[1]) {
+			return "stale_plan"
+		}
+	}
+	return "ok"
+}
+
+func iacSpecificationCanonical(value any) []byte {
+	var output bytes.Buffer
+	encoder := json.NewEncoder(&output)
+	encoder.SetEscapeHTML(false)
+	if encoder.Encode(value) != nil {
+		return nil
+	}
+	return bytes.TrimSuffix(output.Bytes(), []byte("\n"))
+}
+
+func iacSpecificationHash(value any) string {
+	digest := sha256.Sum256(iacSpecificationCanonical(value))
+	return hex.EncodeToString(digest[:])
+}
+
+func iacSpecificationPlanOracle(manifest, plan map[string]any) string {
+	if len(plan) != 8 || plan["schema_version"] != json.Number("1") || plan["manifest_sha256"] != iacSpecificationHash(manifest) {
+		return "invalid_input"
+	}
+	if plan["target_id"] != manifest["target_id"] {
+		return "target_mismatch"
+	}
+	unsigned := make(map[string]any, len(plan)-1)
+	for key, value := range plan {
+		if key != "sha256" {
+			unsigned[key] = value
+		}
+	}
+	if plan["sha256"] != iacSpecificationHash(unsigned) {
+		return "invalid_input"
+	}
+	resources, resourcesOK := manifest["resources"].([]any)
+	observed, observedOK := plan["observed"].([]any)
+	changes, changesOK := plan["changes"].([]any)
+	if !resourcesOK || !observedOK || !changesOK || len(resources) == 0 || len(resources) > 64 || len(observed) != len(resources) {
+		return "invalid_input"
+	}
+	byID := map[string]map[string]any{}
+	for _, value := range resources {
+		resource, ok := value.(map[string]any)
+		id, idOK := resource["id"].(string)
+		if !ok || !idOK || !regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`).MatchString(id) || byID[id] != nil {
+			return "invalid_input"
+		}
+		byID[id] = resource
+	}
+	expected := []any{}
+	previousID := ""
+	for _, value := range observed {
+		observation, ok := value.(map[string]any)
+		id, idOK := observation["id"].(string)
+		before, beforeOK := observation["before"].(map[string]any)
+		resource := byID[id]
+		if !ok || !idOK || !beforeOK || len(observation) != 3 || resource == nil || id <= previousID || observation["type"] != resource["type"] {
+			return "invalid_input"
+		}
+		previousID = id
+		var after any
+		action := ""
+		different := false
+		switch resource["type"] {
+		case "config":
+			digest, digestOK := before["sha256"].(string)
+			if len(before) != 4 || !digestOK || !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(digest) || before["uid"] != json.Number("0") || before["mode"] != "0640" {
+				return "invalid_input"
+			}
+			gid, gidOK := before["gid"].(json.Number)
+			if group, err := gid.Int64(); !gidOK || err != nil || group < 0 || group > 4294967295 {
+				return "invalid_input"
+			}
+			after, action = resource["config"], "replace_config"
+			different = digest != iacSpecificationHash(after)
+		case "service":
+			_, activeOK := before["active"].(bool)
+			_, enabledOK := before["enabled"].(bool)
+			if len(before) != 2 || !activeOK || !enabledOK {
+				return "invalid_input"
+			}
+			after, action = map[string]any{"active": resource["active"], "enabled": resource["enabled"]}, "set_service"
+			different = !bytes.Equal(iacSpecificationCanonical(before), iacSpecificationCanonical(after))
+		default:
+			return "invalid_input"
+		}
+		if different {
+			expected = append(expected, map[string]any{"id": id, "action": action, "after": after})
+		}
+	}
+	sort.Slice(expected, func(i, j int) bool {
+		left, right := expected[i].(map[string]any), expected[j].(map[string]any)
+		if left["action"] != right["action"] {
+			return left["action"] == "replace_config"
+		}
+		return left["id"].(string) < right["id"].(string)
+	})
+	if !bytes.Equal(iacSpecificationCanonical(changes), iacSpecificationCanonical(expected)) {
+		return "invalid_input"
+	}
+	return "ok"
+}
+
+func TestIaCSpecificationAdmissionVectors(t *testing.T) {
+	t.Parallel()
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	read := func(anchor string) []byte {
+		pattern := regexp.MustCompile("(?s)<a id=\"" + regexp.QuoteMeta(anchor) + "\"></a>.*?```json\\n(.*?)\\n```")
+		match := pattern.FindStringSubmatch(document)
+		if len(match) != 2 {
+			t.Fatalf("setup.iac-admission.vector.present: anchor=%s missing fixed input", anchor)
+		}
+		return []byte(match[1])
+	}
+	baselineBytes := read("inhouse-iac-admission-vectors")
+	baseline, err := decodeIaCSpecificationAdmission(baselineBytes)
+	if err != nil {
+		t.Fatalf("setup.iac-admission.vector.schema: %v", err)
+	}
+	assert := func(t *testing.T, id, got, want string) {
+		t.Helper()
+		if got != want {
+			t.Fatalf("setup.iac-admission.%s.result: anchor=docs/details/setup.md#inhouse-iac-admission expected=%s actual=%s diff=code reason=admission-contract command=go test . -run '^TestIaCSpecificationAdmissionVectors$' -count=1", id, want, got)
+		}
+	}
+	check := func(id string, mutate func(*iacSpecificationAdmissionVector), want string) {
+		t.Run(id, func(t *testing.T) {
+			v := baseline
+			mutate(&v)
+			assert(t, id, iacSpecificationAdmissionOracle(v), want)
+		})
+	}
+	check("apply-baseline", func(*iacSpecificationAdmissionVector) {}, "ok")
+	check("noop-baseline", func(v *iacSpecificationAdmissionVector) { v.Mode = "noop" }, "ok")
+	check("lower-inclusive", func(v *iacSpecificationAdmissionVector) {
+		v.PreflightAt, v.LockAcquiredAt, v.ObservationsFinishedAt, v.AdmissionAt = v.CreatedAt, v.CreatedAt, v.CreatedAt, v.CreatedAt
+	}, "ok")
+	check("last-second", func(v *iacSpecificationAdmissionVector) { v.AdmissionAt = "2026-01-02T00:04:59Z" }, "ok")
+	for _, mode := range []string{"rollback", "recover"} {
+		mode := mode
+		check(mode+"-expired", func(v *iacSpecificationAdmissionVector) {
+			v.Mode = mode
+			v.PreflightAt, v.LockAcquiredAt, v.ObservationsFinishedAt, v.AdmissionAt = v.ExecutionAt, v.ExecutionAt, v.ExecutionAt, v.ExecutionAt
+		}, "ok")
+	}
+	for _, point := range []string{"preflight", "locked", "observed", "admission"} {
+		for _, edge := range []struct{ name, value string }{{"before", "2026-01-01T23:59:59Z"}, {"equal", "2026-01-02T00:05:00Z"}, {"after", "2026-01-02T00:05:01Z"}} {
+			point, edge := point, edge
+			check(point+"-"+edge.name, func(v *iacSpecificationAdmissionVector) {
+				switch point {
+				case "preflight":
+					v.PreflightAt = edge.value
+				case "locked":
+					v.LockAcquiredAt = edge.value
+				case "observed":
+					v.ObservationsFinishedAt = edge.value
+				case "admission":
+					v.AdmissionAt = edge.value
+				}
+			}, "stale_plan")
+		}
+	}
+	for _, c := range []struct{ id, value string }{{"ttl-short", "2026-01-02T00:04:59Z"}, {"ttl-long", "2026-01-02T00:05:01Z"}} {
+		c := c
+		check(c.id, func(v *iacSpecificationAdmissionVector) { v.ExpiresAt = c.value }, "invalid_input")
+	}
+	for _, c := range []struct{ id, value string }{{"invalid-time", "not-time"}, {"offset-time", "2026-01-02T00:00:00+00:00"}, {"fractional-time", "2026-01-02T00:00:00.1Z"}, {"pre-epoch", "1969-01-02T00:00:00Z"}} {
+		c := c
+		check(c.id, func(v *iacSpecificationAdmissionVector) { v.CreatedAt = c.value }, "invalid_input")
+	}
+	check("invalid-mode", func(v *iacSpecificationAdmissionVector) { v.Mode = "resume" }, "invalid_input")
+	for _, c := range []struct{ id, input string }{
+		{"schema-unknown", strings.Replace(string(baselineBytes), `"schema_version": 1`, `"schema_version": 1, "x": true`, 1)},
+		{"schema-missing", strings.Replace(string(baselineBytes), ",\n  \"execution_at\": \"2026-01-02T00:05:01Z\"", "", 1)},
+		{"schema-null", strings.Replace(string(baselineBytes), `"mode": "apply"`, `"mode": null`, 1)},
+		{"schema-duplicate", strings.Replace(string(baselineBytes), `"mode": "apply"`, `"mode": "apply", "mode": "apply"`, 1)},
+		{"schema-utf8", string(baselineBytes) + string([]byte{255})},
+		{"schema-trailing", string(baselineBytes) + `{}`},
+	} {
+		c := c
+		t.Run(c.id, func(t *testing.T) {
+			_, err := decodeIaCSpecificationAdmission([]byte(c.input))
+			got := "accepted"
+			if err != nil {
+				got = "schema"
+			}
+			assert(t, c.id, got, "schema")
+		})
+	}
+	planBytes := read("inhouse-iac-concrete-oracles")
+	planCheck := func(id string, mutate func(map[string]any), rehash bool, want string) {
+		t.Run(id, func(t *testing.T) {
+			var bundle map[string]any
+			decoder := json.NewDecoder(bytes.NewReader(planBytes))
+			decoder.UseNumber()
+			if err := decoder.Decode(&bundle); err != nil {
+				t.Fatal(err)
+			}
+			plan := bundle["plan"].(map[string]any)
+			mutate(plan)
+			if rehash {
+				delete(plan, "sha256")
+				plan["sha256"] = iacSpecificationHash(plan)
+			}
+			assert(t, id, iacSpecificationPlanOracle(bundle["manifest"].(map[string]any), plan), want)
+		})
+	}
+	planCheck("plan-baseline", func(map[string]any) {}, false, "ok")
+	for _, id := range []string{"plan-after", "plan-missing", "plan-duplicate", "plan-order", "plan-unknown", "plan-observed-missing", "plan-observed-order", "plan-observed-type", "plan-before-key", "plan-noop-extra", "plan-noop-valid", "plan-manifest-hash", "plan-target"} {
+		id := id
+		want := "invalid_input"
+		if id == "plan-noop-valid" {
+			want = "ok"
+		} else if id == "plan-target" {
+			want = "target_mismatch"
+		}
+		planCheck(id, func(plan map[string]any) {
+			changes := plan["changes"].([]any)
+			observed := plan["observed"].([]any)
+			switch id {
+			case "plan-after":
+				changes[0].(map[string]any)["after"].(map[string]any)["allow_http"] = false
+			case "plan-missing":
+				plan["changes"] = changes[:1]
+			case "plan-duplicate":
+				plan["changes"] = append(changes, changes[0])
+			case "plan-order":
+				changes[0], changes[1] = changes[1], changes[0]
+			case "plan-unknown":
+				changes[0].(map[string]any)["id"] = "other"
+			case "plan-observed-missing":
+				plan["observed"] = observed[:1]
+			case "plan-observed-order":
+				observed[0], observed[1] = observed[1], observed[0]
+			case "plan-observed-type":
+				observed[0].(map[string]any)["type"] = "config"
+			case "plan-before-key":
+				observed[0].(map[string]any)["before"].(map[string]any)["extra"] = true
+			case "plan-noop-extra", "plan-noop-valid":
+				observed[0].(map[string]any)["before"] = map[string]any{"active": true, "enabled": true}
+				if id == "plan-noop-valid" {
+					plan["changes"] = changes[:1]
+				}
+			case "plan-manifest-hash":
+				plan["manifest_sha256"] = strings.Repeat("0", 64)
+			case "plan-target":
+				plan["target_id"] = "other"
+			}
+		}, true, want)
+	}
+	planCheck("plan-self-hash", func(plan map[string]any) { plan["sha256"] = strings.Repeat("0", 64) }, false, "invalid_input")
+}
+
 func TestAdditionalManagementInputVectors(t *testing.T) {
 	t.Parallel()
 	document := phase11MustReadText(t, "docs/details/fixture.md")

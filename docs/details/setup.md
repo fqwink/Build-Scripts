@@ -15,17 +15,36 @@ target_idは当該state-dirに導入時create-onlyで記録したhost identity�
 
 planは `{schema_version:1,target_id:Id,manifest_sha256:Digest,created_at:Time,expires_at:Time,observed:Observation[],changes:Change[],sha256:Digest}`。expires_at=created_at+300秒。Observationは `{id:Id,type:"config"|"service",before:object}`、config.before=`{sha256:Digest,uid:integer,gid:integer,mode:"0640"}`、service.before=`{active:bool,enabled:bool}`。Changeは `{id:Id,action:"replace_config"|"set_service",after:object}`、afterはmanifestのconfig objectまたは `{active,enabled}`。全resourceのobservedをid ASCII昇順、changesはconfig id昇順→service id昇順、同値resourceはchangesへ含めない。sha256は自身keyを除くplan canonical JSON、manifest hashも同じcanonical規則。planへ旧file本文・secret・command stdoutを保存しない。
 
+<a id="inhouse-iac-admission"></a>
+**plan整合と適用受付時刻：** `Time` / `Digest` は [`docs/details/statefile.md` 詳細本文責務 型記法](statefile.md#phase-19-schema-registry)、canonical JSON は [状態transaction](statefile.md#phase-19-state-transaction) のcanonical bytesを使用する。plan生成は全resource観測完了後にcreated_atを採取する。plan入力はUTF-8最大4MiB、plan/Observation/Changeの列挙keyすべて必須・各fieldのnull禁止・unknown/duplicate key禁止とし、config内のnullable fieldだけは [docs/details/setup.md 詳細本文責務 cicd入力](#phase-19-setup-input) の同型を維持する。expires_atはcreated_atから正確に300秒後でなければinvalid_input/exit2とする。時刻加算overflowも同じ結果とし、期限を読取時刻から再計算して延長しない。
+
+planの自己hashは破損検出であり、manifestとの意味上の一致を保証しない。applyはmanifest hash、自己hash、confirmationの一致に加え、observedがmanifestの全resourceとid/typeで1対1対応すること、beforeが対応variantの閉じた型であることを検証する。そのbeforeとmanifestのdesired値からchangesを再導出し、id/action/after/件数/配列順をcanonical比較する。configはbefore.sha256とdesired configのcanonical digest、serviceはbeforeとdesiredのactive/enabledを比較する。同値の変更追加、変更欠落、after差替え、順序変更、重複・未知resourceは、攻撃入力側でhash/confirmationを再計算していてもinvalid_input/exit2。manifestからpath/unitを導出し、planから実行対象や任意commandを採用しない。
+
+apply/noopの時刻判定はpreflight、IaC lock取得直後、lock内の全resource再観測完了直後、prepared保存を開始する直前（noopは応答直前）の4点で、それぞれ新しいUTC clock値について `created_at <= now < expires_at` を要求する。下限未満、上限一致/超過はstale_plan/exit3で、prepared前のoperation_id=null/status=failed、resource変更・journal・snapshot作成0。構文不正はinvalid_input/exit2を優先し、その後target/hash/changesを照合してから時刻を判定する。clock取得失敗はstate_failed/exit4、副作用0。lock timeoutはstatefile正本の単調時間で計測し、wall clock後退で待機を延長しない。外側の成功判定をlock内へ流用しない。
+
+最後の時刻判定が成功してprepared保存を開始した同一operationは、その後にplan期限を迎えても期限だけを理由に中断・再受付・新id化せず、既存の適用/補償/不確定復旧契約で終端させる。prepared保存失敗の扱いも既存のdurability判定に従う。rollback/recoverは保存済みoperation・実観測（rollbackではconfirmationも）を検証し、元planの適用期限を復旧権限の期限へ流用しない。期限切れplanを新applyで再利用することは許可しない。
+
 <a id="inhouse-iac-execution"></a>
 **CLI・適用・drift・復旧：** `adlaire-ci-setup iac-plan|iac-drift --manifest ABS --state-dir ABS`、`iac-apply --manifest ABS --plan-file ABS --confirmation-file ABS --state-dir ABS`、`iac-rollback --operation-id ID --confirmation-file ABS --state-dir ABS`、`iac-recover --operation-id ID --state-dir ABS`。optionは重複/未知/短縮/`=`形式を拒否する。rootだけを許可し、絶対path・no-follow・通常file・実行owner・0600の入力を必要とする（既存configのmodeはその正本を使う）。plan/driftは状態を一切writeしない。apply/rollbackのconfirmation fileは `{target_id:Id,plan_sha256:Digest,action:"apply"|"rollback"}` の全key必須で対象一致を要求し、file存在をユーザー作業承認の代用にしない。
 
-applyはmanifest/plan/digest/target/期限→全resource再観測exact一致→state-dir内IaC排他lock→全resource再観測→operation prepared保存→旧config byte snapshot保存・sync→各change intent保存→直前precondition再確認→変更→read-back確認→applied保存の順。plan生成後の差分はstale_planで拒否、部分実行しない。configはsetupのroot管理config用atomic adapterで置換し、元uid/gid・mode0640を保持する。runtime state用0600 adapterを流用してmodeを変えない。serviceはenable/disable→start/stopの固定argvだけを実行する。各command10秒、health確認はsystemctl再観測だけでアプリの健全性を保証しない。変更0件はsuccess/noop、journal/snapshot/logの新規作成も行わない。
+applyは [plan整合と適用受付時刻](#inhouse-iac-admission) の検証→全resource再観測exact一致→state-dir内IaC排他lock→同契約の再検証と全resource再観測→operation prepared保存→旧config byte snapshot保存・sync→各change intent保存→直前precondition再確認→変更→read-back確認→applied保存の順。busy/容量検査も同じlock内のprepared前に完了する。plan生成後の実観測差分はstale_planで拒否、部分実行しない。configはsetupのroot管理config用atomic adapterで置換し、元uid/gid・mode0640を保持する。runtime state用0600 adapterを流用してmodeを変えない。serviceはenable/disable→start/stopの固定argvだけを実行する。各command10秒、health確認はsystemctl再観測だけでアプリの健全性を保証しない。変更0件はsuccess/noop、journal/snapshot/logの新規作成も行わない。
 
 確定した前段までの失敗は旧値を逆順で復元し、各対象が本operationのafterと一致するときだけ復元する。第三者変更は上書きせずrecovery_required。provider全体のatomic適用を保証しない。不確定service commandを無条件再発行しない。復旧不能状態の解除は仕様外の自動修復ではなく運用者による実状態整合と再観測を必要とする。
 
 <a id="inhouse-iac-recovery-transition"></a>
 **operation中断・復旧の閉じた遷移：** applyは新規operationだけを開始し、prepared/applying/rolling_back/recovery_required、またはapplied stepが残るfailedのoperationが1件でもあればbusy/exit3とする。失敗operationを同じapplyで暗黙再開しない。operation idはrandom128bit Crockford26文字でcreate-only、衝突は10回まで再生成、上限でstate_failed/exit4。prepared保存時はdirection=apply/全step pending/step_index=0、config snapshotの予定raw byte digestだけを記録する。この段階でsnapshotが未作成でも成功記録ではなく、最初のintent前に必要snapshot全件の保存・digest照合を完了する。snapshot不在/不一致のままresourceを変更しない。snapshotは直前観測の元file byteそのものを保存し、raw digest=step.snapshot_sha256かつdecode後canonical digest=plan.observed.before.sha256の両方を検証する。非canonicalな元formatもrollback時は元byteへ復元し、canonical JSONで上書き再生成しない。
 
-step_indexはforwardの適用済みprefix長（0..changes.length）。最初のintentと同じjournal更新でstatus=applying、step.state=intentとし、applied確定時にprefix長を1増やす。最終step後だけstatus=succeeded。rollbackはsucceeded、failed、またはrecoverで確定したapplyingから許可し、pending/revertedは変更対象にしない。全applied stepの現在値がafterに一致すること、全pending/revertedがbeforeに一致することを先に確認する。direction=rollback/status=rolling_backを同時sync後、逆順に対象stepをintent保存→変更→before読戻し→reverted保存とし、rollback中のstep_indexはappliedの残数。最後にrolled_back/step_index=0。未確定intentがある時はrollbackせず先にrecoverを必要とする。
+step_indexはforwardの適用済みprefix長（0..changes.length）。最初のintentと同じjournal更新でstatus=applying、step.state=intentとし、applied確定時にprefix長を1増やす。最終step後だけstatus=succeeded。rollbackの受付は [rollback状態別受付](#inhouse-iac-rollback-admission) に従い、pending/revertedは変更対象にしない。全applied stepの現在値がafterに一致すること、全pending/revertedがbeforeに一致することを先に確認する。direction=rollback/status=rolling_backを同時sync後、逆順に対象stepをintent保存→変更→before読戻し→reverted保存とし、rollback中のstep_indexはappliedの残数。最後にrolled_back/step_index=0。未確定intentがある時はrollbackせず先にrecoverを必要とする。
+
+<a id="inhouse-iac-rollback-admission"></a>
+**rollback状態別受付：** confirmationと対象journalの検証後、同じIaC lock下で次表を判定する。別operationにprepared/applying/rolling_back/recovery_required、またはappliedが残るfailedがあれば、対象状態にかかわらずbusy/exit3・journal/resource不変。対象自身の状態は実値から推測せず、recoverが確定した保存値を使う。
+
+| 対象status / step | 受付結果 |
+|---|---|
+| succeeded、またはfailedでintentなし・appliedあり | before/after全件照合後に既存逆順rollbackを開始する。 |
+| rolled_back、またはfailedでintentなし・appliedなし | 全resourceのbefore一致と必要snapshotの整合を確認し、既存status/operation_idを保持してexit0/noop。journal byte・updated_at・direction不変、変更command0。failedを適用成功と呼ばない。 |
+| prepared/applying/rolling_back/recovery_required、またはintentあり | busy/exit3。先にrecoverで確定し、得られたterminal statusに対して新たな明示rollbackを行う。変更command/journal更新0。 |
+| 上2行の実観測が既存記録と異なる | 既存復旧遷移表のrecovery_required/exit5を適用し、第三者値を上書きしない。 |
 
 directionはprepared/applying/succeededではapply、rolling_back/rolled_backではrollbackを必須とし、failed/recovery_requiredでは最後の実行方向を保存する。intentは同時に1step以下、applyはapplied prefix→任意intent1→pending suffix、rollbackはapplied prefix→任意intent1→復元済reverted区間→未開始pending suffixとし、directionを実状態から推測して変更しない。安全な自動補償を始める場合も先にdirection=rollback/status=rolling_backをsyncする。
 

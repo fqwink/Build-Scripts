@@ -12,8 +12,8 @@
 | 認証起動情報/本人情報・UI bootstrap | [API起動情報](details/api.md#auth-options-http-contract)、[API本人情報](details/api.md#auth-self-http-contract)、[UI bootstrap](details/ui.md#ui-auth-bootstrap) | 実在 |
 | 認証profile/失効復旧状態・project対応 | [statefile詳細本文責務](details/statefile.md#multi-user-profile-state)、[project binding](details/statefile.md#additional-project-binding) | 実在 |
 | 再送ledger・consumer・復旧 | [statefile詳細本文責務](details/statefile.md#manual-webhook-resend-state)、[runner詳細本文責務](details/runner.md#manual-webhook-resend-contract) | 実在 |
-| 内製IaC manifest/CLI/復旧・状態 | [setup詳細本文責務](details/setup.md#inhouse-iac-contract)、[statefile詳細本文責務](details/statefile.md#inhouse-iac-state) | 実在 |
-| IaC固定具体入力 / checker | [fixture証跡責務](details/fixture.md#inhouse-iac-concrete-oracles)、[main_test.go](../main_test.go) の `TestAdditionalIaCSpecificationVectors` | 実在 |
+| 内製IaC manifest/CLI/復旧・状態 | [docs/details/setup.md 詳細本文責務](details/setup.md#inhouse-iac-contract)、[plan意味整合・受付時刻](details/setup.md#inhouse-iac-admission)、[rollback状態別受付](details/setup.md#inhouse-iac-rollback-admission)、[docs/details/statefile.md 詳細本文責務](details/statefile.md#inhouse-iac-state) | 実在 |
+| IaC固定具体入力 / checker | [docs/details/fixture.md fixture証跡責務](details/fixture.md#inhouse-iac-concrete-oracles)、[適用受付境界入力](details/fixture.md#inhouse-iac-admission-vectors)、[main_test.go](../main_test.go) の `TestAdditionalIaCSpecificationVectors` / `TestIaCSpecificationAdmissionVectors` | 実在 |
 | IaC検証root | `testdata/setup/inhouse-iac/` | 未作成 |
 | OIDC固定暗号vector / checker | [基準vector](details/fixture.md#oidc-fixed-vector)、[再署名50case](details/fixture.md#oidc-signed-claim-vectors)、[HTTP具体oracle](details/fixture.md#oidc-http-concrete-oracles)、[main_test.go](../main_test.go) の `TestAdditionalSpecificationVectors` / `TestAdditionalOIDCSignedClaimVectors` | 実在 |
 | Xserver受入固定入力・証跡 | [fixture証跡責務](details/fixture.md#xserver-acceptance-evidence-contract)、`testdata/production-validation/xserver-vps/`、`.github/workflows/phase22-xserver-acceptance.yml` | 本文実在/root・workflow未作成 |
