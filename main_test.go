@@ -157,6 +157,200 @@ func TestSpecificationReferenceIntegrity(t *testing.T) {
 	}
 }
 
+func phase19SpecificationCaseGroups() map[string]map[string]string {
+	return map[string]map[string]string{
+		"phase-19-status-vectors": {
+			"cases": "running different-run-attempt new-run new-attempt same-time-id same-time-attempt scope-owner scope-repo scope-sha scope-project-id scope-definition-id queued-only queued-newer cancel-requested succeeded failed cancelled recovery-required delayed-start existing-claim scope-ascii-case",
+		},
+		"phase-19-plan-vectors": {
+			"input_cases":    "default-missing false-present zero-present empty-present optional-absent required-value required-missing required-default explicit-null string-number boolean-number integer-fraction integer-range utf8-equal utf8-over unknown-key duplicate-choice default-not-choice choice-mismatch reversed-range integer-exponent integer-negative-zero",
+			"matrix_cases":   "matrix-none matrix-order matrix-exclude matrix-reinclude matrix-duplicate matrix-type matrix-empty matrix-unknown-axis matrix-long-id matrix-limit matrix-over",
+			"dag_cases":      "dag-origin dag-transitive-skip dag-own-skip dag-unknown dag-cycle dag-duplicate-edge dag-duplicate-id",
+			"selector_cases": "selector-tag-only-branch selector-branch-only-tag selector-both-empty selector-branch-match selector-typed-input selector-deleted-path selector-empty-source",
+			"event_cases":    "event-base event-definition event-revision",
+		},
+		"phase-19-worker-vectors": {
+			"ack_cases":   "ack-normal ack-duplex ack-reverse ack-next-seq ack-pending ack-no-pending ack-mismatch ack-duplicate ack-seq-gap ack-seq-repeat ack-error-stop ack-after-ack",
+			"chunk_cases": "chunk-empty chunk-one chunk-two chunk-max chunk-tail chunk-over chunk-no-final chunk-gap chunk-duplicate-final chunk-early-final chunk-extra-byte chunk-empty-middle chunk-bad-padding chunk-newline chunk-digest chunk-changed-digest",
+			"lease_cases": "lease-before lease-wall-equal lease-mono-equal lease-backward lease-renew lease-old-ack lease-same-ack lease-generation lease-save-failed lease-too-far lease-skew-limit lease-no-query-renew",
+		},
+		"phase-19-content-vectors": {
+			"chunk_cases":    "chunk-one chunk-exact chunk-first chunk-last chunk-unaligned chunk-tail chunk-future chunk-negative chunk-empty-metadata chunk-max chunk-large-metadata",
+			"query_cases":    "query-zero query-max query-large query-leading-zero query-sign query-space query-exponent query-overflow",
+			"wire_cases":     "receive-one receive-tail receive-padding receive-digest receive-offset receive-short receive-final receive-empty receive-gap receive-zero receive-overlong receive-whitespace",
+			"cache_cases":    "cache-hit cache-no-metadata cache-no-payload cache-corrupt cache-other-key cache-deleting cache-disabled-quota cache-at-expiry cache-after-expiry",
+			"key_cases":      "key-alpha key-beta key-env",
+			"envelope_cases": "envelope-empty-file envelope-one envelope-block envelope-split envelope-extra-member envelope-gzip-zero envelope-gzip-byte envelope-crc envelope-truncated envelope-tar-zero envelope-short-end envelope-padding envelope-pax",
+		},
+		"phase-19-operation-vectors": {
+			"admission_cases":  "new-create new-denied replay-denied replay-stale-revision replay-current digest-conflict subject-conflict new-stale",
+			"transition_cases": "accept-success accept-failure accept-uncertain recover-success recover-failure accept-noop recover-noop success-noop failure-noop terminal-reverse terminal-change recover-reaccept",
+			"gc_cases":         "gc-before gc-at gc-after gc-failure gc-accepted gc-recovery gc-protected gc-protected-failure",
+		},
+		"phase-19-log-boundary-vectors": {
+			"mask_cases":   "split-secret longest-overlap single-byte partial-at-eof invalid-tail replacement-not-rescanned unicode-split unicode-secret mask-before-decode short-pattern-at-eof invalid-run empty",
+			"page_cases":   "empty-page ascii-page tail stale future middle-of-scalar too-small unicode-exact unread-terminal emoji corrupt-utf8 limit-zero limit-large",
+			"budget_cases": "below exact combined-over one-stream-over",
+		},
+	}
+}
+
+// Case identities are independent of the document under test.
+func phase19SpecificationCaseCoverage(input []byte, groups map[string]string) error {
+	var document map[string]any
+	decoder := json.NewDecoder(bytes.NewReader(input))
+	decoder.UseNumber()
+	if err := decoder.Decode(&document); err != nil || len(groups) == 0 {
+		return fmt.Errorf("case coverage: invalid registry or input")
+	}
+	keys := make([]string, 0, len(groups))
+	for key := range groups {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		cases, ok := document[key].([]any)
+		expected := strings.Fields(groups[key])
+		if !ok || len(cases) != len(expected) {
+			return fmt.Errorf("case coverage: %s count", key)
+		}
+		seenIDs, seenBodies := map[string]bool{}, map[string]bool{}
+		for _, value := range cases {
+			record, ok := value.(map[string]any)
+			id, idOK := record["id"].(string)
+			if !ok || !idOK || !phase17StringInSlice(id, expected) || seenIDs[id] {
+				return fmt.Errorf("case coverage: %s identity", key)
+			}
+			seenIDs[id] = true
+			delete(record, "id")
+			body := string(iacSpecificationCanonical(record))
+			if seenBodies[body] {
+				return fmt.Errorf("case coverage: %s duplicate body", key)
+			}
+			seenBodies[body] = true
+		}
+	}
+	return nil
+}
+
+func decodePhase19SpecificationVector(anchor string, input []byte) error {
+	switch anchor {
+	case "phase-19-status-vectors":
+		_, err := decodePhase19StatusSpecification(input)
+		return err
+	case "phase-19-plan-vectors":
+		_, err := decodePhase19PlanSpecification(input)
+		return err
+	case "phase-19-worker-vectors":
+		_, err := decodePhase19WorkerSpecification(input)
+		return err
+	case "phase-19-content-vectors":
+		_, err := decodePhase19ContentSpecification(input)
+		return err
+	case "phase-19-operation-vectors":
+		_, err := decodePhase19OperationSpecification(input)
+		return err
+	case "phase-19-log-boundary-vectors":
+		_, err := decodePhase19LogSpecification(input)
+		return err
+	default:
+		return fmt.Errorf("unknown vector anchor")
+	}
+}
+
+func TestSpecificationVectorCaseIntegrity(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		id    string
+		input string
+		valid bool
+	}{
+		{"number-token", `{"cases":[{"id":"one","value":1},{"id":"two","value":1e0}]}`, true},
+		{"array-order", `{"cases":[{"id":"one","value":[1,2]},{"id":"two","value":[2,1]}]}`, true},
+		{"object-order", `{"cases":[{"id":"one","value":{"a":1,"b":2}},{"id":"two","value":{"b":2,"a":1}}]}`, false},
+		{"string-escape", `{"cases":[{"id":"one","value":"a"},{"id":"two","value":"\u0061"}]}`, false},
+	} {
+		t.Run(c.id, func(t *testing.T) {
+			err := phase19SpecificationCaseCoverage([]byte(c.input), map[string]string{"cases": "one two"})
+			if (err == nil) != c.valid {
+				t.Fatalf("statefile.spec-vector.%s.canonical: fixture.md#specification-vector-case-integrity expected valid=%t actual=%v; reproduce go test . -run TestSpecificationVectorCaseIntegrity -count=1", c.id, c.valid, err)
+			}
+		})
+	}
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	registry := phase19SpecificationCaseGroups()
+	anchors := make([]string, 0, len(registry))
+	for anchor := range registry {
+		anchors = append(anchors, anchor)
+	}
+	sort.Strings(anchors)
+	for _, anchor := range anchors {
+		_, block, found := strings.Cut(document, "<a id=\""+anchor+"\"></a>")
+		_, block, jsonFound := strings.Cut(block, "```json\n")
+		block, _, endFound := strings.Cut(block, "\n```")
+		if !found || !jsonFound || !endFound {
+			t.Fatalf("statefile.spec-vector.%s.fixture: fixture.md#%s fixed input missing", anchor, anchor)
+		}
+		input := []byte(block)
+		if err := decodePhase19SpecificationVector(anchor, input); err != nil {
+			t.Fatalf("statefile.spec-vector.%s.accept: fixture.md#%s expected valid input actual=%v", anchor, anchor, err)
+		}
+		keys := make([]string, 0, len(registry[anchor]))
+		for key := range registry[anchor] {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			for _, control := range []string{"unknown-id", "clone-body", "missing-case", "duplicate-id", "reorder"} {
+				name := strings.TrimPrefix(anchor, "phase-19-") + "-" + strings.ReplaceAll(key, "_", "-") + "-" + control
+				t.Run(name, func(t *testing.T) {
+					var raw map[string]any
+					decoder := json.NewDecoder(bytes.NewReader(input))
+					decoder.UseNumber()
+					if err := decoder.Decode(&raw); err != nil {
+						t.Fatalf("statefile.spec-vector.%s.fixture: %v", name, err)
+					}
+					cases := raw[key].([]any)
+					first, second := cases[0].(map[string]any), cases[1].(map[string]any)
+					switch control {
+					case "unknown-id":
+						first["id"] = "replacement-case"
+					case "clone-body":
+						id := first["id"]
+						for k := range first {
+							delete(first, k)
+						}
+						for k, v := range second {
+							first[k] = v
+						}
+						first["id"] = id
+					case "missing-case":
+						raw[key] = cases[1:]
+					case "duplicate-id":
+						first["id"] = second["id"]
+					case "reorder":
+						for i, j := 0, len(cases)-1; i < j; i, j = i+1, j-1 {
+							cases[i], cases[j] = cases[j], cases[i]
+						}
+					}
+					mutated, err := json.Marshal(raw)
+					if err != nil {
+						t.Fatalf("statefile.spec-vector.%s.fixture: %v", name, err)
+					}
+					err = decodePhase19SpecificationVector(anchor, mutated)
+					if control == "reorder" {
+						if err != nil {
+							t.Fatalf("statefile.spec-vector.%s.accept: fixture.md#specification-vector-case-integrity expected valid reordered set actual=%v", name, err)
+						}
+					} else if err == nil || !strings.HasPrefix(err.Error(), "case coverage:") {
+						t.Fatalf("statefile.spec-vector.%s.reject: fixture.md#specification-vector-case-integrity expected case coverage rejection actual=%v; reproduce go test . -run TestSpecificationVectorCaseIntegrity -count=1", name, err)
+					}
+				})
+			}
+		}
+	}
+}
+
 type phase19StatusRun struct {
 	Owner      string `json:"owner"`
 	Repo       string `json:"repo"`
@@ -268,6 +462,9 @@ func phase19StatusExpand(base phase19StatusRun, patch map[string]json.RawMessage
 func decodePhase19StatusSpecification(input []byte) (phase19StatusSpecification, error) {
 	var v phase19StatusSpecification
 	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	if err := phase19SpecificationCaseCoverage(input, phase19SpecificationCaseGroups()["phase-19-status-vectors"]); err != nil {
 		return v, err
 	}
 	encoded, _ := json.Marshal(v)
@@ -809,6 +1006,9 @@ func decodePhase19PlanSpecification(input []byte) (phase19PlanSpecificationVecto
 	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
 		return v, err
 	}
+	if err := phase19SpecificationCaseCoverage(input, phase19SpecificationCaseGroups()["phase-19-plan-vectors"]); err != nil {
+		return v, err
+	}
 	encoded, err := json.Marshal(v)
 	var a, b any
 	if err != nil || json.Unmarshal(input, &a) != nil || json.Unmarshal(encoded, &b) != nil || !bytes.Equal(iacSpecificationCanonical(a), iacSpecificationCanonical(b)) {
@@ -1089,6 +1289,9 @@ func decodePhase19WorkerSpecification(input []byte) (phase19WorkerSpecificationV
 	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
 		return v, err
 	}
+	if err := phase19SpecificationCaseCoverage(input, phase19SpecificationCaseGroups()["phase-19-worker-vectors"]); err != nil {
+		return v, err
+	}
 	encoded, err := json.Marshal(v)
 	var a, b any
 	if err != nil || json.Unmarshal(input, &a) != nil || json.Unmarshal(encoded, &b) != nil || !bytes.Equal(iacSpecificationCanonical(a), iacSpecificationCanonical(b)) {
@@ -1274,6 +1477,9 @@ type phase19ContentSpecificationVector struct {
 func decodePhase19ContentSpecification(input []byte) (phase19ContentSpecificationVector, error) {
 	var v phase19ContentSpecificationVector
 	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	if err := phase19SpecificationCaseCoverage(input, phase19SpecificationCaseGroups()["phase-19-content-vectors"]); err != nil {
 		return v, err
 	}
 	encoded, err := json.Marshal(v)
@@ -1615,6 +1821,9 @@ func decodePhase19OperationSpecification(input []byte) (phase19OperationSpecific
 	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
 		return v, err
 	}
+	if err := phase19SpecificationCaseCoverage(input, phase19SpecificationCaseGroups()["phase-19-operation-vectors"]); err != nil {
+		return v, err
+	}
 	encoded, err := json.Marshal(v)
 	var before, after any
 	if err != nil || json.Unmarshal(input, &before) != nil || json.Unmarshal(encoded, &after) != nil ||
@@ -1835,6 +2044,9 @@ type phase19LogSpecificationVector struct {
 func decodePhase19LogSpecification(input []byte) (phase19LogSpecificationVector, error) {
 	var v phase19LogSpecificationVector
 	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	if err := phase19SpecificationCaseCoverage(input, phase19SpecificationCaseGroups()["phase-19-log-boundary-vectors"]); err != nil {
 		return v, err
 	}
 	encoded, err := json.Marshal(v)
