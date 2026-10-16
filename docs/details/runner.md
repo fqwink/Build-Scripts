@@ -2714,6 +2714,9 @@ runner は `approval_required=true` の target に対して、approval queue 以
 | 失敗境界 | key 不正、value 不正、mask failure では build または保存を成功扱いにせず、失敗地点以降の状態更新を行わない。 |
 | 確認条件 | fixture は env 注入、system env 上書き、secret stdout mask、不正 key、lowercase key 拒否、reserved key、mask failure をすべて固定する。 |
 
+<a id="notify-webhook-wire-signature"></a>
+**Webhook送信署名headerの互換境界：** 通常build lifecycle通知と手動再送はX-Adlaire-Signature-256だけを使用し、値の計算は [security署名計算責務](security.md#notify-hmac-signature-contract) に委譲する。API notify-testのX-Adlaire-Signatureへ置換せず、互換headerを追加併送しない。secretは最新の対象channel.config.secretだけ、送信body確定後の同byteへ署名する。
+
 <a id="manual-webhook-resend-contract"></a>
 **手動Webhook再送の耐久受付・実行：** `STD`、owner=`runner`。payloadの閉じたevent集合は [statefile NotificationPayload表](statefile.md#sec-22-0c) にあるstart/success/failure/deploy_failure/weekly_summary/approval_required/duration_anomaly/config_corruptだけ。notify_test/smtp_test/未知eventは再送不可。新規送信前のpayload保存、受付ledger schemaは [statefile詳細本文責務](statefile.md#manual-webhook-resend-state)。hashだけで再構成可能とみなさない。secretは新しいchannelから再取得し、payloadの保存時markerを平文へ復元しない。
 

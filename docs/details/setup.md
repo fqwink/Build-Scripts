@@ -20,9 +20,33 @@ planは `{schema_version:1,target_id:Id,manifest_sha256:Digest,created_at:Time,e
 
 applyはmanifest/plan/digest/target/期限→全resource再観測exact一致→state-dir内IaC排他lock→全resource再観測→operation prepared保存→旧config byte snapshot保存・sync→各change intent保存→直前precondition再確認→変更→read-back確認→applied保存の順。plan生成後の差分はstale_planで拒否、部分実行しない。configはsetupのroot管理config用atomic adapterで置換し、元uid/gid・mode0640を保持する。runtime state用0600 adapterを流用してmodeを変えない。serviceはenable/disable→start/stopの固定argvだけを実行する。各command10秒、health確認はsystemctl再観測だけでアプリの健全性を保証しない。変更0件はsuccess/noop、journal/snapshot/logの新規作成も行わない。
 
-確定した前段までの失敗は旧値を逆順で復元し、各対象が本operationのafterと一致するときだけ復元する。第三者変更は上書きせずrecovery_required。rollbackも現在値=保存afterを全件確認してから逆順復元する。provider全体のatomic適用を保証しない。crash後recoverはintent対象をbefore/afterと照合し、beforeなら未適用、afterなら適用済みと記録する。どちらでもなければrecovery_required、後続apply/rollbackを止め、実resourceを変更せずjournal照合だけを行うrecoverを許可する。不確定service commandを無条件再発行しない。復旧不能状態の解除は仕様外の自動修復ではなく運用者による実状態整合と再観測を必要とする。
+確定した前段までの失敗は旧値を逆順で復元し、各対象が本operationのafterと一致するときだけ復元する。第三者変更は上書きせずrecovery_required。provider全体のatomic適用を保証しない。不確定service commandを無条件再発行しない。復旧不能状態の解除は仕様外の自動修復ではなく運用者による実状態整合と再観測を必要とする。
 
-stdoutはplanで上記Plan、driftで `{target_id,manifest_sha256,drifted:bool,resource_ids:Id[]}`（差分id昇順）、他は `{operation_id:Id|null,status:"succeeded"|"rolled_back"|"recovery_required"|"failed",code:string}`、JSON1個+LF。exit0成功/2入力・権限/3stale・競合/4変更失敗/5不確定、stderrは同じcode+LFだけ。codeはok/noop/invalid_input/unsafe_input/target_mismatch/stale_plan/busy/command_failed/state_failed/recovery_required。生のOS error/path/config本文を出さない。
+<a id="inhouse-iac-recovery-transition"></a>
+**operation中断・復旧の閉じた遷移：** applyは新規operationだけを開始し、prepared/applying/rolling_back/recovery_required、またはapplied stepが残るfailedのoperationが1件でもあればbusy/exit3とする。失敗operationを同じapplyで暗黙再開しない。operation idはrandom128bit Crockford26文字でcreate-only、衝突は10回まで再生成、上限でstate_failed/exit4。prepared保存時はdirection=apply/全step pending/step_index=0、config snapshotの予定raw byte digestだけを記録する。この段階でsnapshotが未作成でも成功記録ではなく、最初のintent前に必要snapshot全件の保存・digest照合を完了する。snapshot不在/不一致のままresourceを変更しない。snapshotは直前観測の元file byteそのものを保存し、raw digest=step.snapshot_sha256かつdecode後canonical digest=plan.observed.before.sha256の両方を検証する。非canonicalな元formatもrollback時は元byteへ復元し、canonical JSONで上書き再生成しない。
+
+step_indexはforwardの適用済みprefix長（0..changes.length）。最初のintentと同じjournal更新でstatus=applying、step.state=intentとし、applied確定時にprefix長を1増やす。最終step後だけstatus=succeeded。rollbackはsucceeded、failed、またはrecoverで確定したapplyingから許可し、pending/revertedは変更対象にしない。全applied stepの現在値がafterに一致すること、全pending/revertedがbeforeに一致することを先に確認する。direction=rollback/status=rolling_backを同時sync後、逆順に対象stepをintent保存→変更→before読戻し→reverted保存とし、rollback中のstep_indexはappliedの残数。最後にrolled_back/step_index=0。未確定intentがある時はrollbackせず先にrecoverを必要とする。
+
+directionはprepared/applying/succeededではapply、rolling_back/rolled_backではrollbackを必須とし、failed/recovery_requiredでは最後の実行方向を保存する。intentは同時に1step以下、applyはapplied prefix→任意intent1→pending suffix、rollbackはapplied prefix→任意intent1→復元済reverted区間→未開始pending suffixとし、directionを実状態から推測して変更しない。安全な自動補償を始める場合も先にdirection=rollback/status=rolling_backをsyncする。
+
+recoverは同じIaC lock内で全resourceとsnapshotを検証し、resource変更command/renameを発行せず、次表のjournal更新だけを行う。journal書込に失敗すればstate_failed/exit4で確定を報告しない。stdoutは同節の既存result型で、表のjournal statusをそのまま返せるようstatusにprepared/applying/rolling_backを加える。復旧先が既知でも未完了operationを成功済み適用と呼ばない。
+
+| 入力journal / 実観測 | 更新後journal / exit・code |
+|---|---|
+| prepared、全step before、snapshot未作成またはvalidな予定値 | 全step pending/status=failed/step_index=0、exit0/ok。新規applyは新planと新idで開始する。 |
+| applying、intentをbeforeへ一致判定、前段はafter・後段はbefore | intentをpending、前段appliedを保持、status=failed、step_index=前段件数、exit0/ok。後段を実行せずrollbackだけを許可する。 |
+| applying、intentをafterへ一致判定、前段はafter・後段はbefore | intentをapplied、全step appliedならsucceeded、残りpendingならfailed、step_index=applied prefix長、exit0/ok。 |
+| applying、intent保存なしで全stepが既存記録と一致 | all appliedはsucceeded、それ以外はfailed、対応prefix長、exit0/ok。 |
+| rolling_back、intentの現在値=before | intentをreverted。残applied0ならrolled_back、あればfailed、step_index=残applied数、exit0/ok。 |
+| rolling_back、intentの現在値=after | intentをapplied、status=failed、step_index=残applied数、exit0/ok。新しい明示rollbackで続行可能。 |
+| recovery_required、direction=applyで全resourceがbefore/afterへ確定しprefix成立 | applyingの対応行と同じ結果へ確定する。記録済appliedもafter一致を必須とし、未知値のまま自動再発行しない。 |
+| recovery_required、direction=rollbackで全resourceがbefore/afterへ確定しprefix/suffix成立 | rolling_backの対応行と同じ結果へ確定する。未確定intent無しならapplied残数0でrolled_back、残る場合failed。 |
+| terminal succeeded/rolled_back/failedかつ全stepが記録どおり | journal byte不変、exit0/ok、元status。failedのapplied/pending/revertedの組はforward prefix / rollback suffixだけを許可する。 |
+| serviceがactive=true/enabled=false等のbefore/afterどちらでもない値、記録と異なる非intent、digest不一致、prefix/suffix不成立 | recovery_required/exit5/recovery_required。既存step情報を保持し、command0。snapshot不在はprepared/pendingの未作成以外この行。 |
+
+通常のcommand/state失敗後に全変更を安全に逆順復元できた場合はstatus=failed/exit4、code=command_failedまたはstate_failed、復元済step=reverted/step_index=0。実値がbefore/afterのどちらか不明、部分service変更、復元失敗、journal sync後成否不明はrecovery_required/exit5を優先する。結果確定後のstdout/stderr書込失敗を理由に実resourceを再実行しない。
+
+stdoutはplanで上記Plan、driftで `{target_id,manifest_sha256,drifted:bool,resource_ids:Id[]}`（差分id昇順）、他は `{operation_id:string|null,status:"prepared"|"applying"|"rolling_back"|"succeeded"|"rolled_back"|"recovery_required"|"failed",code:string}`、JSON1個+LF。exit0成功/2入力・権限/3stale・競合/4変更失敗/5不確定、stderrは同じcode+LFだけ。codeはok/noop/invalid_input/unsafe_input/target_mismatch/stale_plan/busy/command_failed/state_failed/recovery_required。生のOS error/path/config本文を出さない。
 
 状態schemaは [statefile詳細本文責務](statefile.md#inhouse-iac-state)、具体vector/fixture/mutationは [fixture証跡責務](fixture.md#inhouse-iac-fixture-contract)。保守ownerはsetup、provider廃止は未完了operation=0と検証済みexport後だけ。resource variant追加はこのmanifest/復旧/fixtureを先に改訂し、未知variantを既存config操作へfallbackしない。
 

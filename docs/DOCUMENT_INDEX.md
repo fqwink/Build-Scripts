@@ -9,11 +9,14 @@
 | artifact / 判断対象 | 所在 | 実在区分 |
 |---|---|---|
 | 明示認証移行・user token/TOTP・OIDC | [security詳細本文責務](details/security.md#multi-user-migration-contract)、[API HTTP境界](details/api.md#oidc-http-contract)、[SDK transport](details/sdk.md#oidc-sdk-transport)、[UI操作](details/ui.md#oidc-ui-flow) | 実在 |
+| 認証起動情報/本人情報・UI bootstrap | [API起動情報](details/api.md#auth-options-http-contract)、[API本人情報](details/api.md#auth-self-http-contract)、[UI bootstrap](details/ui.md#ui-auth-bootstrap) | 実在 |
 | 認証profile/失効復旧状態・project対応 | [statefile詳細本文責務](details/statefile.md#multi-user-profile-state)、[project binding](details/statefile.md#additional-project-binding) | 実在 |
 | 再送ledger・consumer・復旧 | [statefile詳細本文責務](details/statefile.md#manual-webhook-resend-state)、[runner詳細本文責務](details/runner.md#manual-webhook-resend-contract) | 実在 |
 | 内製IaC manifest/CLI/復旧・状態 | [setup詳細本文責務](details/setup.md#inhouse-iac-contract)、[statefile詳細本文責務](details/statefile.md#inhouse-iac-state) | 実在 |
+| IaC固定具体入力 / checker | [fixture証跡責務](details/fixture.md#inhouse-iac-concrete-oracles)、[main_test.go](../main_test.go) の `TestAdditionalIaCSpecificationVectors` | 実在 |
 | IaC検証root | `testdata/setup/inhouse-iac/` | 未作成 |
-| OIDC固定暗号vector / checker | [fixture証跡責務](details/fixture.md#oidc-fixed-vector)、[main_test.go](../main_test.go) の `TestAdditionalSpecificationVectors` | 実在 |
+| OIDC固定暗号vector / checker | [基準vector](details/fixture.md#oidc-fixed-vector)、[再署名50case](details/fixture.md#oidc-signed-claim-vectors)、[HTTP具体oracle](details/fixture.md#oidc-http-concrete-oracles)、[main_test.go](../main_test.go) の `TestAdditionalSpecificationVectors` / `TestAdditionalOIDCSignedClaimVectors` | 実在 |
+| Xserver受入固定入力・証跡 | [fixture証跡責務](details/fixture.md#xserver-acceptance-evidence-contract)、`testdata/production-validation/xserver-vps/`、`.github/workflows/phase22-xserver-acceptance.yml` | 本文実在/root・workflow未作成 |
 | badge視覚・Xserver限定受入 | [DESIGNデザイン責務](DESIGN.md#status-badge-visual-contract)、[本番検証詳細本文責務](details/production-validation.md#xserver-vps-adoption-contract) | 実在 |
 
 <a id="document-index-common-reference"></a>
@@ -31,7 +34,7 @@
 | 実装 artifact と各機能の現在状態、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
 | 詳細仕様入口、共通固定値、owner 対応表、collaborator 境界参照入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) |
 | 詳細仕様本文・証跡ディレクトリ | [`docs/details/`](details/) |
-| 追加管理APIの具体oracle所在 | [`docs/details/fixture.md` fixture証跡責務](details/fixture.md#additional-management-concrete-oracles)。fixture群の実在/未作成は本索引のfixture所在表を参照する。 |
+| 追加管理APIの具体oracle所在 | [`docs/details/fixture.md` fixture証跡責務](details/fixture.md#additional-management-concrete-oracles)。[queue/集計/差分](details/fixture.md#additional-management-fixed-inputs)、[設定/再送](details/fixture.md#additional-management-state-inputs)、[公開read](details/fixture.md#additional-management-public-inputs)、[archive差分](details/fixture.md#additional-management-site-diff-inputs)、[認可](details/fixture.md#additional-management-authorization-inputs)、[SDK](details/fixture.md#additional-management-sdk-inputs)、[移行](details/fixture.md#additional-management-migration-inputs)、[起動/本人情報](details/fixture.md#additional-management-bootstrap-inputs)、[外部設定/token/TOTP](details/fixture.md#additional-management-identity-inputs)、[UI](details/fixture.md#additional-management-ui-inputs) の固定入力と [main_test.go](../main_test.go) の `TestAdditionalManagementInputVectors` も同じ正本に所在する。fixture群の実在/未作成は本索引のfixture所在表を参照する。 |
 | 追加queue制御 / builder cache詳細所在 | [`docs/details/runner.md` 詳細本文責務](details/runner.md#additional-queue-control)、[`docs/details/builder.md` 詳細本文責務](details/builder.md#builder-cache-determinism-contract) |
 | Phase 11 バグ修正ゼロ化の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
 | Phase 12 実装品質ゲート再構築の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](DETAIL_INDEX.md#phase-12-quality-gate-entry) |

@@ -1385,7 +1385,7 @@ repo config write caller は request の `owner` または `repo` のうち指�
 | `timestamp` | string | 必須 | ISO 8601 | 発生日時。 |
 | `request_id` | string/null | 必須 | [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) の生成値、または `null` | API request は生成済み request ID、API request に紐づかない `runner` 内部 event は `null`。 |
 | `actor_type` | string | 必須 | `"admin"` / `"api_token"` / `"webhook"` / `"system"` / `"anonymous"` | 操作者種別。 |
-| `actor_id` | string/null | 必須 | `"admin"`、token id、`"webhook"`、`"system"`、または `null` | 操作者。secret 本体は保存しない。 |
+| `actor_id` | string/null | 必須 | `admin`、UserRecord.id、token id、`webhook`、`system`、またはnull | 操作者。secret 本体は保存しない。 |
 | `action` | string | 必須 | [`docs/details/security.md` 詳細本文責務 §27.44](security.md#sec-27-44) | 操作種別。 |
 | `target_type` | string | 必須 | [`docs/details/security.md` 詳細本文責務 §27.44](security.md#sec-27-44) | 対象種別。 |
 | `target_id` | string/null | 必須 | 対象 id または `null` | 対象識別子。 |
@@ -1617,7 +1617,7 @@ queue 保存上限は、valid running `.build_lock`、`.build_state.running=true
 | `at` | string | 必須 | ISO 8601 | 変更日時。 |
 | `type` | string | 必須 | `^[a-z][a-z0-9_]{0,63}$` | [`docs/details/api.md` 詳細本文責務 §27.20](api.md#sec-27-20) の endpoint 固定名。 |
 | `action` | string | 必須 | `"create"`, `"update"`, `"delete"` | 変更種別。 |
-| `actor` | string | 必須 | `"admin"` または API token id | 操作者。token 本体は保存しない。 |
+| `actor` | string | 必須 | `admin`、UserRecord.id、またはAPI token id | 操作者。token 本体は保存しない。 |
 | `request_id` | string | 必須 | [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) の生成値 | 同一 request の識別子。 |
 | `endpoint` | string | 必須 | `{METHOD} {path_template}` | path parameter の実値と query を含めない。 |
 | `result` | string | 必須 | `"success"`, `"partial_failure"` | 主状態変更と必須後続処理の結果。主状態変更後の後続処理失敗だけ `"partial_failure"` とする。 |
@@ -1655,7 +1655,7 @@ queue 保存上限は、valid running `.build_lock`、`.build_state.running=true
 | `status` | integer | 必須 | HTTP status code | response status。 |
 | `duration_ms` | integer | 必須 | 0 以上 | handler 開始から response 確定までのミリ秒。 |
 | `auth_type` | string | 必須 | `"session"`, `"api_token"`, `"webhook"`, `"none"` | 認証種別。 |
-| `actor` | string/null | 必須 | `"admin"`、token id、`"webhook"`、または `null` | 操作者。token 本体は保存しない。 |
+| `actor` | string/null | 必須 | `admin`、UserRecord.id、token id、`webhook`、またはnull | 操作者。token 本体は保存しない。 |
 | `remote_addr` | string/null | 必須 | access log は共通 field `request remote_addr` | 接続元。取得不能時は `null`。 |
 | `user_agent` | string/null | 必須 | 文字列または `null` | 取得不能時は `null`。 |
 | `error` | string/null | 必須 | エラーコードまたは `null` | 成功時は `null`。 |
@@ -2197,7 +2197,7 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | caller 境界 | statefile owner は path、schema、lock、atomic write、JSON Lines、破損時処理だけを担当し、API / runner / security / archive の業務判断を代行しない。複数 file 更新では caller が定義した Write 列順を 1 file ずつ実行し、成功済み file の自動 rollback をしない。 | statefile adapter が endpoint、UI、SDK、build 成否、auth 成否、通知成否、archive 可否を判断する処理、または caller 固有 log を statefile owner が代行追記する処理が残る。 |
 
 <a id="inhouse-iac-state"></a>
-**内製IaC状態：** `.iac/identity.json` は `{schema_version:1,target_id:string}`、setup導入時の明示入力でcreate-only。`.iac/operations/{id}.json` は `{schema_version:1,id:string,target_id:string,plan:object,status:string,step_index:integer,steps:object[],created_at:Time,updated_at:Time}`、idは `iac_` + Crockford26文字。planは [setup詳細本文責務](setup.md#inhouse-iac-manifest) の同型、statusはprepared/applying/succeeded/rolling_back/rolled_back/failed/recovery_required、step_indexは0..changes.length。stepsはchange順に `{resource_id:string,state:"pending"|"intent"|"applied"|"reverted",before:object,after:object,snapshot_sha256:Digest|null}`。before/afterはplanの同型、configだけsnapshot_sha256非null。config snapshotは `.iac/snapshots/{operation_id}/{resource_id}.json` に元configのJSON byteを0600保存し、digest不一致は復旧停止。未作成のsnapshotを成功済みに記録しない。
+**内製IaC状態：** `.iac/identity.json` は `{schema_version:1,target_id:string}`、setup導入時の明示入力でcreate-only。`.iac/operations/{id}.json` は `{schema_version:1,id:string,target_id:string,plan:object,status:string,direction:"apply"|"rollback",step_index:integer,steps:object[],created_at:Time,updated_at:Time}`、idは `iac_` + Crockford26文字。planは [setup詳細本文責務](setup.md#inhouse-iac-manifest) の同型、statusはprepared/applying/succeeded/rolling_back/rolled_back/failed/recovery_required、step_indexとstatus/step状態の組合せは [setup詳細本文責務の復旧遷移](setup.md#inhouse-iac-recovery-transition) と照合する。stepsはchange順に `{resource_id:string,state:"pending"|"intent"|"applied"|"reverted",before:object,after:object,snapshot_sha256:Digest|null}`。before/afterはplanの同型、configだけsnapshot_sha256非null（元fileのraw byte digestでありplan.before.sha256のcanonical digestとは別）。config snapshotは `.iac/snapshots/{operation_id}/{resource_id}.json` に元configのJSON byteを0600保存し、digest不一致は復旧停止。snapshotの存在を必要とする遷移は [setup詳細本文責務](setup.md#inhouse-iac-recovery-transition) で判定し、未作成snapshotを成功済みに記録しない。
 
 全directory0700/file0600、既存adapterのatomic/fsync/no-follow適用。lockは `.iac/lock` のOS flock、process間排他、10秒超busy、lock fileをunlinkしない。journal最大4MiB、operation最大1000件/全snapshot64MiB。満杯は新apply前にbusy、既存復旧は容量予約分を使う（1operationにつき4MiB journal+64MiB snapshotを事前確保確認）。失敗/破損/不明operationは自動削除しない。stateは稼働・復旧の正本であり変更履歴fileとして生成・配布しない。runtime保持/明示export以外にrepoへcommitしない。
 
@@ -2253,10 +2253,10 @@ multi-user-v1では `.users`、`.roles` は必須で不在fallback禁止。`.api
 APIは起動からshutdownまで `.management_api.lock` のnonblocking OS flockを保持し、同state-dirの2つ目のAPI/移行CLIを拒否する。fileは0600、inodeをunlinkしない。認証更新はprocess内の単一authorization mutexでread/validate/一つの主file commitを直列化する。通常のuser更新はusersだけ、role更新はrolesだけ、token更新はapi_tokensだけを変更し、跨fileの同時変更APIを作らない。statefile個別adapterのlockとは別のlifecycle排他であり、callback内から別adapterを呼ぶ許可ではない。readも同mutexでusers/roles/tokenの世代混在を防ぐ。
 
 <a id="multi-user-revocation-state"></a>
-**user token失効の復旧状態：** `.user_revocations` は `{users:[{user_id:string,requested_at:string}]}` の閉じたJSON、最大1000件、user_id一意、ASCII昇順、UTC秒精度。不在は空集合。破損はAPI起動停止・認証拒否であり空集合再生成禁止。失効対象userを記録してsync→users主state変更→tokensの対象user全件revoked_atを設定→marker除去の順。失敗時はmarkerを維持し、そのuserの全認証を拒否する。再起動はlisten前に同じ失効を完了してmarkerを除去する。users変更前に中断した場合も失効は取消さない。tokensが既に失効済みなら元時刻を維持する。通常file0600、statefile adapterだけで更新する。
+**user token失効の復旧状態：** `.user_revocations` は `{users:[{user_id:string,requested_at:string}]}` の閉じたJSON、最大1000件、user_id一意、ASCII昇順、UTC秒精度。不在は空集合。破損はAPI起動停止・認証拒否であり空集合再生成禁止。失効対象userを記録してsync→users主state変更→tokensの対象user全件revoked_atを設定→marker entry除去の順（fileはunlinkせずusers=[]もatomic保存）。失敗時はmarkerを維持し、そのuserの全認証を拒否する。再起動はlisten前に同じ失効を完了してmarkerを除去する。users変更前に中断した場合も失効は取消さない。tokensが既に失効済みなら元時刻を維持する。通常file0600、statefile adapterだけで更新する。
 
 <a id="additional-management-initial-state"></a>
-**追加管理初期状態：** 追加管理機能の明示初期化時に、callerは検証済み `repository_root`（絶対path）、`branch`（ProjectRecordの制約）、`initialized_at`（UTC秒精度）を渡す。`.roles` は [security詳細本文責務のsystem role表](security.md#sec-27-58) を全件、表の順に生成し、各recordのcreated_at/updated_atをinitialized_atとする。`.projects` はdefault recordを1件だけ生成し、root/branchを上記入力、created_at/updated_atをinitialized_atとする。既存fileの欠損key補完や上書きには使わない。不在fileのread-only応答では同じ構築関数をmemory上だけで使用し、時刻は `1970-01-01T00:00:00Z` 固定とする。repository_root/branchを取得できない場合はread failureであり、不完全recordを返さない。
+**追加管理初期状態：** 追加管理機能の明示初期化時に、callerは検証済み `repository_root`（絶対path）、`branch`（ProjectRecordの制約）、`initialized_at`（UTC秒精度）を渡す。`.roles` は [security詳細本文責務のsystem role表](security.md#sec-27-58) を全件、表の順に生成し、各recordのcreated_at/updated_atをinitialized_atとする。`.projects` は `{projects:[{id:"default",name:"Default",status:"active",root:repository_root,branch:branch,default:true,created_at:initialized_at,updated_at:initialized_at}]}` を生成する。既存fileの欠損key補完や上書きには使わない。不在fileのread-only応答では同じ構築関数をmemory上だけで使用し、時刻は `1970-01-01T00:00:00Z` 固定とする。repository_root/branchを取得できない場合はread failureであり、不完全recordを返さない。
 
 <a id="manual-webhook-resend-state"></a>
 **手動再送状態：** owner=`statefile`、`STD`。payload objectは `{delivery_id:string,channel_id:string,event:string,payload:NotificationPayload,payload_sha256:Digest,created_at:Time}` の全key必須、65536byte以下。delivery id/event/channelはnotify_logとexact一致、hashは既存canonical JSONを使用する。再送対応の通常Webhookは初回送信前にcreate-only保存し、同id内容違いは送信拒否。旧logだけからpayloadを推測復元しない。保存fileは0600、directory0700、symlink/hardlink禁止、破損は送信拒否。最大1000fileまたは64MiB、超過時は新しいpayload保存と対応送信を拒否し自動削除しない。手動再送有効化前の既存通知経路は変更しない。有効化はmulti-user-v1導入時に行う。
@@ -2409,7 +2409,7 @@ ConfigTemplateRecord の `name` は `.config_templates.templates` 内で完全�
 |-----|----|------|------|
 | `key` | string | yes | method、path、query、vary を canonical JSON 化した SHA-256 lowercase hex。 |
 | `endpoint` | string | yes | cache 対象 endpoint path。 |
-| `vary` | object | yes | cache key 算出に使った query object、target id、branch name、method、path の値。secret 禁止。 |
+| `vary` | object | yes | [API cache key契約](api.md#sec-27-68) のhash入力object全体を保存する。閉じた型はmethod="GET"/path:string/query:map(string)/vary:map(string)の4key。内側varyの許可keyは同正本。secret禁止。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `expires_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `status` | integer | yes | HTTP status。`200` だけを保存する。 |
@@ -2419,7 +2419,7 @@ ConfigTemplateRecord の `name` は `.config_templates.templates` 内で完全�
 | `instance_id` | string | yes | 起動instanceの16byte乱数を表す32文字lowercase hex。secret/認証IDではない。 |
 | `generation` | integer | yes | 0..9007199254740991。保存元API processのcache世代。 |
 
-既存のinstance_id/generation欠落entryはmissとして扱い、read時に補完保存しない。世代と保存上限は [API詳細本文責務](api.md#additional-response-cache-concurrency) を参照する。
+entriesのdictionary keyはentry.keyと一致、endpointはentry.vary.pathと一致、entry.keyはentry.varyのcanonical JSON digestと一致を必要とする。headersはstring値だけ、CR/LF禁止、bodyはobjectだけ。違反entryを正規化保存しない。既存のinstance_id/generation欠落entryはmissとして扱い、read時に補完保存しない。世代と保存上限は [API詳細本文責務](api.md#additional-response-cache-concurrency) を参照する。
 
 **McpConfig：**
 

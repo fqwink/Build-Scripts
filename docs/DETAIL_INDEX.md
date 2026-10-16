@@ -631,10 +631,13 @@ Phase 20の主ownerはsetup、collaboratorはstatefile/security/fixture。採用
 | アップデート rollback | `setup` | [`docs/details/setup.md` 詳細本文責務 アップデート rollback 固定契約](details/setup.md#setup-update-rollback-contract)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
 | GitHub Release 成果物生成・公開前検証・公開 | `release` | [`docs/details/release.md` 詳細本文責務 §R1](details/release.md#release-cli-contract)〜[§R7](details/release.md#release-acceptance-contract)。成果物の受け入れ側契約は[`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a)と[§26.8](details/setup.md#sec-26-8)を参照する。 |
 
+<a id="phase-22-xserver-acceptance-entry"></a>
+**Phase22 Xserver限定受入入口：** 採用範囲・実機前提・停止判断は [本番検証詳細本文責務](details/production-validation.md#xserver-vps-adoption-contract)、固定input/独立record/fixture/正式run接続は [fixture証跡責務](details/fixture.md#xserver-acceptance-evidence-contract)、実在/未作成は [DOCUMENT_INDEX](DOCUMENT_INDEX.md#future-management-artifact-location)、現在状態/Phase境界は [ROADMAP](ROADMAP.md#roadmap-phase-plan) を参照する。Phase17/18のfuture_plan分類と完了証跡を上書きしない。
+
 <a id="0i6-追加管理api機能"></a>
 **0i.6 追加管理 API 機能：**
 
-下表の横断fixture入口は [fixture証跡責務の追加管理API契約](details/fixture.md#additional-management-api-fixture-contract)、具体case oracleは [fixture証跡責務](details/fixture.md#additional-management-concrete-oracles) を参照する。各入口の存在は機能の成熟度または実行済み検証を意味せず、現在状態は [ROADMAP状態・計画責務](ROADMAP.md#specification-completeness-status) を参照する。
+下表の横断fixture入口は [fixture証跡責務の追加管理API契約](details/fixture.md#additional-management-api-fixture-contract)、具体case oracleは [fixture証跡責務](details/fixture.md#additional-management-concrete-oracles) を参照する。認証bootstrap/本人情報は [API起動情報](details/api.md#auth-options-http-contract) / [API本人情報](details/api.md#auth-self-http-contract) → [SDK transport](details/sdk.md#oidc-sdk-transport) → [UI bootstrap](details/ui.md#ui-auth-bootstrap)、固定入力は [認可](details/fixture.md#additional-management-authorization-inputs) / [SDK](details/fixture.md#additional-management-sdk-inputs) / [移行](details/fixture.md#additional-management-migration-inputs) / [起動・本人](details/fixture.md#additional-management-bootstrap-inputs) / [UI](details/fixture.md#additional-management-ui-inputs) へ接続する。各入口の存在は機能の成熟度または実行済み検証を意味せず、現在状態は [ROADMAP状態・計画責務](ROADMAP.md#specification-completeness-status) を参照する。
 
 | 機能 | owner | 詳細本文 |
 |------|-------|----------|

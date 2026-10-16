@@ -106,6 +106,19 @@ auditはOperation受付/拒否/終端、user/grant/secret/worker変更、approve
 
 [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) 認証・監査・制限機能実装確認固定表の順序を変更してはならない。対象の [§27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) の機能契約はこの順序を上書きできず、異なる順序の記載がある場合は仕様不整合として実装しない。例外が必要な場合は、先に横断順序固定表と対象の [§27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) の機能契約を同一仕様変更で改訂し、例外の endpoint、挿入位置、前後の副作用、失敗時の応答を固定表に明記する。その改訂が完了するまで例外は存在しない。
 
+
+<a id="additional-management-security-order"></a>
+**追加管理profileの横断順序適用：** 上表のstep1（route/method）とstep2（IP access control）を実行した後、次表に明示したrouteだけはstep3〜8の代わりに各責務正本を使用する。request ID生成とendpoint実行後の共通ログはAPI正本を維持する。IP拒否は認証/body parse/rate/業務stateへ進まず既存403/503、Origin/schema/認証拒否とその前段副作用は参照先に固定する。この例外をlegacy既存routeやcicd-v1へ拡張しない。
+
+| 対象 | step2後の唯一の順序正本 / 後続境界 |
+|---|---|
+| multi-user-v1のPOST /api/auth/oidc/start・finish | [OIDC認証確定](#oidc-authentication-commit)。rate後body、flow消費/外部callの失敗境界を同正本で判定する。 |
+| multi-user-v1のGET /api/auth/me | [本人HTTP責務](api.md#auth-self-http-contract)。本人sessionとread rateだけ、API tokenは拒否する。 |
+| §27.48〜§27.70の追加管理route（OIDC以外、profileに登録済みだけ） | [API追加管理validation順](api.md#additional-management-validation-order)。そのstep6認証・認可は [RBAC](#sec-27-58) / [user token結合](#multi-user-token-totp-contract)、認証後rateはstep6成功直後/step7前でpermission対応scopeと同名groupへ接続する。 |
+| version / openapi / auth options / share statusの認証不要route | 上記API validationの例外なし。認証・rate・業務write免除は各HTTP正本だけを適用し、IP access control免除を推測しない。 |
+
+追加管理の認証後scope/rate groupは必要permissionから一意に決定し、user:admin/system:admin→admin、config:write→config、build:write→operate、status:read/config:read→readとする。HTTP GETだからreadへ降格する等の推測は禁止。streamは接続受付1回だけrate countを増やし、keepaliveの再認証でcountを増やさない。forced password sessionのgateは参照先の認証判定内で従来どおり適用する。
+
 ---
 
 <a id="認証共通詳細"></a>
@@ -298,6 +311,8 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 | `config` | `POST /api/schedule/interval`, `POST /api/schedule/pause`, `POST /api/schedule/resume`, `POST /api/schedule/allowed-hours`, `POST /api/schedule/force-interval`, `POST /api/schedule/cooldown`, `POST /api/notify-config`, `POST /api/config/validate`, `POST /api/config`, `POST /api/log-level`, `POST /api/pat-update`, `POST /api/repo-config`, `POST /api/branch-config`, `POST /api/restore`, `POST /api/webhook-config`, `DELETE /api/snapshots/{id}`, `POST /api/maintenance/enable`, `POST /api/maintenance/disable`, `POST /api/access-control`, `POST /api/hooks`, `DELETE /api/hooks/{id}`, `POST /api/alert-rules`, `DELETE /api/alert-rules/{id}`, `POST /api/tag-rules`, `DELETE /api/tag-rules/{id}`, `POST /api/pipeline-config`, `POST /api/build-chain-config`, `POST /api/notes`, `POST /api/smtp-config`, `POST /api/dashboard-layout`, `POST /api/history/{id}/comment`, `POST /api/history/{id}/flag`, `POST /api/history/{id}/tags`, `POST /api/logs/cleanup`, `POST /api/logs/archive` |
 | `admin` | `GET /api/access-log`, `GET /api/api-access-log`, `GET /api/audit-log`, `GET /api/api-rate-limit`, `POST /api/api-rate-limit`, `GET /api/sessions`, `POST /api/sessions/revoke-all`, `GET /api/auth/totp-status`, `POST /api/auth/totp-setup`, `POST /api/auth/totp-confirm`, `DELETE /api/auth/totp`, `GET /api/tokens`, `POST /api/tokens`, `DELETE /api/tokens/{id}` |
 
+multi-user-v1追加管理routeのscopeは [user token結合契約](#multi-user-token-totp-contract) の明示対応だけを使用し、以下のlegacy endpoint閉集合との混在を避ける。既存routeは同対応契約で明示した例外以外、この閉集合を維持する。
+
 管理 session は API token scope 固定表の対象外とするが、[`docs/details/security.md` 詳細本文責務 §27.42〜§27.47 セキュリティ機能 横断順序固定契約](security.md#sec-27-42-2) の `password_change_required` 判定を常に適用する。API token が複数 scope を持つ場合は、いずれか 1 つの scope が endpoint に一致すれば許可する。`POST /api/login`、`POST /api/login/totp`、`POST /api/logout`、`POST /api/change-password` は API token scope 判定の対象外とし、API token では使用できない。`POST /api/webhook` は GitHub Webhook secret 検証専用であり、API token では使用できない。[`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) の scope 固定表に存在しない endpoint は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) と [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) の scope 固定表へ追加されるまで API token では許可してはならない。
 
 **正常系：**
@@ -472,13 +487,15 @@ owner component は `security` とする。collaborator component は `api`、`r
 | `timestamp` | 操作結果が確定した UTC 時刻。 |
 | `request_id` | API event は [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) で生成した値を使用し、同一 API 処理中に複数 log を書く場合は同じ値を使う。`runner` 内部 event は `null`。 |
 | `actor_type` | 未認証 login は `"anonymous"`、管理 session は `"admin"`、API token は `"api_token"`、署名検証済み Webhook は `"webhook"`、内部処理は `"system"`。 |
-| `actor_id` | 管理 session は `"admin"`、API token は token id、署名検証済み Webhook は `"webhook"`、未認証は `null`、内部処理は `"system"`。 |
+| `actor_id` | 管理sessionはlegacyで `admin`、multi-user-v1では認証済UserRecord.id。API tokenはtoken id、署名検証済みWebhookは `webhook`、未認証はnull、内部処理は `system`。 |
 | `target_id` | 対象 id がある場合は id。endpoint 拒否は `"{METHOD} {path}"`。対象なしは `null`。 |
 | `result` | 成功は `"success"`、認証失敗や検証失敗は `"failure"`、権限拒否は `"denied"`。 |
 | `remote_addr` | [`docs/details/api.md` 詳細本文責務 §27.6](api.md#sec-27-6) の `remote_addr` 導出規則に従う。API request に紐づかない内部処理は `null`。 |
 | `message` | 固定文言のみ。入力値を連結しない。最大 500 文字。 |
 
 監査 record のキー、型、必須性、許容値は [`docs/details/statefile.md` 詳細本文責務 `.audit_log` schema](statefile.md#audit-log-schema) を唯一の正本とする。監査ログへ保存する object はその schema のキーだけとし、未知キー、request body、query 全体、header 全体、cookie、secret、token、password、hash、salt、TOTP secret を保存してはならない。
+
+multi-user-v1のuser/role操作だけは [user/role確定契約](#multi-user-record-lifecycle) のaction/messageを使用し、以下のlegacy操作表へ重複列挙しない。
 
 **action 生成固定値：**
 
@@ -722,7 +739,7 @@ TOTP setup、ticket 発行、login TOTP 成功 / 失敗、confirm 成功 / 失�
 
 | group | 既定 window | 既定 max | 対象 |
 |-------|-------------|----------|------|
-| `login` | 60 秒 | 10 | `POST /api/login`、`POST /api/login/totp`。 |
+| `login` | 60 秒 | 10 | [endpoint group判定](#security-rate-limit-group-map) のlogin集合。 |
 | `read` | 60 秒 | 600 | 読み取り endpoint。 |
 | `trigger` | 60 秒 | 60 | build trigger endpoint と署名検証済み `POST /api/webhook`。 |
 | `operate` | 60 秒 | 120 | 運用操作 endpoint。 |
@@ -758,7 +775,7 @@ TOTP setup、ticket 発行、login TOTP 成功 / 失敗、confirm 成功 / 失�
 
 | 条件 | group |
 |------|-------|
-| `POST /api/login`、`POST /api/login/totp` | `login` |
+| `POST /api/login`、`POST /api/login/totp`、multi-user-v1のOIDC start/finish | `login` |
 | 署名検証済み `POST /api/webhook` | `trigger` |
 | [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) の `trigger` 許可 endpoint | `trigger` |
 | [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) の `operate` 許可 endpoint | `operate` |
@@ -829,6 +846,9 @@ rate limit の `429` は `.audit_log` に `permission_denied` として記録す
 | audit failure on 429 | count は増えず `500`。 |
 | state save failure | endpoint 固有処理なし、部分 count 更新なし。 |
 
+<a id="notify-hmac-signature-contract"></a>
+**通知HMACの計算：** Webhook config.secretのUTF-8 byteをkey、実際に送信するHTTP body byteをmessageとし、Go標準crypto/hmac・sha256でHMAC-SHA256を計算する。header値はASCII sha256=とlowercase hex64桁の連結だけ、secret=nullは署名header無し。JSONを再encodeした別byte、payload_sha256、受信用.webhook_secretをmessage/keyへ代用しない。header名は呼出元のAPI test/runner wire契約が選択し、同時に両headerを送信しない。signature/raw secretはmemoryだけ、response/log/event/expectedへの実値転写を禁止する。
+
 <a id="sec-27-48"></a>
 **27.48 マルチユーザー対応：**
 
@@ -846,34 +866,59 @@ role または permission が変更された場合、既存 session の `permiss
 
 さらにactive adminかつlocal credential非nullのuserを最低1件維持し、外部provider障害で全管理者が復旧不能になる変更を409とする。user createでpassword省略かつexternal_subjects空は422。初期移行userはdisplay_name=username、external_subjects=[]、role_ids=["admin"]、created_at/updated_at=journal.started_at、status=activeに固定する。
 
-user/roleの更新と最後のadmin判定は同一authorization更新lock内で最新users/rolesを読み、更新後全体を検証してから保存する。別requestが同時に最後の2管理者を相互に無効化する場合も、片方を409にして最低1件を維持する。user/role参照をread途中で混在させない。password変更または資格情報削除は主state確定直後にそのuserの全memory sessionを失効させ、audit失敗でも再有効化しない。permissions_hashはrole id ASCII昇順と解決済みpermissionの重複なしASCII昇順のcanonical JSONに対するSHA-256とし、保存済みsession値と毎requestで比較する。
+user/roleの更新と最後のadmin判定は同一authorization更新lock内で最新users/rolesを読み、更新後全体を検証してから保存する。最後の2管理者への並行無効化でも更新後の最低1件を維持する。lock取得時にactorの最新session/user/permissionも再検証し、actor失効なら401、存続actorによる最後のadmin変更なら409とする。user/role参照をread途中で混在させない。管理APIによるpassword resetまたは資格情報削除は主state確定直後にそのuserの全memory sessionを失効させ、audit失敗でも再有効化しない。本人POST /api/change-passwordだけは既存の現在session維持契約を使い、markerによるtoken失効完了と必須log成功後に現sessionのpassword_change_required=falseを確定する。その他のsession/ticketは主state確定直後に失効、途中失敗では現sessionも失効させる。旧credential fileは変更しない。permissions_hashは閉じたobject `{permissions:string[],role_ids:string[]}`（両配列重複なしASCII昇順）のcanonical JSONに対するSHA-256とし、保存済みsession値と毎requestで比較する。
 
 **監査対象：**
 
-| 操作 | audit action |
-|------|--------------|
-| user create | `user_create` |
-| user update | `user_update` |
-| user disable | `user_disable` |
-| role assignment change | `user_role_update` |
+| 操作 | audit action | audit/event message |
+|------|--------------|---------------------|
+| user create | `user_create` | `User created` |
+| user update | `user_update` | `User updated` |
+| user disable | `user_disable` | `User disabled` |
+| role assignment change | `user_role_update` | `User roles updated` |
+| role create | `role_create` | `Role created` |
+| role update | `role_update` | `Role updated` |
+| role delete | `role_delete` | `Role deleted` |
+
+<a id="multi-user-record-lifecycle"></a>
+**user/role管理の確定・no-op：** UserCreateの外部subject省略は[]、TOTPは既存のdisabled完全object、credentialはpassword省略ならnull。local passwordのcreate/admin resetは毎回新saltで既存KDFを使い、must_change=true/login_count=0/last_login_at=null/updated_at=現在時刻とする。既存passwordと同じ平文でもadmin resetはno-opにしない。通常の本人password変更は既存認証契約を維持する。
+
+解決済permissionに*を持たないactorは、既に*を持つuserの変更/disable/password resetと、新たに*を与えるuser create/role assignmentを403で拒否する。user:adminは非superadminのuser/role割当を管理する明示権限であり、system adminの自己作成や初期adminの奪取を許可しない。
+
+PATCHは最新recordへmerge後に全体検証し、上のactor保護403→admin保護409を先に判定、その後active userがcredential=nullかつexternal_subjects=[]なら422とする。user/role参照不在は422、別userが同じprovider/subjectを持つ場合は409。同じusernameはdisabled/lockedを含め409。createのusers1000件/roles128件到達は409、既存recordのno-op/PATCHを容量だけで拒否しない。
+
+passwordを含まないPATCHの正規化後recordが同値ならupdated_atも変更せず、主state/audit/event/cache世代更新0。DELETE済disabled userへの再DELETEも200/no-op。差分確定時だけupdated_atを更新する。user PATCHのaudit actionはstatusをdisabledへ変える場合user_disable、そうでなくrole_ids差分ならuser_role_update、その他user_updateの優先順で1件だけ選ぶ。lock状態への変更はuser_update。roleのno-opは同じ扱いで、system role制約をno-op判定より先に検証する。
+
+上表のauditはactor_type=admin|api_token、actor_idは認証済id、target_type=user|role、target_idは対象id、result=success、timestamp=確定時刻、request_id/remote_addrは共通規則。admin eventはtype=user、actor=同id、target_type/idとmessageは同表、severity=info、idは共通時刻採番とする。主state→audit→eventの途中失敗では後続を書かず500、成功済み主stateを戻さない。user失効処理の永続marker順は [user token失効状態責務](statefile.md#multi-user-revocation-state) を先に適用し、失効中の認証を許可しない。
 
 <a id="multi-user-migration-contract"></a>
 **単一管理者からの明示移行：** owner=`security`、分類=`STD`（既存KDF/TOTP primitiveは各正本の分類を継承）。legacy-v1とcicd-v1の認証を混在させず、追加管理機能の認証profileは `multi-user-v1` とする。profile状態とlockは [statefile詳細本文責務](statefile.md#multi-user-profile-state)。通常起動で自動移行しない。
 
-移行CLIは `adlaire-ci-api --migrate-users --state-dir ABS --username NAME`。他operationとの併用・未知/重複optionはexit2、stdoutは成功時だけ `{"profile":"multi-user-v1","migrated":true}` + LF、stderrは `AUTH_MIGRATION_INVALID` / `AUTH_MIGRATION_BUSY` / `AUTH_MIGRATION_FAILED` の固定code + LF、exitは順に2/3/4。secretの入力・再表示を行わない。API停止をlifecycle flockで確認してから、旧credential/TOTP/tokenの完全schema/権限、未作成のusers/roles/profile、usernameを検証する。旧TOTP不在は無効値、旧tokens不在は空配列。旧credential不在・旧algorithm・破損・非対応profileは拒否する。
+移行CLIは `adlaire-ci-api --migrate-users --state-dir ABS --username NAME`。他operationとの併用・未知/重複optionはexit2、stdoutは成功時だけ `{"profile":"multi-user-v1","migrated":true}` + LF、stderrは `AUTH_MIGRATION_INVALID` / `AUTH_MIGRATION_BUSY` / `AUTH_MIGRATION_FAILED` の固定code + LF、exitは順に2/3/4。secretの入力・再表示を行わない。argument/schema/profile/事前条件不適合はexit2、lifecycle lock競合は3、I/O/entropy/journal不一致/中断再開の整合不適合は4とする。成功以外のstdoutは空、stderrは分類code1行だけ。API停止をlifecycle flockで確認してから、旧credential/TOTP/tokenの完全schema/権限、未作成のusers/roles/profile、usernameを検証する。旧TOTP不在は無効値、旧tokens不在は空配列。旧credential不在・旧algorithm・破損・非対応profileは拒否する。
 
 乱数User idと開始時刻を確定しprepared journalをcreate-only保存→system roles作成→初期active admin user作成（credential/TOTPは元の全keyを変更せずcopy）→全旧tokenをそのuserへ紐付け、revoked_atがnullのものを開始時刻で失効→全出力をread-back検証→auth_profile atomic作成→journalをcommittedへ更新→journal削除/parent syncの順。旧credential/TOTP fileは消さず0600で保持するが、新profileでは認証に使用しない。移行後のlegacyへのdowngradeは禁止。初期管理者を新password無しで作る別経路は設けない。
 
-preparedからの再実行は保存済みid/時刻/source digestだけを使用し、元fileが変更済みなら停止する。既存出力はjournal.output_sha256とcanonical digestが一致するものだけ再利用し、差分は上書きしない。tokens書換済みの再開は全recordのuser_id/revoked_atが予定値に一致する場合だけ許可する。profile未commitでjournalがあればHTTP起動を拒否する。profile commit後のcleanup失敗は新profileを維持し、同CLIでcleanupだけを再開する。journal無し・profile存在の再移行はexit2。移行前APIを再開するためにjournalやprofileを手作業削除する復旧を許可しない。
+preparedからの再実行は保存済みid/時刻/source digestだけを使用する。旧credential/TOTPは元file byte digestとの一致を必須とし、tokensだけは元byte digestまたは予定出力のcanonical digest一致を許可する（移行自身の確定済みwriteを外部改変と誤認しない）。その他の差分は停止する。既存出力はjournal.output_sha256とcanonical digestが一致するものだけ再利用し、差分は上書きしない。tokens書換済みの再開は全recordのuser_id/revoked_atが予定値に一致する場合だけ許可する。profile未commitでjournalがあればHTTP起動を拒否する。profile commit後のcleanup失敗は新profileを維持し、同CLIでcleanupだけを再開する。journal無し・profile存在の再移行はexit2。移行前APIを再開するためにjournalやprofileを手作業削除する復旧を許可しない。
 
 <a id="multi-user-token-totp-contract"></a>
 **user資格情報・token/TOTP結合：** loginはmulti-user-v1だけusername必須（正規化はユーザー管理契約）、passwordは該当user credentialを照合する。不在/locked/disabled/credential=nullは同じ401、username存在性を返さずrate limitを適用する。must_change、login_count、last_login_atは当該credentialだけを更新する。session/user id、TOTP ticket/setup仮secretは同じuserへ束縛し、他userへの流用・role変更後のticket消費を拒否する。
 
 TOTPのalgorithm/window/replay/confirmは [既存TOTP詳細本文責務](#sec-27-46) を再利用し、保存先だけUserRecord.totpへ変更する。setup/confirm/deleteは本人sessionと現passwordを必要としAPI token/OIDC-only userは実行不可。無効化は当該user全session/ticket失効、last_accepted_step更新はusers lock内のcompare-and-updateとする。totp_enabledだけの保存・全user共有secret・UserPatch経由のTOTP解除は禁止。OIDC loginもlocal TOTP有効userには同じTOTP ticketを発行し、完了前にsessionを発行しない。
 
-token発行user_idは本人sessionから確定しrequestでは指定させない。自分のtokenだけをlist/revokeでき、system adminだけが全userを管理できる。毎requestでtoken hash/期限/revoke→owner user active→現在permission→scopeの順に検証する。追加管理routeではread操作にread、config:writeにconfig、build:writeにoperate、user:admin/system:adminにadminを必要とし、role permissionとの積集合だけを許可する。既存scopeを新permissionへ自動昇格しない。user無効化/lock/password変更/credential削除時に当該userの有効tokenを全失効する。users commit後tokens write失敗はAPI500・当該userのtoken認証をprocess内で停止し、次起動も未完了revocationを検出するまで受付しない。復旧の永続revocation markerは [statefile詳細本文責務](statefile.md#multi-user-revocation-state) を参照する。
+token発行user_idは本人sessionから確定しrequestでは指定させない。list/revokeは本人のactive sessionだけが本人分を扱い、解決済permissionに `*` を持つsessionだけが全user分を扱える。API tokenからGET/POST/DELETEのtoken管理routeはmulti-user-v1で403とし、legacyのadmin-scope発行連鎖を引き継がない。tokenのownerをrequestで指定する経路は作らない。*以外のsessionによる他user token idへのDELETEは不在と同じ404とし、所有者情報を返さない。target userのrevocation markerが未処理のPATCH/DELETEは409とし、restartによる既存失効復旧が完了する前に再有効化/別変更で上書きしない。毎requestでtoken hash/期限/revoke→owner user active→現在permission→scopeの順に検証する。追加管理routeのscope対応は [横断順序適用表](#additional-management-security-order) を使用し、role permissionとの積集合だけを許可する。既存scopeを新permissionへ自動昇格しない。発行時も現在permissionに対応しないscopeを403で拒否し、readはstatus:read/config:read、trigger/operateはbuild:write、configはconfig:write、adminはuser:admin/system:adminのいずれか（*は全件）を必要とする。全体100record容量到達は409、既存recordを黙って削除しない。user無効化/lock/password変更/credential削除時に当該userの有効tokenを全失効する。users commit後tokens write失敗はAPI500・当該userのtoken認証をprocess内で停止し、次起動も未完了revocationを検出するまで受付しない。復旧の永続revocation markerは [statefile詳細本文責務](statefile.md#multi-user-revocation-state) を参照する。
 
-multi-user-v1の既存routeは、追加管理permission表にない場合system adminのみに制限する。ただし本人tokenのGET/POST `/api/tokens` とDELETE `/api/tokens/{id}` は本人active session（他user対象はsystem admin）で許可する。GET `/api/status`、`/api/history`、`/api/health` はstatus:readで許可し、POST `/api/build`、`/api/build/force` はbuild:writeで許可する（tokenは既存trigger scopeも必要）。login/logout/change-password/TOTPは本人認証契約、署名Webhook/認証不要routeは従来契約を適用する。この閉じた例外以外にprefixやmethodから権限を推測しない。
+multi-user-v1の既存routeは、追加管理permission表にない場合system adminのみに制限する。ただし本人tokenのGET/POST `/api/tokens` とDELETE `/api/tokens/{id}` は本人active session（他user対象はsystem admin）で許可する。既存read routeは [明示許可表](#multi-user-legacy-read-authorization)、POST `/api/build`、`/api/build/force` はbuild:writeで許可する（tokenは既存trigger scopeも必要）。login/logout/change-password/TOTPは本人認証契約、署名Webhook/認証不要routeは従来契約を適用する。この閉じた例外以外にprefixやmethodから権限を推測しない。
+
+
+<a id="multi-user-legacy-read-authorization"></a>
+**既存read routeの明示許可：** multi-user-v1で下表だけを既存routeのsystem admin fallbackから除外する。route登録そのものを新設せず、APIの既存schema/状態read/secret maskを維持する。scope/rateは必要permissionに対応する既存read/adminを使用し、sessionでもpermission不足は403。表にないrouteは従来の閉じたfallbackを維持する。
+
+| exact route template集合 | 必要permission |
+|---|---|
+| GET /api/status、GET /api/history、GET /api/dashboard、GET /api/queue、GET /api/maintenance、GET /api/dashboard-layout、GET /api/snapshots | status:read |
+| GET /api/config、GET /api/config-log | config:read |
+| GET /api/notify-log | system:admin |
+| GET /api/audit-log | user:adminまたはsystem:adminのいずれか。*は共通規則で許可。masked audit recordだけを返す。 |
 
 <a id="sec-27-50"></a>
 **27.50 外部認証連携：**
@@ -888,22 +933,40 @@ OIDC discovery URL は `issuer + "/.well-known/openid-configuration"` とする�
 
 provider secret は `.external_auth_config` に保存せず、`client_secret_ref` だけを保存する。
 
-callback 検証では `state`、`nonce`、`issuer`、`audience`、`exp`、`iat`、`sub` を検証する。
+callbackとclaim判定の本文は [OIDC開始・完了と鍵検証](#oidc-code-flow-contract) を参照する。
 
 検証失敗は `401` とし、失敗理由の詳細、token、claim 全文を response、server log、audit log に出してはならない。
 
 <a id="oidc-code-flow-contract"></a>
 **OIDC開始・完了と鍵検証：** `INHOUSE`、owner=`security`。規範は [OIDC Core code flow](https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth)、[RFC7636](https://www.rfc-editor.org/rfc/rfc7636)、[RFC7517](https://www.rfc-editor.org/rfc/rfc7517)。Go標準crypto/rsa・sha256・rand・subtle・encoding/json/base64・net/http/urlだけを使用し外部実装を移植しない。code flow + PKCE S256 + RS256だけを採用し、implicit/hybrid/none/HS*/EC/暗号化JWT/dynamic registration/UserInfo/emailによる自動user作成は不採用。
 
-provider idは `[a-z][a-z0-9_-]{0,63}`、最大16provider、issuerはquery/fragment/userinfo/末尾slashなしのHTTPS URL。scopesは `["openid"]` 固定。redirect_uriは管理UIの検証済みHTTPS origin + `/` で、開始requestのOriginとexact一致を必要とする。client_secret_ref=nullならpublic client、非nullならclient_secret_basicだけを採用する。client secretは既存secret file adapterで0600保存、rawをconfig/responseへ入れない。disabled provider削除/issuer変更は紐付くuserがいれば409。provider更新は未完了flowを全失効する。
+provider idは `[a-z][a-z0-9_-]{0,63}`、最大16provider、issuerはquery/fragment/userinfo/末尾slashなしのHTTPS URL。scopesは `["openid"]` 固定。redirect_uriは管理UIの検証済みHTTPS origin + `/` で、開始requestのOriginとexact一致を必要とする。client_secret_ref=nullならpublic client、非nullならclient_secret_basicだけを採用する。client secretは既存secret file adapterで0600保存、rawをconfig/responseへ入れない。provider削除/issuer変更はenabled値を問わず、紐付くuserがいれば409。provider更新は未完了flowを全失効する。
 
 discovery/JWKS/token通信は各10秒・response最大262144byte・redirect禁止、TLS検証必須、環境proxy禁止。全接続でDNS解決結果すべてを公開global unicastに限定し、検証済みIPへdial（TLS ServerNameは元host）、private/loopback/link-local/multicastを拒否する。discovery issuerは設定とbyte一致、authorization/token/jwksは同じissuer originのHTTPS URLに限定する。metadataのcode/S256/RS256対応を確認し非対応なら拒否。metadata/JWKSはflow開始時取得しmemoryへ5分保持、完了時は同じsnapshotだけを使用、未知kidで外部再取得・任意jku/x5u追従をしない。
 
 開始ごとにstate/nonce/browser binding/code_verifierを別々のCSPRNG32byteからpadding無しbase64url生成する。verifier43文字、challenge=base64url(SHA256(verifier ASCII))。最大128flow、TTL300秒、単一process memoryだけ、再起動で全失効。browser bindingはHttpOnly/Secure/SameSite=Lax/Path=/の `__Host-adlaire-oidc` cookie、Max-Age=300。開始は既存flow cookieを置換して当該flowを失効し、満杯は409、entropy失敗は500。authorization URLへresponse_type=code/client_id/redirect_uri/scope/state/nonce/code_challenge/code_challenge_method=S256だけをpercent encodeして付与する。
 
-完了はstate・cookieをconstant-time照合し、有効flowをmutex内で一回だけ消費してからcodeを交換する。cookie不一致ではflowを消費しない。codeは1..2048byte、NUL/CR/LF禁止。token formはgrant_type=authorization_code/code/redirect_uri/code_verifier/client_id、confidentialだけBasic headerを加える。200のJSONからid_tokenを取得し、access/refresh tokenは保存/使用しない。JWTは16384byte以下、3segmentのstrict unpadded base64url、JSON duplicate key/invalid UTF-8/未知critを拒否。header alg=RS256、kid必須、jku/x5u/x5c/crit禁止。JWKS最大32key、kid一意、RSA n=2048..4096bit・e=65537、useがあればsig、key_opsがあればverifyだけ、algがあればRS256。秘密key parameterを拒否し、一致するkey1件だけでrsa.VerifyPKCS1v15(SHA256)を行う。
+完了はstate・cookieをconstant-time照合し、有効flowをmutex内で一回だけ消費してからcodeを交換する。cookie不一致ではflowを消費しない。codeは1..2048byte、NUL/CR/LF禁止。token formはgrant_type=authorization_code/code/redirect_uri/code_verifier/client_id、confidentialだけBasic headerを加える。[RFC6749 §2.3.1](https://www.rfc-editor.org/rfc/rfc6749#section-2.3.1) に従い、client_idとsecretをそれぞれGo標準url.QueryEscapeでform符号化してからASCII colonで連結し、標準padding付きbase64を使用する。raw値をそのままBasicへ連結せず、client_secretをform/query/URLへ追加しない。200のJSONからid_tokenを取得し、access/refresh tokenは保存/使用しない。JWTは16384byte以下、3segmentのstrict unpadded base64url、JSON duplicate key/invalid UTF-8/未知critを拒否。header alg=RS256、kid必須、jku/x5u/x5c/crit禁止。JWKS最大32key、kid一意、RSA n=2048..4096bit・e=65537、useがあればsig、key_opsがあればverifyだけ、algがあればRS256。秘密key parameterを拒否し、一致するkey1件だけでrsa.VerifyPKCS1v15(SHA256)を行う。
 
-署名成功後iss exact、audはclient_id単独stringまたは重複なし配列（複数ならazp=client_id）、nonce exact、subは保存型、exp/iatは整数Unix秒を確認する。now < exp+30、iat <= now+30、iat >= flow.started_at-30、exp > iat、exp-iat <=3600、nbfがあればnow+30 >= nbf。未知claimは無視するがclaimをuser属性へcopyしない。全検証後にprovider_id/subの既存active user一件だけへ接続し、最新role/TOTPを再検証、必須auth logとcredential login更新が成功してからsessionまたはTOTP ticketを返す。流出や不具合時はprovider無効化・未完了flow/session失効を行い、当該provider参照userが0になった場合だけ削除できる。
+署名成功後iss exact、audはclient_idと同じstring、またはclient_idを含む1件以上の空でないstringの重複なし配列とする。複数audではazpを必須とし、単独audでもazpを指定した場合はstringかつclient_idとのexact一致を必要とする。nonce exact、subは保存型、exp/iatと任意nbfはsigned 64bitの整数Unix秒（小数/指数表記/null禁止）を確認する。now < exp+30、iat <= now+30、iat >= flow.started_at-30、exp > iat、exp-iat <=3600、nbfがあればnow+30 >= nbf。加減算はchecked arithmeticまたはoverflowしない比較順を用い、signed overflowを境界合格へ読み替えない。未知claimは無視するがclaimをuser属性へcopyしない。全検証後のuser/role/TOTP再検証、発行順、provider更新との競合は [OIDC認証確定契約](#oidc-authentication-commit) を適用する。流出や不具合時はprovider無効化・未完了flow/session失効を行い、当該provider参照userが0になった場合だけ削除できる。
+
+<a id="oidc-origin-contract"></a>
+**OIDC URL/originの固定比較：** issuer/redirect_uri/metadata endpointはURL parserで検証し、schemeをASCII lowercaseでhttpsと判定、userinfo/fragment/queryを禁止する。DNS hostはASCIIのlabel1..63byte・全体253byte以下、各labelは英数字始終/中間英数hyphen、末尾dot/空labelを拒否する。IDNA/Unicode hostnameはv1で不採用。hostのpercent escape/IPv6 zone/IPv4-mapped IPv6は拒否する。数字とdotだけのhostはnet.ParseIPでIPv4として成功する場合だけ許可し、127.1/整数IPv4/8進表記をDNS名として再解釈しない。IP literalは標準net.ParseIPで解釈し、接続の可否は以下のpublic IP境界で別判定する。portは省略または10進1..65535、0/符号/前後空白を拒否する。
+
+originの比較keyはhttps/lowercase DNS hostまたはcanonical IP/実効port（省略は443）のtuple。公開issuer_originはhttps://host、非443だけ:portを付加しIPv6を[]で囲む。redirect_uriの許可origin、metadata各endpointのsame-origin、UI authorization_url確認はこの同じ意味で比較する。issuer/sub/JWT iss自体はURI正規化して照合せず、設定のissuer文字列とのbyte一致を維持する。metadata URLの任意queryを認証requestへ持ち込まない。生成済みauthorization_urlだけは開始手順の固定queryを付加した別の出力型であり、provider設定URLのquery禁止を適用して拒否しない。各HTTP接続のDNS全結果/public IP/pinned dial/TLS ServerNameの既存境界をorigin一致だけで省略しない。
+
+**OIDC接続IPの閉じた許可集合：** このv1のserver側discovery/JWKS/token接続だけに適用する。DNS結果0件/1件でも不許可なら全体拒否、検証済み集合からdial時の再DNSを行わない。IPv4はIsGlobalUnicastかつIsPrivate=falseを必要とし、さらに0.0.0.0/8、100.64.0.0/10、192.0.0.0/24、192.0.2.0/24、192.88.99.0/24、198.18.0.0/15、198.51.100.0/24、203.0.113.0/24、240.0.0.0/4を拒否する。IPv6は2000::/3内だけを許可し、2001::/23、2001:db8::/32、2002::/16、3fff::/20を拒否する。mapped IPv4はURL/DNS両方で拒否する。private/loopback/link-local/multicast/unspecifiedをpublic扱いするIsGlobalUnicast単独判定は禁止する。TCP443以外もURLの検証済みportだけ、HTTP Host/TLS ServerNameは元host、10秒deadlineはDNSからbody完了までを含む。fixtureのdocumentation address許可はfake adapter内の特別扱いだけでproductionへ伝播しない。
+
+<a id="oidc-authentication-commit"></a>
+**OIDC認証確定・失敗時境界：** 起動時にexternal auth全体enabledとprovider enabledの両方を確認する。startはOrigin/HTTP header検証→login group rate gate→JSON body検証/API token拒否→設定read→capacity事前確認→discovery→JWKS→4entropy取得→flow mutex内で期限切れ回収/再capacity確認→旧cookie flow置換/新flow保存→cookie/responseの順とする。upstream/entropy失敗は既存flowを変更しない。新flow保存後response書込失敗は当該新flowだけを失効し、旧flowを復活させない。confidential/publicのtoken endpoint認証方式はmetadataが列挙する場合にclient_secret_basic/noneがそれぞれ含まれることを確認し、列挙省略時はconfidentialだけclient_secret_basicとして扱いpublicは拒否する。metadata/JWKSの不整合・通信失敗は502でflowを作らない。
+
+finishのtoken responseはUTF-8/duplicate keyなし/trailing JSONなしのJSON objectで、id_tokenが1..16384byteのstringであることを必要とする。上流HTTP失敗と同じくresponse形式不正は502、取り出したJWTの不正は401。token_type/access_token/refresh_token/expires_in等は認証判断に使わず保存しない。AuthorizationにAPI tokenを渡したstart/finishは401、sessionやBearerを新flowのuser指定へ利用しない。finishも同じOrigin/header→login rate→body/API token検証をflow照合より前に行う。multi-user-v1の認証後rate actor keyはsession:{user_id}:{group}、API tokenは既存token id keyとし、cicd-v1/legacyのkeyを変更しない。code交換後の再試行は全失敗とも新startから行う。
+
+code交換中のprovider更新を通過させないため、flowは開始時providerのcanonical config digest（secret refを含みraw secretを含めない）を保持する。署名検証後にauthorization mutex内で最新provider有効性とdigest、user active/一意subject、revocation marker、role/permissions/TOTPを再検証する。provider不一致、対応user不在/disabled/lockedは401、状態破損/読取不能は500。ここでの照合と発行の間に更新を挟まず、外部通信をmutex内へ持ち込まない。
+
+TOTP無効ならsession entropy生成→credential非nullのlogin_count/last_login_at更新→access log→audit log→session追加→responseとし、credential=nullなら更新を省略・must_change=noneとする。TOTP有効ならticket entropy生成→totp_requiredのaccess/audit→ticket追加→responseとし、login_count/last_login_at/sessionを更新しない。ticketはuser id/credential fingerprint（非nullは既存連結規則、nullはUTF-8 byteの `null` 4byteをSHA256）/permissions_hash/provider id/digest/subjectに束縛し、login/totpで最新値再検証後だけ既存TOTP確定順へ接続する。credential=nullでもTOTP stepのcompare-and-updateとログは必要、local資格情報を自動生成しない。必須logのaction/target/actorは既存login_success/totp_required/login_failure規則へ対応させ、OIDC専用のclaim診断は作らない。拒否401はlogin_failureのaccess/audit、上流502も同じfailure記録とし、log失敗なら500 Internal server errorを優先する。Origin/schema/capacity/entropyによる発行前拒否では認証結果logを追加しない（既存rate拒否監査はその正本を使用）。
+
+multi-user memory sessionは既存保持値にauth_source=local|oidc、provider_id=null|string、provider_digest=null|Digest、provider_subject=null|stringを加え、localは3値null、oidcは3値必須とする。毎requestでuser/permissionsの既存照合に加えてOIDC providerの有効性/digestとuser.external_subjects内の同じprovider/subjectを確認し、不一致は401・session削除。provider更新/無効化はそのproviderの未完了flow/ticket/sessionを失効させ、external auth全体の無効化は全OIDC分を失効させる。userのexternal_subjects変更はそのuserのOIDC session/ticketを失効させ、local sessionと独立API tokenの自動失効へ拡張しない。session/ticket追加後response書込失敗は発行済みmemory recordを削除し、成功済みcredential/logは戻さず、消費済みflowを復活させない。発行途中entropy/credential/log失敗はsession/ticketを追加せず500、完了前に確定した永続更新は維持する。新しいsession fieldを永続fileまたはHTTP responseへ追加しない。
 
 <a id="sec-27-58"></a>
 **27.58 ロールベースアクセス制御：**
@@ -933,7 +996,8 @@ API endpoint group と必要 permission は以下に固定する。ここにな�
 | `/api/queue/{queue_id}`, `/api/queue/reorder` | `build:write` |
 | `/api/history/retention`, `/api/history/retention/run` | read は `status:read`、write / run は `system:admin` |
 | `/api/stats/export`, `/api/metrics`, `/api/badge/status.svg`, `/api/snapshots/{left_id}/diff/{right_id}` | `status:read` |
-| `/api/version`, `/api/openapi.json` | 認証不要。個別 permission 不要。 |
+| `/api/auth/me` | 有効な本人sessionのみ、permission不要/API token403。詳細は [本人HTTP責務](api.md#auth-self-http-contract)。 |
+| `/api/version`, `/api/openapi.json`, `/api/auth/options` | 認証不要。個別permission不要。 |
 
 `*` 以外の permission は暗黙に他 permission を含めない。
 
@@ -941,7 +1005,7 @@ API endpoint group と必要 permission は以下に固定する。ここにな�
 
 | 順序 | 判定 | 失敗時 |
 |------|------|--------|
-| 1 | `/api/version` と `/api/openapi.json` は認証判定を行わない。 | security 副作用なし。 |
+| 1 | version/openapi/auth optionsは認証判定を行わない。 | 各HTTP正本のread-only副作用だけ。 |
 | 2 | `/api/share/{token}/status` は share token を検証する。 | token 不正は `401`、不在または revoke 済みは `404`、期限切れは `410`。session を作成しない。 |
 | 3 | その他の追加管理 API は session または API token を検証する。 | 不在、不正、期限切れは `401`。対象状態は読まない。 |
 | 4 | user status を確認する。 | `disabled` または `locked` は `401`。対象状態は読まない。 |
@@ -956,7 +1020,7 @@ API endpoint group と必要 permission は以下に固定する。ここにな�
 | `operator` | `Operator` | `status:read`, `build:write`, `config:read` | `true` |
 | `viewer` | `Viewer` | `status:read` | `true` |
 
-system role は削除禁止、`id` 変更禁止、`system:false` への変更禁止とする。system role の `name` と `permissions` を変更する request は `409` とし、状態を変更しない。
+system role は削除禁止、`id` 変更禁止、`system:false` への変更禁止とする。system roleへのPATCHでname/permissionsを指定するrequestは同値でも409とし、状態を変更しない。入力禁止id/system keyの422はAPI schema判定を優先する。
 
 role削除時はstatusを問わず対象roleを参照するuserが1件でもあれば409とする。disabled/locked userの参照をdanglingにしてから再有効化する経路を作らない。上表はroute templateのexact集合であり、prefix wildcard、末尾slash、未知subrouteにpermissionを継承しない。version aliasはAPIが確定したcanonical route templateで判定する。
 
@@ -977,7 +1041,7 @@ disabled user の session は次 request で `401` とする。
 
 locked user の password login は `401` とし、API token と外部認証も拒否する。
 
-user 更新時の最後の admin 保護は、変更適用後に `*` permission を持つ active user が 1 件以上残ることを条件とする。自分自身の `role_ids` 変更、`status` 変更、password 削除、external subject 削除がこの条件を満たさない場合は `409` とし、session、user、role、audit、admin event を変更しない。
+user更新の最後のadmin/local credential保護と競合時判定は [マルチユーザー認証責務](#sec-27-48) を参照する。
 
 <a id="sec-27-67"></a>
 **27.67 読み取り専用共有リンク：**

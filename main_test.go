@@ -1,7 +1,9 @@
 package main
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto"
 	"crypto/rsa"
@@ -9,6 +11,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -282,6 +285,525 @@ func additionalVerifyOIDCVector(v additionalOIDCVector) error {
 	return nil
 }
 
+type additionalOIDCSignedVectors struct {
+	FlowStartedAt string `json:"flow_started_at"`
+	JWK           struct {
+		Algorithm string `json:"alg"`
+		Exponent  string `json:"e"`
+		ID        string `json:"kid"`
+		Type      string `json:"kty"`
+		Modulus   string `json:"n"`
+		Use       string `json:"use"`
+	} `json:"jwk"`
+	Cases []struct {
+		ID           string `json:"id"`
+		Header       string `json:"header"`
+		ClaimsBase64 string `json:"claims_base64"`
+		Now          string `json:"now"`
+		Want         string `json:"want"`
+		IDToken      string `json:"id_token"`
+	} `json:"cases"`
+}
+
+func TestAdditionalOIDCSignedClaimVectors(t *testing.T) {
+	t.Parallel()
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	pattern := regexp.MustCompile("(?s)<a id=\"oidc-signed-claim-vectors\"></a>.*?```json\\n(.*?)\\n```")
+	match := pattern.FindStringSubmatch(document)
+	if len(match) != 2 {
+		t.Fatal("security.signed-vector.presence: missing bundle")
+	}
+	if _, err := additionalOIDCJSONObject([]byte(match[1])); err != nil {
+		t.Fatalf("security.signed-vector.schema: %v", err)
+	}
+	var vectors additionalOIDCSignedVectors
+	decoder := json.NewDecoder(strings.NewReader(match[1]))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&vectors); err != nil {
+		t.Fatalf("security.signed-vector.schema: %v", err)
+	}
+	decode := base64.RawURLEncoding.Strict().DecodeString
+	n, err := decode(vectors.JWK.Modulus)
+	if err != nil || len(n) != 256 || vectors.JWK.Algorithm != "RS256" || vectors.JWK.Exponent != "AQAB" || vectors.JWK.ID != "fixture-signed-1" || vectors.JWK.Type != "RSA" || vectors.JWK.Use != "sig" || vectors.FlowStartedAt != "2026-01-02T00:00:00Z" {
+		t.Fatal("security.signed-vector.schema: unexpected key or clock")
+	}
+	key := &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: 65537}
+	wants := map[string]string{
+		"baseline": "ok", "issuer-slash": "issuer", "issuer-wrong": "issuer", "issuer-missing": "issuer",
+		"audience-wrong": "audience", "audience-empty": "audience", "audience-duplicate": "audience", "audience-non-string": "audience", "audience-missing": "audience",
+		"audience-single-array": "ok", "audience-multi-no-azp": "azp", "audience-multi-wrong-azp": "azp", "audience-multi-valid": "ok", "audience-no-client": "audience", "azp-single-wrong": "azp",
+		"nonce-wrong": "nonce", "nonce-missing": "nonce", "subject-empty": "subject", "subject-cr": "subject", "subject-255": "ok", "subject-256": "subject", "subject-null": "subject",
+		"iat-future-boundary": "ok", "iat-future-outside": "issued", "iat-start-boundary": "ok", "iat-start-outside": "issued", "iat-fraction": "issued", "iat-exponent": "issued", "iat-null": "issued",
+		"exp-missing": "expires", "exp-equals-iat": "expires", "exp-before-iat": "expires", "lifetime-boundary": "ok", "lifetime-outside": "expires", "exp-fraction": "expires", "exp-overflow": "expires",
+		"nbf-boundary": "ok", "nbf-outside": "not-before", "nbf-null": "not-before", "unknown-claim": "ok", "duplicate-claim": "json", "invalid-utf8": "json", "trailing-json": "json", "expiry-before-boundary": "ok", "expiry-boundary": "expires",
+		"algorithm-none": "header", "kid-unknown": "header", "header-jku": "header", "header-crit": "header", "header-duplicate": "header",
+	}
+	if len(vectors.Cases) != len(wants) {
+		t.Fatalf("security.signed-vector.coverage: got %d cases, want %d", len(vectors.Cases), len(wants))
+	}
+	seen := map[string]bool{}
+	for _, c := range vectors.Cases {
+		c := c
+		want, exists := wants[c.ID]
+		if !exists || seen[c.ID] || c.Want != want {
+			t.Fatalf("security.signed-vector.coverage: unknown, duplicate or changed expectation %q", c.ID)
+		}
+		seen[c.ID] = true
+		t.Run(c.ID, func(t *testing.T) {
+			parts := strings.Split(c.IDToken, ".")
+			if len(parts) != 3 || parts[0] != base64.RawURLEncoding.EncodeToString([]byte(c.Header)) || parts[1] != c.ClaimsBase64 || len(c.IDToken) > 16384 {
+				t.Fatal("security.signed-vector.input: fixed input mismatch")
+			}
+			signature, err := decode(parts[2])
+			digest := sha256.Sum256([]byte(parts[0] + "." + parts[1]))
+			if err != nil || rsa.VerifyPKCS1v15(key, crypto.SHA256, digest[:], signature) != nil {
+				t.Fatal("security.signed-vector.signature: negative case must retain a valid RSA signature")
+			}
+			payload, err := decode(parts[1])
+			if err != nil {
+				t.Fatal("security.signed-vector.input: invalid payload encoding")
+			}
+			got := additionalOIDCClaimOracle([]byte(c.Header), payload, c.Now, vectors.FlowStartedAt)
+			if got != want {
+				t.Fatalf("security.signed-vector.claim.%s: got %s, want %s", c.ID, got, want)
+			}
+		})
+	}
+}
+
+func additionalOIDCJSONObject(input []byte) (map[string]json.RawMessage, error) {
+	if !utf8.Valid(input) {
+		return nil, fmt.Errorf("invalid UTF-8")
+	}
+	if err := phase16CheckJSONValueForDuplicateKeys(json.NewDecoder(bytes.NewReader(input))); err != nil {
+		return nil, err
+	}
+	var object map[string]json.RawMessage
+	decoder := json.NewDecoder(bytes.NewReader(input))
+	if err := decoder.Decode(&object); err != nil || object == nil {
+		return nil, fmt.Errorf("object required")
+	}
+	if decoder.Decode(new(any)) != io.EOF {
+		return nil, fmt.Errorf("trailing JSON")
+	}
+	return object, nil
+}
+
+// This evaluates specification inputs only; it is not a product authentication path.
+func additionalOIDCClaimOracle(header, payload []byte, nowText, startText string) string {
+	h, err := additionalOIDCJSONObject(header)
+	text := func(object map[string]json.RawMessage, key string) string {
+		var s string
+		if json.Unmarshal(object[key], &s) != nil {
+			return ""
+		}
+		return s
+	}
+	if err != nil || text(h, "alg") != "RS256" || text(h, "kid") != "fixture-signed-1" {
+		return "header"
+	}
+	for _, forbidden := range []string{"jku", "x5u", "x5c", "crit"} {
+		if _, exists := h[forbidden]; exists {
+			return "header"
+		}
+	}
+	c, err := additionalOIDCJSONObject(payload)
+	if err != nil {
+		return "json"
+	}
+	if text(c, "iss") != "https://id.example.test" {
+		return "issuer"
+	}
+	var audience []string
+	if value := text(c, "aud"); value != "" {
+		audience = []string{value}
+	} else if json.Unmarshal(c["aud"], &audience) != nil {
+		return "audience"
+	}
+	seen := map[string]bool{}
+	for _, value := range audience {
+		if value == "" || seen[value] {
+			return "audience"
+		}
+		seen[value] = true
+	}
+	if !seen["adlaire-ci-test"] {
+		return "audience"
+	}
+	if _, exists := c["azp"]; exists || len(audience) > 1 {
+		if text(c, "azp") != "adlaire-ci-test" {
+			return "azp"
+		}
+	}
+	if text(c, "nonce") != strings.Repeat("A", 43) {
+		return "nonce"
+	}
+	subject := text(c, "sub")
+	if len(subject) < 1 || len(subject) > 255 || strings.ContainsAny(subject, "\x00\r\n") {
+		return "subject"
+	}
+	now, nowErr := time.Parse(time.RFC3339, nowText)
+	start, startErr := time.Parse(time.RFC3339, startText)
+	integer := func(key string) (int64, bool) {
+		raw := string(c[key])
+		if !regexp.MustCompile(`^-?(0|[1-9][0-9]*)$`).MatchString(raw) {
+			return 0, false
+		}
+		var value int64
+		err := json.Unmarshal(c[key], &value)
+		return value, err == nil
+	}
+	iat, valid := integer("iat")
+	if !valid || nowErr != nil || startErr != nil || iat > now.Unix()+30 || iat < start.Unix()-30 {
+		return "issued"
+	}
+	exp, valid := integer("exp")
+	if !valid || exp <= iat || exp-iat > 3600 || exp <= now.Unix()-30 {
+		return "expires"
+	}
+	if _, exists := c["nbf"]; exists {
+		nbf, valid := integer("nbf")
+		if !valid || nbf > now.Unix()+30 {
+			return "not-before"
+		}
+	}
+	return "ok"
+}
+
+func TestAdditionalIaCSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	pattern := regexp.MustCompile("(?s)<a id=\"inhouse-iac-concrete-oracles\"></a>.*?```json\\n(.*?)\\n```")
+	match := pattern.FindStringSubmatch(document)
+	if len(match) != 2 {
+		t.Fatal("setup.spec-vector.presence: missing fixed input")
+	}
+	var input struct {
+		SchemaVersion        int            `json:"schema_version"`
+		Now                  string         `json:"now"`
+		OperationID          string         `json:"operation_id"`
+		Identity             map[string]any `json:"identity"`
+		ConfigPath           string         `json:"config_path"`
+		ConfigMetadata       map[string]any `json:"config_metadata"`
+		BeforeConfig         map[string]any `json:"before_config"`
+		BeforeSHA256         string         `json:"before_canonical_sha256"`
+		AfterSHA256          string         `json:"after_canonical_sha256"`
+		Manifest             map[string]any `json:"manifest"`
+		Plan                 map[string]any `json:"plan"`
+		ApplyConfirmation    map[string]any `json:"apply_confirmation"`
+		RollbackConfirmation map[string]any `json:"rollback_confirmation"`
+	}
+	if _, err := additionalOIDCJSONObject([]byte(match[1])); err != nil {
+		t.Fatalf("setup.spec-vector.schema: %v", err)
+	}
+	decoder := json.NewDecoder(strings.NewReader(match[1]))
+	decoder.DisallowUnknownFields()
+	decoder.UseNumber()
+	if err := decoder.Decode(&input); err != nil {
+		t.Fatalf("setup.spec-vector.schema: %v", err)
+	}
+	canonical := func(v any) []byte {
+		var output bytes.Buffer
+		encoder := json.NewEncoder(&output)
+		encoder.SetEscapeHTML(false)
+		if err := encoder.Encode(v); err != nil {
+			t.Fatal(err)
+		}
+		return bytes.TrimSuffix(output.Bytes(), []byte("\n"))
+	}
+	hash := func(v any) string {
+		digest := sha256.Sum256(canonical(v))
+		return fmt.Sprintf("%x", digest)
+	}
+	if input.SchemaVersion != 1 || input.Now != "2026-01-02T00:00:00Z" || input.OperationID != "iac_00000000000000000000000001" || input.ConfigPath != "/etc/adlaire-ci/cicd/coordinator-main.json" || string(canonical(input.ConfigMetadata)) != `{"gid":991,"mode":"0640","nlink":1,"uid":0}` || string(canonical(input.Identity)) != `{"schema_version":1,"target_id":"fixture-vps-1"}` {
+		t.Fatal("setup.spec-vector.binding: changed identity, path, clock or metadata")
+	}
+	before := "a7dbfd1f06913f8a2bac4b1c7e1031e927a28c861196455617534e563449f0d1"
+	after := "cb4d35943f79df39c14c5f9b2885a7437d6b189b25abf532be8390064d6ee451"
+	manifest := "77591088e3e13b2ccff82c1b77be73cc310b262f9dd17c799a2304aad5886831"
+	plan := "a184604a39947060afba533395847318f9d676385f88cc5cdce9a4f1acbf2eb2"
+	if hash(input.BeforeConfig) != before || input.BeforeSHA256 != before || input.AfterSHA256 != after || hash(input.Manifest) != manifest || input.Plan["manifest_sha256"] != manifest || input.Plan["sha256"] != plan {
+		t.Fatal("setup.spec-vector.digest: fixed config or manifest mismatch")
+	}
+	delete(input.Plan, "sha256")
+	if hash(input.Plan) != plan || input.Plan["created_at"] != input.Now || input.Plan["expires_at"] != "2026-01-02T00:05:00Z" {
+		t.Fatal("setup.spec-vector.plan: self-excluded hash or expiry mismatch")
+	}
+	resources, resourceOK := input.Manifest["resources"].([]any)
+	changes, changesOK := input.Plan["changes"].([]any)
+	observed, observedOK := input.Plan["observed"].([]any)
+	if !resourceOK || !changesOK || !observedOK || len(resources) != 2 || len(changes) != 2 || len(observed) != 2 {
+		t.Fatal("setup.spec-vector.order: missing resources")
+	}
+	if hash(resources[0].(map[string]any)["config"]) != after || hash(changes[0].(map[string]any)["after"]) != after || observed[0].(map[string]any)["id"] != "api" || observed[1].(map[string]any)["id"] != "main" || changes[0].(map[string]any)["id"] != "main" || changes[1].(map[string]any)["id"] != "api" {
+		t.Fatal("setup.spec-vector.order: before/after or config-before-service mismatch")
+	}
+	for action, confirmation := range map[string]map[string]any{"apply": input.ApplyConfirmation, "rollback": input.RollbackConfirmation} {
+		if len(confirmation) != 3 || confirmation["action"] != action || confirmation["target_id"] != "fixture-vps-1" || confirmation["plan_sha256"] != plan {
+			t.Fatal("setup.spec-vector.confirmation: operation binding mismatch")
+		}
+	}
+}
+
+func TestAdditionalManagementInputVectors(t *testing.T) {
+	t.Parallel()
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	read := func(anchor string) map[string]any {
+		pattern := regexp.MustCompile("(?s)<a id=\"" + regexp.QuoteMeta(anchor) + "\"></a>.*?```json\\n(.*?)\\n```")
+		match := pattern.FindStringSubmatch(document)
+		if len(match) != 2 {
+			t.Fatalf("fixture.concrete.presence.%s", anchor)
+		}
+		if _, err := additionalOIDCJSONObject([]byte(match[1])); err != nil {
+			t.Fatalf("fixture.concrete.schema.%s: %v", anchor, err)
+		}
+		decoder := json.NewDecoder(strings.NewReader(match[1]))
+		decoder.UseNumber()
+		var result map[string]any
+		if err := decoder.Decode(&result); err != nil {
+			t.Fatalf("fixture.concrete.schema.%s: %v", anchor, err)
+		}
+		return result
+	}
+	canonical := func(value any) []byte {
+		var buffer bytes.Buffer
+		encoder := json.NewEncoder(&buffer)
+		encoder.SetEscapeHTML(false)
+		if err := encoder.Encode(value); err != nil {
+			t.Fatal(err)
+		}
+		return bytes.TrimSuffix(buffer.Bytes(), []byte("\n"))
+	}
+	hash := func(value any) string {
+		digest := sha256.Sum256(canonical(value))
+		return hex.EncodeToString(digest[:])
+	}
+	management := read("additional-management-fixed-inputs")
+	history := management["history"].([]any)
+	if len(history) != 3 || history[0].(map[string]any)["id"] != "b20260101000000" || history[1].(map[string]any)["id"] != "b20260102000000" || history[2].(map[string]any)["id"] != "b20260102000001" {
+		t.Fatal("fixture.concrete.history.binding")
+	}
+	stats := management["stats_response"].(map[string]any)
+	if string(canonical(stats["summary"])) != `{"duration_count":1,"duration_sum_seconds":10,"status_counts":{"failure_build":1,"success":1},"total":2}` {
+		t.Fatal("fixture.concrete.stats.summary")
+	}
+	for _, value := range history {
+		row := value.(map[string]any)
+		if row["status"] == "failure_build" && row["failure_category"] != "pipeline_exit" {
+			t.Fatal("fixture.concrete.history.category")
+		}
+	}
+	state := management["build_state"].(map[string]any)
+	queued := state["queued"].([]any)
+	ids := management["reorder_request"].(map[string]any)["body"].(map[string]any)["queue_ids"].([]any)
+	if len(queued) != 2 || len(ids) != 2 || queued[0].(map[string]any)["id"] != ids[0] || queued[1].(map[string]any)["id"] != ids[1] || ids[0] != "q20260102000000" || ids[1] != "q20260102000000-001" {
+		t.Fatal("fixture.concrete.queue.binding")
+	}
+	inputs := read("additional-management-state-inputs")
+	snapshot := inputs["snapshot"].(map[string]any)
+	if len(snapshot["files"].(map[string]any)) != 13 || hash(snapshot["files"]) != "6d21ac0c8cbd9a2e802717f11ec3a7a1d9fbffb17e91d8042a9f4331a061bcc5" || snapshot["sha256"] != hash(snapshot["files"]) {
+		t.Fatal("fixture.concrete.snapshot.digest")
+	}
+	payload := inputs["notify_payload"].(map[string]any)
+	if hash(payload["payload"]) != "3ab1644e8b1fcc545756baa961ec40b34cdeabd048650c420887fbdbbed7eebb" || payload["payload_sha256"] != hash(payload["payload"]) || inputs["notify_delivery"].(map[string]any)["payload_sha256"] != payload["payload_sha256"] {
+		t.Fatal("fixture.concrete.resend.payload")
+	}
+	public := read("additional-management-public-inputs")
+	key := "76144c2400bc476b3d4081c4f2ae5b76668b33fa9887ab95f86f97680e73638e"
+	entry := public["response_cache"].(map[string]any)["entries"].(map[string]any)[key].(map[string]any)
+	if hash(public["cache_key_input"]) != key || hash(entry["vary"]) != key || entry["key"] != key || hash(entry["body"]) != "1f68af6ca60ce02c628ec72cdf1ff65bb2180aecb73dc2091c3072a1d84a70c9" || entry["body_sha256"] != hash(entry["body"]) {
+		t.Fatal("fixture.concrete.cache.digest")
+	}
+	raw, err := hex.DecodeString(public["share_entropy_hex"].(string))
+	if err != nil || len(raw) != 32 {
+		t.Fatal("fixture.concrete.share.entropy")
+	}
+	digest := sha256.Sum256(raw)
+	link := public["share_links"].(map[string]any)["links"].([]any)[0].(map[string]any)
+	if link["token_hash"] != hex.EncodeToString(digest[:]) {
+		t.Fatal("fixture.concrete.share.hash: expected raw-byte hash")
+	}
+	event := public["event_appends"].([]any)[0].(map[string]any)
+	wantFrame := "id: evt_20260102000000\nevent: admin-event\ndata: " + string(canonical(event)) + "\n\n: keepalive\n\nevent: error\ndata: {\"error\":\"Admin events read failed\"}\n\n"
+	if public["event_stream_expected"] != wantFrame {
+		t.Fatal("fixture.concrete.event.frame")
+	}
+	for status, value := range public["badge_svg"].(map[string]any) {
+		data := value.(string)
+		decoder := xml.NewDecoder(strings.NewReader(data))
+		var names, texts, fills []string
+		for {
+			token, err := decoder.Token()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				t.Fatalf("fixture.concrete.badge.xml.%s", status)
+			}
+			switch element := token.(type) {
+			case xml.StartElement:
+				names = append(names, element.Name.Local)
+				for _, attribute := range element.Attr {
+					if strings.HasPrefix(attribute.Name.Local, "on") || strings.Contains(attribute.Value, "url(") {
+						t.Fatalf("fixture.concrete.badge.security.%s", status)
+					}
+					if element.Name.Local == "rect" && attribute.Name.Local == "fill" {
+						fills = append(fills, attribute.Value)
+					}
+				}
+			case xml.CharData:
+				if strings.TrimSpace(string(element)) != "" {
+					texts = append(texts, string(element))
+				}
+			}
+		}
+		colors := map[string]string{"success": "#2e7d32", "failure": "#c62828", "running": "#1565c0", "skipped": "#6d6d6d", "unknown": "#455a64"}
+		if len(public["badge_svg"].(map[string]any)) != len(colors) || colors[status] == "" || strings.Join(names, ",") != "svg,rect,rect,text,text" || strings.Join(texts, ",") != "Adlaire CI,"+status || strings.Join(fills, ",") != "#555555,"+colors[status] || !strings.HasSuffix(data, "</svg>\n") || !strings.Contains(data, `width="120" height="20" viewBox="0 0 120 20" role="img" aria-label="Adlaire CI: `+status+`"`) {
+			t.Fatalf("fixture.concrete.badge.structure.%s", status)
+		}
+	}
+	permissions := []string{"build:write", "config:read", "config:write", "status:read", "system:admin", "user:admin"}
+	bootstrap := read("additional-management-bootstrap-inputs")
+	for _, name := range []string{"self_admin", "self_oidc", "self_manager"} {
+		self := bootstrap[name].(map[string]any)
+		capabilities := self["capabilities"].(map[string]any)
+		if len(capabilities) != len(permissions) {
+			t.Fatal("fixture.concrete.self.capability-closure")
+		}
+		for _, permission := range permissions {
+			want := name == "self_admin" || name == "self_oidc" && (permission == "status:read" || permission == "build:write" || permission == "config:read") || name == "self_manager" && permission == "user:admin"
+			if capabilities[permission] != want {
+				t.Fatalf("fixture.concrete.self.capability.%s.%s", name, permission)
+			}
+		}
+		user := self["user"].(map[string]any)
+		if len(user) != 10 || user["credential"] != nil || user["totp"] != nil || user["password_set"] != (name != "self_oidc") {
+			t.Fatal("fixture.concrete.self.projection")
+		}
+	}
+	if string(canonical(bootstrap["options_legacy"])) != `{"profile":"legacy-v1","providers":[]}` || string(canonical(bootstrap["options_multi"])) != `{"profile":"multi-user-v1","providers":[{"id":"fixture","issuer_origin":"https://id.example.test"}]}` {
+		t.Fatal("fixture.concrete.bootstrap.options")
+	}
+	authorization := read("additional-management-authorization-inputs")
+	requests := authorization["requests"].([]any)
+	sdk := read("additional-management-sdk-inputs")["rows"].([]any)
+	if len(requests) != 50 || len(sdk) != 50 {
+		t.Fatal("fixture.concrete.transport.count")
+	}
+	seenRoutes, seenMethods := map[string]bool{}, map[string]bool{}
+	protected, publicCount, sessionSelf := 0, 0, 0
+	api := phase11MustReadText(t, "docs/details/api.md")
+	api = strings.Split(strings.Split(api, "<a id=\"additional-management-api-contract\"></a>")[1], "<a id=\"phase-13-api-alignment-contract\"></a>")[0]
+	apiRoutes := regexp.MustCompile("(?m)^\\| `(GET|POST|PATCH|DELETE)` \\| `([^`]+)` \\|").FindAllStringSubmatch(api, -1)
+	if len(apiRoutes) != len(requests) {
+		t.Fatal("fixture.concrete.transport.api-closure")
+	}
+	for index, value := range requests {
+		request := value.(map[string]any)
+		row := sdk[index].(map[string]any)
+		key := request["method"].(string) + " " + request["route_template"].(string)
+		if seenRoutes[key] || seenMethods[row["sdk_method"].(string)] || request["method"] != row["http_method"] || request["path"] != row["http_path"] {
+			t.Fatalf("fixture.concrete.transport.binding.%d", index)
+		}
+		seenRoutes[key], seenMethods[row["sdk_method"].(string)] = true, true
+		if !strings.Contains(api, "| `"+request["method"].(string)+"` | `"+request["route_template"].(string)+"` |") {
+			t.Fatalf("fixture.concrete.transport.route.%s", key)
+		}
+		if request["required_permission"] != nil {
+			protected++
+			if request["denied_actor_id"] == nil {
+				t.Fatal("fixture.concrete.transport.denied-actor")
+			}
+		} else if request["auth_boundary"] == "session-self" {
+			sessionSelf++
+		} else {
+			publicCount++
+		}
+	}
+	if protected != 45 || publicCount != 4 || sessionSelf != 1 || !seenMethods["getCurrentUser"] || !seenMethods["getAuthOptions"] {
+		t.Fatal("fixture.concrete.transport.auth-closure")
+	}
+	migration := read("additional-management-migration-inputs")
+	journal := migration["journal"].(map[string]any)
+	for name, value := range migration["source"].(map[string]any) {
+		digest := sha256.Sum256(append(canonical(value), '\n'))
+		if journal["source_sha256"].(map[string]any)[name] != hex.EncodeToString(digest[:]) {
+			t.Fatalf("fixture.concrete.migration.source.%s", name)
+		}
+	}
+	for name, value := range migration["outputs"].(map[string]any) {
+		if journal["output_sha256"].(map[string]any)[name] != hash(value) {
+			t.Fatalf("fixture.concrete.migration.output.%s", name)
+		}
+	}
+	if journal["output_sha256"].(map[string]any)[".users"] != "ec4dc9f8bd7d0e46ba7a6c9529e7e03386c7740784f93260ae4c615408eea836" {
+		t.Fatal("fixture.concrete.migration.user-golden")
+	}
+	archives := read("additional-management-site-diff-inputs")
+	for _, side := range []string{"left", "right"} {
+		input := archives[side].(map[string]any)
+		data, err := base64.StdEncoding.Strict().DecodeString(input["archive_base64"].(string))
+		if err != nil {
+			t.Fatalf("fixture.concrete.archive.base64.%s", side)
+		}
+		digest := sha256.Sum256(data)
+		wantArchive := map[string]string{"left": "83f678968b2ab601b3865c90db00cf74da13546adb9ae8cb5067909021c52d8e", "right": "d1027eb4c3c0d48f695b713584e91e0d385fef32637e60ca170ac2b15b87faaa"}
+		if input["archive_sha256"] != hex.EncodeToString(digest[:]) || input["archive_sha256"] != wantArchive[side] {
+			t.Fatalf("fixture.concrete.archive.digest.%s", side)
+		}
+		reader, err := gzip.NewReader(bytes.NewReader(data))
+		if err != nil {
+			t.Fatalf("fixture.concrete.archive.gzip.%s", side)
+		}
+		tarReader := tar.NewReader(reader)
+		files := input["files"].(map[string]any)
+		seen := map[string]bool{}
+		var total int64
+		for {
+			header, err := tarReader.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil || header.Typeflag != tar.TypeReg || seen[header.Name] {
+				t.Fatalf("fixture.concrete.archive.header.%s", side)
+			}
+			body, err := io.ReadAll(io.LimitReader(tarReader, 1025))
+			if err != nil || len(body) > 1024 || files[header.Name] != string(body) || header.Size != int64(len(body)) {
+				t.Fatalf("fixture.concrete.archive.file.%s", side)
+			}
+			digest := sha256.Sum256(body)
+			if input["file_sha256"].(map[string]any)[header.Name] != hex.EncodeToString(digest[:]) {
+				t.Fatalf("fixture.concrete.archive.file-digest.%s", side)
+			}
+			seen[header.Name] = true
+			total += header.Size
+		}
+		if _, err := io.Copy(io.Discard, reader); err != nil {
+			t.Fatalf("fixture.concrete.archive.trailer.%s", side)
+		}
+		if err := reader.Close(); err != nil {
+			t.Fatalf("fixture.concrete.archive.close.%s", side)
+		}
+		meta := input["meta"].(map[string]any)
+		if len(seen) != 3 || len(files) != 3 || meta["file_count"] != json.Number("3") || meta["size_bytes"] != json.Number(strconv.FormatInt(total, 10)) {
+			t.Fatalf("fixture.concrete.archive.metadata.%s", side)
+		}
+	}
+}
+
+func plannedPhaseMaturityBoundary(roadmap string) error {
+	if !strings.Contains(roadmap, "現在の active Phase は設定しない。") || regexp.MustCompile("現在の active Phase は Phase (19|20|21|22)").MatchString(roadmap) {
+		return fmt.Errorf("planned Phase activation boundary violated")
+	}
+	for phase := 19; phase <= 22; phase++ {
+		pattern := fmt.Sprintf("(?m)^\\| Phase %d \\| [^\\n]+ \\| 仕様化済み・未実装 \\| Phase %d \\|$", phase, phase-1)
+		if len(regexp.MustCompile(pattern).FindAllString(roadmap, -1)) != 1 {
+			return fmt.Errorf("planned Phase %d must remain specified and unimplemented", phase)
+		}
+	}
+	return nil
+}
+
 func TestPhase19SpecificationContracts(t *testing.T) {
 	t.Parallel()
 
@@ -320,6 +842,9 @@ func TestPhase19SpecificationContracts(t *testing.T) {
 		{"deployment-observation", "docs/details/statefile.md", `"observations": "list(StageObservation,0,512)"`, `"observations": "list(StageObservation,0,32)"`},
 		{"notification-attempt", "docs/details/statefile.md", `"target_attempt": "int(1,100)"`, `"target_attempt": "int(1,3)"`},
 		{"roadmap-inventory-state", "docs/ROADMAP.md", "| 仕様化済み・未実装 | CI / CD | Phase 19", "| 改訂予定 | CI / CD | Phase 19"},
+		{"roadmap-phase20-implemented", "docs/ROADMAP.md", "| 仕様化済み・未実装 | Phase 19 |", "| 実装済み | Phase 19 |"},
+		{"roadmap-phase21-active", "docs/ROADMAP.md", "現在の active Phase は設定しない。", "現在の active Phase は Phase 21。"},
+		{"roadmap-phase22-missing", "docs/ROADMAP.md", "| Phase 22 |", "| Phase 23 |"},
 		{"unknown-type", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "MissingType"`},
 		{"missing-sdk", "docs/details/sdk.md", "| `runStart(params,body,options)` |", "| `missing(params,body,options)` |"},
 		{"missing-ui", "docs/details/ui.md", "| runStart |", "| missing |"},
@@ -587,14 +1112,8 @@ func phase19ValidateSpecification(documents map[string]string) error {
 			return fmt.Errorf("Phase 19 CLI command missing: %s", id)
 		}
 	}
-	for _, token := range []string{
-		"現在の active Phase は設定しない。",
-		"Phase 19 は `仕様化済み・未実装`",
-		"Phase 20 は `改訂予定`",
-	} {
-		if !strings.Contains(documents["docs/ROADMAP.md"], token) {
-			return fmt.Errorf("Phase 19 maturity boundary missing: %s", token)
-		}
+	if err := plannedPhaseMaturityBoundary(documents["docs/ROADMAP.md"]); err != nil {
+		return err
 	}
 	fixture := documents["docs/details/fixture.md"]
 	for _, id := range []string{
@@ -6351,8 +6870,8 @@ func phase18RequireDocumentState(t *testing.T) {
 	if strings.Contains(roadmap, phase18InProgressStatus) || strings.Contains(roadmap, "現在の active Phase は Phase 18") || strings.Contains(roadmap, "Phase 18 は `仕様化済み・未実装`") {
 		t.Fatalf("docs/ROADMAP.md must not retain a stale Phase 18 active or incomplete state after the state-transition gate closes")
 	}
-	if !strings.Contains(roadmap, "Phase 19 は `仕様化済み・未実装`") || !strings.Contains(roadmap, "Phase 20 は `改訂予定`") || strings.Contains(roadmap, "現在の active Phase は Phase 19") || strings.Contains(roadmap, "現在の active Phase は Phase 20") {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 19 and Phase 20 non-active until their specification gates are complete")
+	if err := plannedPhaseMaturityBoundary(roadmap); err != nil {
+		t.Fatal(err)
 	}
 	for _, token := range []string{
 		"Phase 11 から Phase 18 の完了証跡条件、closure counter、record schema、required check は ROADMAP 本文で再掲せず",

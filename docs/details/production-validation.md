@@ -228,7 +228,7 @@ Phase 17 の fixture 証跡へ接続する future target 分類は、`xserver-vp
 
 入力recordは `{provider_target:"xserver-vps-future",environment_id:string,source_sha:Digest40,mode:"simulation"|"isolated-vps",os_id:"ubuntu",os_version:"24.04",arch:"amd64",cpu_count:integer,memory_bytes:integer,disk_free_bytes:integer,ssh_host_key_sha256:Digest,production_data:false}` の全key必須。environment_idは運用者が発行したopaque idで実IP/契約idをfixtureへ残さない。最低2vCPU/4GiB memory/20GiB空き、専用nonproduction VPS、事前snapshotと復旧手段、固定SSH host key、root作業の別承認を必要とする。cicd-v1採用時は [setup sandbox capability](setup.md#phase-19-sandbox-profile) 全条件も必須。不足をsimulation成功で代用しない。
 
-同一source SHAでsimulation1回→隔離VPS導入/再起動/更新/切戻し/権限不正拒否/通信断復旧/secret非露出/cleanupを2回実行し、2回目は別のclean stateで行う。失敗・未実行・provider由来の制限はopen、同じ実行の再集計を2回と数えない。結果は既存production evidence schemaのprovider/environment/sourceへ接続する。secret漏えい、unexpected public listener、rollback不明、production data混入で即停止し自動再実行しない。操作前後のVM自体の存続を確認し、削除をcleanupに含めない。実在VPS/credentialの取得・操作は本仕様策定では実施しない。
+同一source SHAでsimulation1回→隔離VPS導入/再起動/更新/切戻し/権限不正拒否/通信断復旧/secret非露出/cleanupを2回実行し、2回目は別のclean stateで行う。失敗・未実行・provider由来の制限はopen、同じ実行の再集計を2回と数えない。結果は [fixture証跡責務のXserver受入専用record](fixture.md#xserver-acceptance-evidence-contract) へ接続し、Phase17/18のrecordへmodeやcounterを追加しない。secret漏えい、unexpected public listener、rollback不明、production data混入で即停止し自動再実行しない。操作前後のVM自体の存続を確認し、削除をcleanupに含めない。実在VPS/credentialの取得・操作は本仕様策定では実施しない。
 
 <a id="phase-17-production-validation-evidence-connection"></a>
 <a id="phase-17-production-validation-completion"></a>

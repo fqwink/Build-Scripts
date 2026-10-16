@@ -55,9 +55,9 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | Phase 17 | ConoHa VPS 試験本番運用。provider target、OS / plan 前提、opaque environment identity、本番運用前提の検証 mode、試験本番運用窓・停止条件、本番環境同等 simulation、運用中バグ修正、destructive operation 禁止境界、fixture 証跡への接続条件の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 17 ConoHa VPS 試験本番運用参照](DETAIL_INDEX.md#phase-17-production-validation-entry) を参照する。 | 実装済み | Phase 16 |
 | Phase 18 | VPS Pull Bootstrap。作成済み VPS に Adlaire CI の CI 実行基盤と将来 CD 基盤の受け口を導入し、Phase 17 の試験本番VPS 前提、bootstrap session、bootstrap script artifact、topology role、source channel、bootstrap artifact health、bootstrap runtime flow、bootstrap update / rollback drill、bootstrap 中 issue、仕様先行バグ修正、再検証、secret / destructive operation 境界、document drift の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 VPS Pull Bootstrap 参照](DETAIL_INDEX.md#phase-18-vps-pull-bootstrap-entry) を参照する。 | 実装済み | Phase 17 |
 | Phase 19 | 内製 CI/CD 強化。GitHub Actions をリポジトリ検証と required check の標準基盤として使用しつつ、Adlaire CI の内製 CI 実行、内製 CD、deploy、rollback、release verification、required check 証跡を同一 Phase で強化する。対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 19 内製 CI/CD 強化参照](DETAIL_INDEX.md#phase-19-inhouse-cicd-entry) を参照する。 | 仕様化済み・未実装 | Phase 18 |
-| Phase 20 | 内製 IaC。Terraform 的な infrastructure plan / apply / rollback / drift detection / provider operation boundary を、外部 IaC tool 依存ではなく Go 標準ライブラリと内製 manifest で扱う後続 Phase とする。対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 20 内製 IaC 参照](DETAIL_INDEX.md#phase-20-inhouse-iac-entry) を参照する。 | 改訂予定 | Phase 19 |
-| Phase 21 | 既存実行profileの追加管理機能全体。multi-user/RBAC/OIDC、追加管理API §27.48〜§27.70、管理UI配布/配信、builder cache、SDK/UI、状態移行、横断fixtureを一体で扱う。実装PRは全ownerを同一branchへまとめ、Phase19 namespaceの仕様・状態とは独立に照合する。 | 改訂予定 | Phase 20 |
-| Phase 22 | エックスサーバVPSの限定受入検証。既存VPS・provider API非使用の採用範囲を [本番検証詳細本文責務](details/production-validation.md#xserver-vps-adoption-contract) で確認する。実機操作は別承認対象。 | 改訂予定 | Phase 21 |
+| Phase 20 | 内製 IaC。Terraform 的な infrastructure plan / apply / rollback / drift detection / provider operation boundary を、外部 IaC tool 依存ではなく Go 標準ライブラリと内製 manifest で扱う後続 Phase とする。対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 20 内製 IaC 参照](DETAIL_INDEX.md#phase-20-inhouse-iac-entry) を参照する。 | 仕様化済み・未実装 | Phase 19 |
+| Phase 21 | 既存実行profileの追加管理機能全体。multi-user/RBAC/OIDC、追加管理API §27.48〜§27.70、管理UI配布/配信、builder cache、SDK/UI、状態移行、横断fixtureを一体で扱う。実装PRは全ownerを同一branchへまとめ、Phase19 namespaceの仕様・状態とは独立に照合する。 | 仕様化済み・未実装 | Phase 20 |
+| Phase 22 | エックスサーバVPSの限定受入検証。既存VPS・provider API非使用の採用範囲を [本番検証詳細本文責務](details/production-validation.md#xserver-vps-adoption-contract) で確認する。実機操作は別承認対象。 | 仕様化済み・未実装 | Phase 21 |
 
 <a id="phase-19-planning-scope"></a>
 **Phase 19 策定対象の現在割当：**
@@ -81,7 +81,7 @@ Release の provenance / signature / SBOM と setup 受け入れ、任意 Commit
 
 既存機能の現在状態は [統合機能インベントリ](#522-統合ロードマップ表) の各行を参照する。上記の拡張範囲を既存の単純な pipeline / build approval / queue / log / cache と同一の機能行として扱わない。Phase 20 の provider resource 操作、データストア切替、外部認証連携は今回の Phase 19 割当に含めない。
 
-現在の active Phase は設定しない。初期実装 Phase 1 から Phase 18 まではすべて `実装済み` とする。Phase 18 は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 状態遷移 gate](DETAIL_INDEX.md#phase-18-state-transition-gate) の完了証跡が同一実装 Pull Request に接続されたため `実装済み` とする。Phase 11 から Phase 18 の完了証跡条件、closure counter、record schema、required check は ROADMAP 本文で再掲せず、各 Phase 行の詳細仕様入口、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。Phase 19 は `仕様化済み・未実装`、Phase 20 は `改訂予定` の後続 Phase であり、active Phase として明示されるまで実装着手、実装 PR、完了判定は行わない。`xserver-vps-future` の分類と Phase 17 / Phase 18 完了条件への接続は [`docs/details/production-validation.md` 本番検証詳細本文責務 エックスサーバ VPS 将来判断契約](details/production-validation.md#phase-17-xserver-future-contract) を参照する。Phase 17 以降の文書、fixture root、workflow、required check、provider validation、Phase 17 trial production operation、Phase 18 VPS Pull Bootstrap、production simulation は、Phase 16 の active Phase 完了条件へ吸収してはならず、Phase 16 では [`docs/details/fixture.md` fixture 証跡責務 Phase 16 future Phase document boundary 固定契約](details/fixture.md#phase-16-future-phase-document-boundary) に従う document drift 境界確認だけに使用する。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit)、Phase 専用詳細仕様ファイルの扱いは [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4) を参照する。
+現在の active Phase は設定しない。初期実装 Phase 1 から Phase 18 まではすべて `実装済み` とする。Phase 18 は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 状態遷移 gate](DETAIL_INDEX.md#phase-18-state-transition-gate) の完了証跡が同一実装 Pull Request に接続されたため `実装済み` とする。Phase 11 から Phase 18 の完了証跡条件、closure counter、record schema、required check は ROADMAP 本文で再掲せず、各 Phase 行の詳細仕様入口、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。Phase19/20/21/22は `仕様化済み・未実装` の後続Phaseであり、active Phase として明示されるまで実装着手、実装 PR、完了判定は行わない。`xserver-vps-future` の分類と Phase 17 / Phase 18 完了条件への接続は [`docs/details/production-validation.md` 本番検証詳細本文責務 エックスサーバ VPS 将来判断契約](details/production-validation.md#phase-17-xserver-future-contract) を参照する。Phase 17 以降の文書、fixture root、workflow、required check、provider validation、Phase 17 trial production operation、Phase 18 VPS Pull Bootstrap、production simulation は、Phase 16 の active Phase 完了条件へ吸収してはならず、Phase 16 では [`docs/details/fixture.md` fixture 証跡責務 Phase 16 future Phase document boundary 固定契約](details/fixture.md#phase-16-future-phase-document-boundary) に従う document drift 境界確認だけに使用する。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit)、Phase 専用詳細仕様ファイルの扱いは [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4) を参照する。
 
 Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない。状態遷移判断は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 状態遷移 gate](DETAIL_INDEX.md#phase-18-state-transition-gate)、[`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、[`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](details/production-validation.md#phase-18-vps-pull-bootstrap-contract)、[`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](details/fixture.md#phase-18-vps-pull-bootstrap-evidence) を正本とする。
 
@@ -98,25 +98,16 @@ Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない�
 `改訂予定` の行に記載する詳細入口は、仕様策定先または再評価先を示す。`改訂予定` の詳細入口は、実装着手根拠、Phase 11 実装対象、または `仕様化済み・未実装` の代替根拠として扱わない。`仕様化済み・未実装` の行であっても、実装着手可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze)、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を同時に満たす場合だけ成立する。
 
 <a id="specification-completeness-status"></a>
-**仕様全般詳細化の現在状態：** 全機能の現状は下の統合機能インベントリを参照する。Phase19の仕様策定済み判定を、残る改訂予定機能の仕様完成へ読み替えない。特にPhase20、エックスサーバVPS検証判断、管理UI配布/配信、builder cache、追加管理APIは現在も改訂予定であり、全般の完全仕様化を完了した状態ではない。追加管理APIの既存namespaceとPhase19専用namespaceは独立の割当であり、同じ機能名だけを理由に片方の状態を昇格しない。
+**仕様全般詳細化の現在状態：** 統合機能インベントリの既存要求について、owner本文・入力/出力/状態/異常系/復旧・具体fixture入力/expected・Phase/実装PR境界を照合し、検出済み仕様不備は解消した。Phase20/21/22と従来改訂予定27項目は仕様成熟度として `仕様化済み・未実装` とする。根拠は [同一仕様PRのinventory/batch/反復検査証跡](https://github.com/fqwink/Build-Scripts/pull/100)。これは製品機能テスト完了、実機受入完了、実装着手許可、active Phase設定を意味しない。既存namespaceとPhase19専用namespaceの割当は独立のまま、製品実装と実機検証は未着手である。
 
-| 未完了範囲 | 現在状態 / 次の判断先 |
+| 仕様化済み範囲 | 現在状態 / 詳細・検証入口 |
 |---|---|
-| Phase20内製IaC | 改訂予定。provider操作の採用範囲・owner・詳細本文・fixture・Phase全体の実装条件は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase20入口](DETAIL_INDEX.md#phase-20-inhouse-iac-entry) から仕様策定する。 |
-| エックスサーバVPS検証判断 | 改訂予定。[本番検証詳細本文責務](details/production-validation.md#phase-17-xserver-future-contract)に接続する。 |
-| 管理UI配布/配信・builder cache | 改訂予定。各ownerと検証の入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務](DETAIL_INDEX.md#0i-詳細節対応表) を参照する。 |
-| 追加管理API | 改訂予定の各機能を下表で個別管理する。入力値、queue実行順、集計、cache世代、snapshot、認可の詳細本文と [具体oracle](details/fixture.md#additional-management-concrete-oracles) は存在するが、下の未確定契約と後続Phase割当を閉じるまで凍結しない。入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 追加管理API対応](DETAIL_INDEX.md#0i6-追加管理api機能)。 |
+| Phase20内製IaC | 仕様化済み・未実装。[詳細入口](DETAIL_INDEX.md#phase-20-inhouse-iac-entry)、[config/service固定入力と27case](details/fixture.md#inhouse-iac-concrete-oracles)。 |
+| multi-user / RBAC / OIDC | 仕様化済み・未実装。[認証移行・失効・TOTP](details/security.md#multi-user-migration-contract)、[再署名50vector](details/fixture.md#oidc-signed-claim-vectors)、[HTTP具体入力](details/fixture.md#oidc-http-concrete-oracles)、[移行中断入力](details/fixture.md#additional-management-migration-inputs)。 |
+| 追加管理API / SDK / UI / 配布 / cache | 仕様化済み・未実装。[API機能入口](DETAIL_INDEX.md#0i6-追加管理api機能)、[50経路入力](details/fixture.md#additional-management-authorization-inputs)、[SDK入力](details/fixture.md#additional-management-sdk-inputs)、[UI操作入力](details/fixture.md#additional-management-ui-inputs)。 |
+| Xserver限定受入 | 仕様化済み・未実装。[Phase22入口](DETAIL_INDEX.md#phase-22-xserver-acceptance-entry)。simulation/隔離VPSの実行証跡は未作成で、Phase17/18のfuture_plan分類を維持する。 |
 
-**仕様凍結前の残存境界：** 次は現在の改訂予定範囲に残る未完了理由であり、仕様化済み/実装済みへ昇格する根拠ではない。
-
-| 範囲 | 未完了理由 / 判断先 |
-|---|---|
-| Phase20 | 採用resource/owner/復旧本文は [Phase20詳細入口](DETAIL_INDEX.md#phase-20-inhouse-iac-entry) に接続済み。config resourceと各crash/faultの具体fixture全体が未完了。 |
-| multi-user / RBAC / 外部認証 | 移行・token所有者/失効・user別TOTP・code flow本文は [security詳細本文責務](details/security.md#multi-user-migration-contract) に接続済み。各移行中断/flow異常系の具体入力とexpected全体が未完了。 |
-| 複数project / Webhook手動再送 | 入力/実行/権限対応と耐久再送本文は各ownerで固定済み。全ケースの具体state/fake/expectedは [fixture証跡責務](details/fixture.md#additional-management-concrete-oracles) で継続する。 |
-| 追加機能全体 | Phase21/22と実装PR境界は割当済み。全caseの具体fixture payload/expected確定と横断レビューが未完了。既存実装・CI成功を未実装機能の完成証拠にしない。 |
-
-上表以外の潜在不備が0件であることは未証明である。現在の改訂予定27機能を、本文参照が増えたことや文書検査成功だけで昇格しない。active Phaseは引き続き未設定とする。
+この判定は現行インベントリの要求範囲に対する仕様成熟度であり、将来の追加要求や潜在不具合不存在の保証ではない。実装着手可否と新たな未定義事項を発見した場合の扱いは [SPEC完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) / [active Phase条件](SPEC.md#policy-phase-unit) を参照する。active Phaseは引き続き未設定とする。
 
 <a id="522-統合ロードマップ表"></a>
 **統合機能インベントリ：** 以下を全機能の現在状態に関する唯一の一覧とする。
@@ -171,10 +162,10 @@ Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない�
 | 実装済み | VPS Pull Bootstrap | Phase 18 pull runner foundation / bootstrap update / rollback drill / bootstrap 中 issue / 仕様先行バグ修正 / 再検証 / known bug 0 gate | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](details/production-validation.md#phase-18-vps-pull-bootstrap-contract) |
 | 実装済み | 本番検証 | Phase 18 secret / destructive operation / opaque metadata / document drift gate | [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](details/fixture.md#phase-18-vps-pull-bootstrap-evidence) |
 | 仕様化済み・未実装 | CI / CD | Phase 19 GitHub Actions required check / 内製 CI 実行 / 内製 CD / deploy / rollback / release verification gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 19 内製 CI/CD 強化参照](DETAIL_INDEX.md#phase-19-inhouse-cicd-entry) |
-| 改訂予定 | Infrastructure | Phase 20 内製 IaC / infrastructure manifest / plan / apply / rollback / drift detection / provider operation boundary | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 20 内製 IaC 参照](DETAIL_INDEX.md#phase-20-inhouse-iac-entry) |
-| 改訂予定 | 本番検証 | Phase 17 エックスサーバ VPS 本番環境同等検証判断 | [`docs/details/production-validation.md` 本番検証詳細本文責務 エックスサーバ VPS 将来判断契約](details/production-validation.md#phase-17-xserver-future-contract) |
-| 改訂予定 | 管理ツール・配布 | 管理 UI 静的配布物構成・Archive 検証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 改訂予定 | 管理ツール・配布 | 管理 UI 静的 HTTP 配信 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 仕様化済み・未実装 | Infrastructure | Phase 20 内製 IaC / infrastructure manifest / plan / apply / rollback / drift detection / provider operation boundary | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 20 内製 IaC 参照](DETAIL_INDEX.md#phase-20-inhouse-iac-entry) |
+| 仕様化済み・未実装 | 本番検証 | Phase 17 エックスサーバ VPS 本番環境同等検証判断 | [`docs/details/production-validation.md` 本番検証詳細本文責務 エックスサーバ VPS 将来判断契約](details/production-validation.md#phase-17-xserver-future-contract) |
+| 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的配布物構成・Archive 検証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的 HTTP 配信 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ビルドタイムアウト | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | 管理ツール・API | ポーリング間隔の動的変更 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ビルドログのファイル保存 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
@@ -237,7 +228,7 @@ Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない�
 | 実装済み | CI ランナー | ビルドログのアーカイブ圧縮 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ローカルファイル監視モード | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | タグ付きコミットのみビルド | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 改訂予定 | ビルドスクリプト | ビルドキャッシュ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 仕様化済み・未実装 | ビルドスクリプト | ビルドキャッシュ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ビルド通知連携 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ビルド時間トレンド記録 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ビルド失敗時の自動リトライ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
@@ -255,45 +246,45 @@ Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない�
 | 実装済み | CI ランナー | ビルドトリガー種別の記録 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ビルド所要時間の異常検知 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | 設定ファイル起動時整合性チェック | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 改訂予定 | 管理ツール・API | マルチユーザー対応 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 改訂予定 | 管理ツール・API | データストア切り替え | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 改訂予定 | 管理ツール・API | 外部認証連携 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | マルチユーザー対応 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | データストア切り替え | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | 外部認証連携 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装済み | 管理ツール・API | TOTP 二要素認証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 改訂予定 | 管理ツール・API | 統計データの JSON エクスポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 改訂予定 | 管理ツール・API | キュー内個別エントリのキャンセル | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | 統計データの JSON エクスポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | キュー内個別エントリのキャンセル | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装済み | 管理ツール・API | 設定バリデーション API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 改訂予定 | 管理ツール・API | Prometheus メトリクスエンドポイント | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | Prometheus メトリクスエンドポイント | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装済み | 管理ツール・API | CLI 管理クライアント | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 改訂予定 | 管理ツール・API | 設定の自動スナップショット | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 改訂予定 | 管理ツール・API | ステータスバッジ生成 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 改訂予定 | 管理ツール・API | ビルド履歴の自動削除設定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | 設定の自動スナップショット | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | ステータスバッジ生成 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | ビルド履歴の自動削除設定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装済み | 管理ツール・API | セッションタイムアウト変更設定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | 管理ツール・API | ビルドトリガー専用 API スコープ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | 管理ツール・API | 監査ログ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | 管理ツール・API | API レート制限 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 改訂予定 | 管理ツール・API | ロールベースアクセス制御 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 改訂予定 | 管理ツール・API | 設定スナップショット差分表示 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 改訂予定 | 管理ツール・API | 複数プロジェクト管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | ロールベースアクセス制御 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | 設定スナップショット差分表示 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | 複数プロジェクト管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装済み | 管理ツール・API | API キー管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | 管理ツール・API | ビルドログの保存済み有限 SSE 配信 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | 管理ツール・API | ビルド統計ダッシュボード | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 改訂予定 | 管理ツール・API | ユーザー管理 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | ユーザー管理 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装済み | 管理ツール・API | IP アドレス制限 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 改訂予定 | 管理ツール・API | API バージョニング | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 改訂予定 | 管理ツール・API | API ドキュメント自動生成 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | API バージョニング | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | API ドキュメント自動生成 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装済み | 管理ツール・API | 通知チャンネル管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 改訂予定 | 管理ツール・API | ビルドキューの手動並び替え | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 改訂予定 | 管理ツール・API | 設定テンプレート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | ビルドキューの手動並び替え | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | 設定テンプレート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装済み | 管理ツール・API | API アクセスログ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 改訂予定 | 管理ツール・API | 管理者向けイベントフィード | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | 管理者向けイベントフィード | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装済み | 管理ツール・API | ビルドキュー可視化 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | 管理ツール・API | メンテナンスモード | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 改訂予定 | 管理ツール・API | 読み取り専用共有リンク | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | 読み取り専用共有リンク | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装済み | 管理ツール・API | アラート閾値設定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | 管理ツール・API | バックアップ／リストア | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 改訂予定 | 管理ツール・API | API レスポンスキャッシュ制御 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 改訂予定 | 管理ツール・API | スナップショット間サイト差分 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 改訂予定 | 管理ツール・API | Webhook 送信履歴の手動再送 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | API レスポンスキャッシュ制御 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | スナップショット間サイト差分 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | Webhook 送信履歴の手動再送 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装済み | ビルドスクリプト | 差分ビルド | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | ビルドスクリプト | 複数出力形式 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | ビルドスクリプト | Markdown 拡張記法サポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
