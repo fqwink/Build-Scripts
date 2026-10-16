@@ -270,13 +270,13 @@ func TestXserverAcceptanceSpecificationVectors(t *testing.T) {
 		}
 		return v
 	}
-	check := func(t *testing.T, v xserverSpecificationVector, want string) {
+	check := func(t *testing.T, assertionID string, v xserverSpecificationVector, want string) {
 		t.Helper()
 		if got := xserverSpecificationOracle(v); got != want {
-			t.Fatalf("setup.xserver-spec.%s: expected %s, actual %s; fixture.md#xserver-acceptance-authorization-vectors; reproduce: go test . -run '^TestXserverAcceptanceSpecificationVectors$' -count=1", t.Name(), want, got)
+			t.Fatalf("setup.xserver-spec.%s: expected %s, actual %s; fixture.md#xserver-acceptance-authorization-vectors; reproduce: go test . -run '^TestXserverAcceptanceSpecificationVectors$' -count=1", assertionID, want, got)
 		}
 	}
-	check(t, read(t), "ok")
+	check(t, "fixed-input.accept", read(t), "ok")
 	for _, control := range []struct {
 		name   string
 		change func(*xserverSpecificationVector)
@@ -322,7 +322,7 @@ func TestXserverAcceptanceSpecificationVectors(t *testing.T) {
 		t.Run(control.name, func(t *testing.T) {
 			v := read(t)
 			control.change(&v)
-			check(t, v, control.want)
+			check(t, control.name+".reject", v, control.want)
 		})
 	}
 	for _, job := range []string{"simulation", "isolated-acceptance"} {
@@ -330,30 +330,39 @@ func TestXserverAcceptanceSpecificationVectors(t *testing.T) {
 			t.Run(job+"-"+result, func(t *testing.T) {
 				v := read(t)
 				v.JobResults[job] = result
-				check(t, v, "jobs")
+				resultID := result
+				if resultID == "" {
+					resultID = "empty"
+				}
+				check(t, job+"-"+resultID+".reject", v, "jobs")
 			})
 		}
 	}
-	for _, now := range []string{"2026-01-02T00:00:00Z", "2026-01-02T00:59:59Z"} {
-		v := read(t)
-		v.Now = now
-		check(t, v, "ok")
-	}
-	for index, input := range []string{
-		strings.Replace(match[1], "{", `{"unknown":true,`, 1),
-		strings.Replace(match[1], `"allow_root_operations": true`, `"allow_root_operations": true,"allow_root_operations":true`, 1),
-		strings.Replace(match[1], `"allow_root_operations": true`, `"allow_root_operations": null`, 1),
-		strings.Replace(match[1], `"run_isolated": true`, `"run_isolated": "true"`, 1),
-		strings.Replace(match[1], `"cycle_id": 0`, `"cycle_id": null`, 1),
-		strings.Replace(match[1], `"schema_version": 1,`, ``, 1),
-		strings.Replace(match[1], `"schema_version": 1`, `"schema_version": 1.0`, 1),
-		strings.Replace(match[1], `"simulation": "success"`, `"simulation": null`, 1),
-		strings.Replace(match[1], `"now"`, string([]byte{0xff})+`"now"`, 1),
-		match[1] + " {}",
+	for _, control := range []struct{ id, now string }{
+		{"window-lower-bound.accept", "2026-01-02T00:00:00Z"},
+		{"window-before-expiry.accept", "2026-01-02T00:59:59Z"},
 	} {
-		if _, err := decodeXserverSpecificationVector([]byte(input)); err == nil {
-			t.Fatalf("setup.xserver-spec.schema-%d: expected schema rejection, actual accepted", index)
-		}
+		v := read(t)
+		v.Now = control.now
+		check(t, control.id, v, "ok")
+	}
+	for _, control := range []struct{ id, input string }{
+		{"schema-unknown-key", strings.Replace(match[1], "{", `{"unknown":true,`, 1)},
+		{"schema-nested-duplicate", strings.Replace(match[1], `"allow_root_operations": true`, `"allow_root_operations": true,"allow_root_operations":true`, 1)},
+		{"schema-null-permission", strings.Replace(match[1], `"allow_root_operations": true`, `"allow_root_operations": null`, 1)},
+		{"schema-string-bool", strings.Replace(match[1], `"run_isolated": true`, `"run_isolated": "true"`, 1)},
+		{"schema-null-cycle", strings.Replace(match[1], `"cycle_id": 0`, `"cycle_id": null`, 1)},
+		{"schema-missing-version", strings.Replace(match[1], `"schema_version": 1,`, ``, 1)},
+		{"schema-fractional-version", strings.Replace(match[1], `"schema_version": 1`, `"schema_version": 1.0`, 1)},
+		{"schema-null-job", strings.Replace(match[1], `"simulation": "success"`, `"simulation": null`, 1)},
+		{"schema-invalid-utf8", strings.Replace(match[1], `"now"`, string([]byte{0xff})+`"now"`, 1)},
+		{"schema-trailing-json", match[1] + " {}"},
+	} {
+		t.Run(control.id, func(t *testing.T) {
+			if _, err := decodeXserverSpecificationVector([]byte(control.input)); err == nil {
+				t.Fatalf("setup.xserver-spec.%s.reject: expected schema rejection, actual accepted; fixture.md#xserver-acceptance-authorization-vectors", control.id)
+			}
+		})
 	}
 }
 

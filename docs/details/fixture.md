@@ -7591,6 +7591,8 @@ run_isolated=falseはsimulation補助実行だけであり、isolated jobのskip
 <a id="xserver-acceptance-authorization-vectors"></a>
 **承認・ゲート仕様入力の固定正例：** 次のJSONは現在の `main_test.go` の `TestXserverAcceptanceSpecificationVectors` が読む純粋な文書oracleであり、本人承認、承認file配置、実機run、actual file検査の証拠ではない。rootのstagesは受入stageの順序を固定し、cyclesは展開すべき閉じたcycle集合を固定する。負例は下表の独立変更を正例のfresh copyへ適用する。artifact専用rootはこの文書oracleではnot_applicableとし、将来の正式rootは変更しない。
 
+assertion idは `setup.xserver-spec.<case>.reject` / `setup.xserver-spec.<case>.accept`。caseは下記class内の意味付き固定名とし、schemaもunknown-key/nested-duplicate/null-permission/string-bool/null-cycle/missing-version/fractional-version/null-job/invalid-utf8/trailing-jsonで識別する。root test名、subtest表示名、実行順、配列番号をidへ組み込まない。診断は固定id、責務anchor、expected/actual拒否code、再現commandを持ち、raw承認file/secretを出さない。
+
 ```json
 {
   "now": "2026-01-02T00:00:00Z",
