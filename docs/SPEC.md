@@ -236,7 +236,7 @@ owner component は対象機能の詳細本文を持つ。collaborator component
 
 owner component と実装 artifact は別の判断対象とする。owner component は機能契約の責務境界であり、単独の実装ファイルが存在することを意味しない。実装 artifact は [`main.go`](../main.go)、`components/<owner>/` 配下の Go file、`admin/*`、実行バイナリ、配布物、または運用実行物のように、リポジトリまたはリリースで実在と実行可否を確認できる対象をいう。owner component が持つ機能の現在状態を、同名の実装 artifact が存在するという理由だけで判定してはならない。
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、実装 artifact の現在状態と owner component が持つ機能の現在状態を区別して記録する。単独の専用 Go 実装 artifact を持たない `admin`、`statefile`、`archive`、`commitstatus`、`security` の owner component は、機能インベントリの現在状態で管理する。実装 artifact の path、起動名、入力 interface のいずれかが必要であるにもかかわらず未定義の機能は、実装可能な仕様として扱ってはならない。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、実装 artifact の現在状態と owner component が持つ機能の現在状態を区別して記録する。各 owner component の機能は機能インベントリで管理し、専用 Go 実装 artifact の有無は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 実装ファイル一覧](DOCUMENT_INDEX.md#実装ファイル一覧) で別に確認する。実装 artifact の path、起動名、入力 interface のいずれかが必要であるにもかかわらず未定義の機能は、実装可能な仕様として扱ってはならない。
 
 [責務文書構成表](#document-responsibility-map) の owner component 別詳細本文責務で [`docs/details/*.md`](details/) を総称として参照する場合でも、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を含めて読んではならない。
 
@@ -416,7 +416,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 
 [`main.go`](../main.go) は 1 ファイルとし、起動入口、実行ファイル名の exact 判定、引数受け取り、binary version 注入値の受け渡し、対象 owner component 呼び出しだけを担当する。[`main.go`](../main.go) に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、setup、release、MCP 処理の実装詳細を書いてはならない。未知の実行ファイル名を既定 owner component へ fallback してはならない。
 
-`components/` の配置は owner package 配置を示す。Go 実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は `admin/` 配下の静的配布物と、CLI 管理クライアント用の `components/admin/` を所有する責務境界として扱う。`setup` と `release` の標準 Go 実装 artifact はそれぞれ `components/setup/` と `components/release/` とする。`statefile`、`archive`、`commitstatus`、`security` は Phase 12 で owner package として実在化済みの責務境界である。`mcp` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。`obsidian` は Phase 14 で owner package として実在化済みであり、Phase 15 では同じ owner package の同期機能拡張として扱う。所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+`components/` の配置は owner package 配置を示す。Go 実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は `admin/` 配下の静的配布物と、CLI 管理クライアント用の `components/admin/` を所有する責務境界として扱う。`setup` と `release` の標準 Go 実装 artifact はそれぞれ `components/setup/` と `components/release/` とする。`statefile`、`archive`、`commitstatus`、`security` は独立した owner package を標準配置とする。`mcp` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。`obsidian` は vault 連携と同期を同じ owner package に配置する。所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
 Phase 12 完了後の Go 実装標準配置は owner component package とし、`main.go` は 1 ファイル固定、各標準 Go owner package は 5 ファイル固定とする。5 ファイル固定は例外禁止であり、実装量、Go 慣習、既存巨大ファイル、共通化希望、テスト都合、将来拡張を理由に 6 ファイル目、補助 package、`helper.go`、`utils.go`、`common.go`、`misc.go`、責務外の集約ファイル、または owner 以外の逃がし先を作ってはならない。5 ファイルに収まらない場合は、ファイル数を増やさず、owner component の責務分割または仕様分割を先に行う。
 
@@ -619,7 +619,7 @@ GitHub Actions は、本リポジトリの開発全般における自動化と�
 
 GitHub Actions は、Adlaire CI production runtime の外部依存、Adlaire CI runner の代替実装、内製 CI/CD の代替、または利用者環境の必須実行基盤として扱ってはならない。内製ランナーの起動方式、pipeline 実行方式、secret 参照、変更検出、通知、転送、deploy、rollback は [`docs/details/runner.md`](details/runner.md) 詳細本文責務、[`docs/details/setup.md`](details/setup.md) 詳細本文責務、[`docs/details/release.md`](details/release.md) 詳細本文責務を正本とする。
 
-GitHub Actions workflow は YAML 禁止の対象外である。ただし、workflow から読み書きする Adlaire CI の入力、出力、fixture、expected、record、state、設定、診断出力は JSON / JSON Lines 契約に従う。
+GitHub Actions workflow と Adlaire CI のデータ形式の適用境界は [`docs/SPEC.md` 方針責務 §4 技術方針表](SPEC.md#direction-technical) を正本とする。command の stdout / stderr、検証 record、診断の具体形式は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 参照表](DETAIL_INDEX.md#0b-詳細仕様参照表) と [横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) から各責務正本を参照する。ここで形式条件を再掲して共通 CLI や開発検証の出力契約を置き換えない。
 
 Phase 19 は内製 CI 強化と内製 CD を同一 Phase として扱う。Phase 19 を CI と CD の別 Phase に分割してはならない。Phase 20 は内製 IaC を扱う後続 Phase とし、Terraform または外部 IaC tool を production 実装依存として採用する前提で仕様化してはならない。
 
@@ -893,7 +893,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | 詳細仕様 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務から対象機能の owner component 詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達でき、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に入力、出力、状態、処理順序、異常系、検証条件が明記されている。 |
 | 必須項目 | [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) を満たしている。 |
 | 完全仕様詳細化 | [`docs/SPEC.md` ポリシー責務 §0 完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) を満たしている。 |
-| 対応表 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)〜[§0i.5](DETAIL_INDEX.md#0i5-setup--release) の詳細節対応表に対象機能が記載され、参照先の owner component 詳細本文と fixture 証跡の対象が一致している。 |
+| 対応表 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i 全詳細節対応表](DETAIL_INDEX.md#0i-詳細節対応表)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 19 owner 対応表](DETAIL_INDEX.md#phase-19-owner-route)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 20 入口](DETAIL_INDEX.md#phase-20-inhouse-iac-entry) のうち対象機能の profile / Phase に対応する入口に記載され、参照先の owner component 詳細本文と fixture 証跡の対象が一致している。 |
 | 横断整合 | API、SDK、UI、状態ファイル、セットアップ、受け入れ条件が矛盾していない。 |
 | 未確定事項 | 実装者が設計判断、仕様補完、例外判断、検証条件の推測、既存実装への後追い合わせを行う余地が残っていない。 |
 | 変更境界 | 実装 PR で変更してよい範囲と変更してはならない範囲が明確である。 |

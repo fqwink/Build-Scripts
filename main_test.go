@@ -61,6 +61,32 @@ func TestSpecificationReferenceIntegrity(t *testing.T) {
 	if err := specificationPhaseReferenceIntegrity(documents); err != nil {
 		t.Fatalf("statefile.spec-phase.positive.accept: expected registered phases, actual %v", err)
 	}
+	if reason := specificationGovernanceIntegrity(documents["docs/SPEC.md"]); reason != "" {
+		t.Fatalf("statefile.spec-governance.positive.accept: fixture.md#specification-reference-checker expected valid responsibility routing, actual %s", reason)
+	}
+	for _, control := range []struct{ id, anchor, from, to string }{
+		{"artifact-absence", "sec-4-2a", "", "単独の専用 Go 実装 artifact を持たない"},
+		{"layout-current-state", "sec-4-3", "", "実在化済み"},
+		{"freeze-route", "policy-spec-freeze", "DETAIL_INDEX.md#0i-詳細節対応表", "DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力"},
+		{"format-source", "sec-5-3", "SPEC.md#direction-technical", "SPEC.md#sec-4-1"},
+		{"format-restatement", "sec-5-3", "", "workflow から読み書きする Adlaire CI の入力、出力"},
+	} {
+		t.Run("governance-"+control.id, func(t *testing.T) {
+			marker := `<a id="` + control.anchor + `"></a>`
+			before, after, ok := strings.Cut(documents["docs/SPEC.md"], marker)
+			if !ok || (control.from != "" && !strings.Contains(after, control.from)) {
+				t.Fatalf("statefile.spec-governance.%s.fixture: expected mutation target at SPEC.md#%s, actual missing", control.id, control.anchor)
+			}
+			if control.from == "" {
+				after = "\n" + control.to + "\n" + after
+			} else {
+				after = strings.Replace(after, control.from, control.to, 1)
+			}
+			if reason := specificationGovernanceIntegrity(before + marker + after); reason != control.id {
+				t.Fatalf("statefile.spec-governance.%s.reject: fixture.md#specification-reference-checker expected=%s actual=%q; reproduce go test . -run TestSpecificationReferenceIntegrity -count=1", control.id, control.id, reason)
+			}
+		})
+	}
 	for _, control := range []struct{ id, expression string }{
 		{"joined-list", "Phase20/21/" + strconv.Itoa(21+1)},
 		{"comma-list", "Phase19,20," + strconv.Itoa(21+1)},
@@ -105,6 +131,46 @@ func TestSpecificationReferenceIntegrity(t *testing.T) {
 	if err := specificationReferenceIntegrity(input, func(path string) bool { _, ok := input[path]; return ok }); err != nil {
 		t.Fatalf("statefile.spec-reference.examples.accept: expected literal examples ignored, actual %v", err)
 	}
+}
+
+func specificationGovernanceIntegrity(spec string) string {
+	section := func(start, end string) string {
+		_, body, ok := strings.Cut(spec, `<a id="`+start+`"></a>`)
+		if !ok {
+			return ""
+		}
+		body, _, ok = strings.Cut(body, `<a id="`+end+`"></a>`)
+		if !ok {
+			return ""
+		}
+		return body
+	}
+	principle := section("sec-4-2a", "direction-change-history-single-source")
+	if principle == "" || strings.Contains(principle, "単独の専用 Go 実装 artifact を持たない") {
+		return "artifact-absence"
+	}
+	layout := section("sec-4-3", "sec-4-4")
+	if layout == "" || strings.Contains(layout, "実在化済み") {
+		return "layout-current-state"
+	}
+	freeze := section("policy-spec-freeze", "policy-phase-unit")
+	row := ""
+	for _, line := range strings.Split(freeze, "\n") {
+		if strings.HasPrefix(line, "| 対応表 |") {
+			row = line
+		}
+	}
+	if !strings.Contains(row, "DETAIL_INDEX.md#0i-詳細節対応表") || !strings.Contains(row, "DETAIL_INDEX.md#phase-19-owner-route") || !strings.Contains(row, "DETAIL_INDEX.md#phase-20-inhouse-iac-entry") {
+		return "freeze-route"
+	}
+	actions := section("sec-5-3", "direction-inhouse-cicd")
+	if !strings.Contains(actions, "SPEC.md#direction-technical") {
+		return "format-source"
+	}
+	if strings.Contains(actions, "workflow から読み書きする Adlaire CI の入力、出力") {
+		return "format-restatement"
+	}
+	return ""
 }
 
 type phase19PlanInputCase struct {
