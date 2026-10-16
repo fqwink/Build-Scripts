@@ -50,6 +50,7 @@ owner component 別詳細本文、作業ルール、または Pull Request 本�
 | 開発 GitHub Actions 方針 / 必須条件 / 作業手順 | [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3)、[`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](SPEC.md#policy-development-actions)、[`AGENTS.md` 開発 GitHub Actions 作業手順](../AGENTS.md#agents-development-actions) |
 | 開発 Actions 定義 / 実行 / 適用証跡 | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions 証跡固定契約](details/fixture.md#development-actions-evidence-contract) |
 | 既存 7 workflow required gate / 入力 fixture / checker / 正例・負例 | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions required gate 固定契約](details/fixture.md#development-actions-required-gate-contract) |
+| streaming log / UTF-8 page / 出力上限 / 保存容量の文書oracle | [docs/details/fixture.md fixture証跡責務 log境界入力](details/fixture.md#phase-19-log-boundary-vectors) |
 | Phase 19 策定対象 / 故障・復旧・並行実行の受け入れ設計 | [`docs/details/fixture.md` fixture 証跡責務 Phase 19 検証策定契約](details/fixture.md#phase-19-cicd-evidence-contract) |
 | Phase20 IaC / plan意味整合 / 適用受付時刻 / 文書入力oracle | [docs/details/fixture.md fixture証跡責務 IaC検証入口](details/fixture.md#inhouse-iac-fixture-contract)、[完全入力と中断oracle](details/fixture.md#inhouse-iac-concrete-oracles)、[適用受付境界入力](details/fixture.md#inhouse-iac-admission-vectors) |
 | traceability / owner routing / fixture coverage | [`docs/details/fixture.md` fixture 証跡責務 test artifact traceability 固定契約](details/fixture.md#test-artifact-traceability-contract)、[`non-dedicated owner test routing 固定契約`](details/fixture.md#non-dedicated-owner-test-routing-contract)、[`fixture root coverage matrix 固定契約`](details/fixture.md#fixture-root-coverage-matrix-contract) |
@@ -62,7 +63,7 @@ owner component 別詳細本文、作業ルール、または Pull Request 本�
 | mutation | [`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](details/fixture.md#mutation-test-evidence-contract)、[`mutation test evidence set 固定契約`](details/fixture.md#mutation-test-evidence-set-contract)、[`mutation selection ledger 固定契約`](details/fixture.md#mutation-selection-ledger-contract) |
 | harness self-verification | [`docs/details/fixture.md` fixture 証跡責務 test harness self-verification evidence set 固定契約](details/fixture.md#test-harness-self-verification-evidence-set-contract) |
 | contract drift | [`docs/details/fixture.md` fixture 証跡責務 test / contract drift 証跡固定契約](details/fixture.md#test-contract-drift-evidence-contract)、[`test / contract drift report schema 固定契約`](details/fixture.md#test-contract-drift-report-schema-contract) |
-| 全仕様文書のpath / 固定anchor / anchor一意性 | [`docs/details/fixture.md` fixture証跡責務 全仕様参照checker](details/fixture.md#specification-reference-checker) |
+| 全仕様文書のpath / 固定anchor / anchor一意性 / Phase参照閉包 | [`docs/details/fixture.md` fixture証跡責務 全仕様参照checker](details/fixture.md#specification-reference-checker) |
 | 変更履歴 artifact 境界検査 | [`docs/details/fixture.md` fixture 証跡責務 変更履歴 artifact 境界検査](details/fixture.md#change-history-artifact-boundary-evidence) |
 | test evidence package | [`docs/details/fixture.md` fixture 証跡責務 test evidence package 記録先固定契約](details/fixture.md#test-evidence-package-record-location-contract) |
 | skip / 未実行 | [`docs/details/fixture.md` fixture 証跡責務 skip / 未実行証跡固定契約](details/fixture.md#test-skip-evidence-contract) |

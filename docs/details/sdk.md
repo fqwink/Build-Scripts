@@ -66,7 +66,7 @@ methodはoperation IDと完全同名、一覧は以下の閉集合。path組立�
 | `metricsGet(params,body,options)` | metricsGet |
 | `auditsList(params,body,options)` | auditsList |
 
-mutationはOperationResultをそのままdataに保ち、one_timeをcacheしない。UI/CLIはoperation.stateとresult=nullを明示判定する。login成功時だけ返却tokenをmemoryへ設定し、logoutは失敗時もローカルtokenを破棄する。secret/service token/user初期passwordは呼出元へ1回だけ返し、consoleやevent payloadへ転載しない。SDKはpolling/状態変更の自動再送を内蔵しない。UIがoperationGetで完了確認する。downloadのbyte連結とdigest検証はcaller責務でありbase64文字列連結を行わない。Deno標準runtimeでcheckとnative fetch fakeによる全method wire比較を行う。検証接続は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)。
+mutationはOperationResultをそのままdataに保ち、one_timeをcacheしない。UI/CLIはoperation.stateとresult=nullを明示判定する。login成功時だけ返却tokenをmemoryへ設定し、logoutは失敗時もローカルtokenを破棄する。secret/service token/user初期passwordは呼出元へ1回だけ返し、consoleやevent payloadへ転載しない。SDKはpolling/状態変更の自動再送を内蔵しない。logsGetは [docs/details/api.md 詳細本文責務 log page](api.md#phase-19-log-page-contract) の全key/型と、TextEncoderで数えたdata byte長=next_offset-first_offsetを検査し、不一致をCICDProtocolErrorとする。cursorの自己生成、byte offsetの文字数換算、410後の自動先頭取得をしない。UIがoperationGetで完了確認する。downloadのbyte連結とdigest検証はcaller責務でありbase64文字列連結を行わない。Deno標準runtimeでcheckとnative fetch fakeによる全method wire比較を行う。検証接続は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)。
 
 SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を参照する。[`docs/details/sdk.md`](sdk.md) 詳細本文責務は SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
 

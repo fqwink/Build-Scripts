@@ -639,7 +639,7 @@ S は起動時に検証した state-dir。以下の S 相対pathだけを新規�
 | `cicd/state.lock` | OS flock用空regular file / 0 / statefile。取得中のunlink禁止。 |
 | `cicd/master.json` | Master / 4096 / setup初期化、security読取 |
 | `cicd/secrets/{project}/{id}/{version}.json` | SecretCipher / 16384 / securityがstatefile adapter経由で書込 |
-| `cicd/logs/{project}/{run}/{attempt}/{job}/{stream}.json` | Log / 6291456（JSON escape込み）/ statefile |
+| `cicd/logs/{project}/{run}/{attempt}/{job}/{stream}.json` | Log / 7340032（JSON escape・envelope込み）/ statefile |
 | `cicd/artifacts/{project}/{digest}/` | archive正本の固定file集合 / archive |
 | `cicd/cache/{project}/{key}/` | runner正本の固定file集合 / runnerからstatefile adapter |
 | `cicd/work/{operation}/` | staging directory、終端後回収 / runner・archive |
@@ -677,6 +677,9 @@ process内mutex → `state.lock` の非blocking flock(LOCK_EX)を10ms間隔、�
 Root内operationは30日保持、run / deploymentは各project retention経過かつ非active・非参照だけをcreated_at,id昇順で回収する。全監査をoperationと同時に保持する。期限切れ要求IDの再利用は新規要求となるため、clientは再利用しない。過去Runのattemptは上書きしない。schema_version=1以外は拒否し自動upgradeしない。legacy状態の自動importは行わない。新規projectと環境を明示作成し、既存Release/成果物はarchive検証を通した明示登録だけを許可する。legacy fileを変更しない。cicd-v1開始後のlegacyへの逆migrationは非対応であり、進行中処理を終端化・exportしたうえでprofile無効化する。
 
 named user loginの認証更新は内部o-ID付きUpdateCICDAuth(userID,credentialFingerprint,mutate)でlock下に最新Credentialを再照合し、count/time/Auditだけを一つのRoot更新にする。Operationは作らず、commit後だけmemory sessionを公開する。admin aliasは既存credential adapterの保存順を使用し、失敗時sessionを発行しない。login/logoutをOperationResult対象外とするAPI例外は、認証記録の永続化省略を意味しない。
+
+<a id="phase-19-log-invariants"></a>
+**Logの保存整合：** 全read/writeでschemaに加え `0<=first_offset<=next_offset<=9007199254740991`、UTF-8有効、`next_offset-first_offset=len(data bytes)`、truncated=(first_offset>0)を検証する。同一identityの更新はfirst/nextを減算せず、gap=trueをfalseへ戻さない。terminal=trueは封印済みであり、以後は完全同一Logの再送を既存値として返すだけとし、byte/offset/flagを更新しない。terminal=false同士でも保存済みと重なる絶対offset区間のbyte不一致を拒否する。新規は両offset=0/data空/truncated=false/gap=false/terminal=false。空streamもEOF時にterminal=trueを保存する。破損はP19_STATE_CORRUPTで自動修復しない。容量はJSON escapeと全fieldを含むserialized byte長で検証し、既存fileを置換する前に上限超過をP19_STORAGEで拒否する。全NULのdata最大長はescapeだけで6291456 bytesを使うため、path表のenvelope込み上限を適用し、schema上有効な最大dataをheader分で欠落させない。書込失敗時のjob停止は [docs/details/runner.md 詳細本文責務 streaming log](runner.md#phase-19-streaming-log-contract) を参照する。
 
 **adapter interface：** `ReadCICD() (Root,Head,error)`、`UpdateCICD(opID,requestDigest,mutate) (Operation,error)`、`WriteCICDLog(Log) error`、`ReadCICDLog(identity) (Log,error)`。mutateは既に検証した入力を用いる純粋なRoot更新だけで、I/Oを呼ばない。ログ単体は同directoryのO_EXCL temporary → write / fsync / close → rename / directory fsyncで更新する。caller固有の直接書込は許可しない。全error codeの公開対応は [`docs/details/api.md` 詳細本文責務 Phase 19 error](api.md#phase-19-error-catalog)、検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
 

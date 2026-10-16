@@ -85,7 +85,16 @@ hello時計差<=5秒、heartbeat5秒、lease30秒、renew5秒。coordinatorはhe
 
 cache key=SHA256(canonical `{project_id,trust:"registered",plan_digest,job_id,source_tree_digest,toolchain_digest,os:"linux",arch,env}`)。toolchain_digestはsetup profile manifest digest。secret参照ありjobのcache有効指定は拒否。pathsは/job内出力相対pathだけ、source/secret/toolchainを含めない。形式はarchiveと同じmanifest+payload、project namespace分離、O_EXCL staging→検証→metadata commit→publish。TTLはcreated_at起点、上限はQuota.cache_mb、期限切れ→last_used_at,key昇順LRUで回収。in_useありは回収禁止、同時同keyは先勝ち、内容差はP19_DIGEST。破損はquarantineしてmiss、容量不足はcache未保存warningでjob成功を変えない。
 
-logは各stream raw byteを継続drainする。security正本のmask後にUTF-8へ変換（不正sequenceはU+FFFD）、最長secret pattern長-1 bytesを次chunkまで保留して分割leakを防ぐ。raw累積がResources.output_mbを超えれば停止しP19_OUTPUT。保存は各stream最新1 MiB、先頭/末尾offsetはmask後UTF-8 byte位置、切詰めはrune境界。200msまたは64 KiBごとにatomic保存、必須保存失敗でjob停止。crash時の未flushはlog_gap=true。保存終端flush後だけterminal=true。cursor契約はAPI正本を参照する。
+<a id="phase-19-streaming-log-contract"></a>
+**streaming logのbyte境界：**
+
+適用単位はproject/run/attempt/job/tryとし、stdoutとstderrを同時にdrainする。1 MiB=1048576 bytes。raw上限はResources.output_mb*1048576で、両streamと同じtryのcompile/test全stageを合計し、mask前に計数する。上限一致は許可、最初の超過byteでP19_OUTPUT、retry不可。上限内prefixだけを後続処理へ渡し、超過分は保存/診断/通知へ送らない。停止は [docs/details/runner.md 詳細本文責務 cancel/停止順](#phase-19-trigger-state) のTERM/KILL/Wait/cleanupと同じ順で、片方のpipe満杯を理由に他方のdrainを止めない。停止後の残余byteもdiscardしながら両pipe EOFまで回収する。try変更時だけraw計数を0へ戻し、保存logのoffsetは戻さない。worker再起動等で旧tryのraw計数や出力連続性を照合できなければ、そのtryを再開/成功補完せずlog_gap=trueで復旧判断へ渡す。
+
+mask patternの作成/順位/置換語は [docs/details/security.md 詳細本文責務 secret mask](security.md#phase-19-secret-crypto) だけを正本とする。各streamは別のpending byte列とUTF-8 carryを持ち、最長pattern長をL（patternなしはL=1）とする。非EOF時はpending先頭から残長>=Lの開始位置だけを確定し、その位置で一致する最優先pattern全体、または不一致の1byteを消費する。短いpatternを先に確定して後続の長い一致を逃してはならない。未確定suffixはL-1 bytes以下で次chunkへ保持し、timer/flushで平文として吐かない。EOFでは残り全体を同じ順位で確定する。raw/置換語を再走査しない。
+
+mask確定byteをUTF-8へ逐次decodeする。末尾の未完了scalarだけ最大3bytesを次chunkへ保持し、その他の不正byteはGo utf8.DecodeRuneと同じ1byte消費のU+FFFD、EOFの未完了byteも1byteずつU+FFFDとする。mask前のUnicode置換/trim/改行変換は禁止。worker→coordinatorのlog frameはdecoded data<=12288 bytesとし、順序/identity検査後のmask済みUTF-8だけを転送する。coordinatorも原文を復元/保存しない。
+
+各streamはmask/UTF-8変換後の最新1048576 bytes以下を保持する。超過時は必要な最小prefixを完全scalar境界まで落とし、絶対byte offsetを進める。run attempt内の同jobのtry間でoffsetを連続させ、末尾切捨てや文字数による容量判定をしない。200msまたは前回保存から確定byte65536以上でsnapshotをatomic保存し、pending/carryを含めない。childのstage/try終了時はmask/carryだけをEOF確定してoffsetへ追加し、後続stageまたは許可retryがある間はterminal=falseを維持する。全stage/try終了・停止後のdrain・最終flushが成功し、追加出力を受け付けない状態でだけterminal=trueを保存し、その後JobResultを終端commitする。必須保存失敗はP19_STORAGEでjob停止、workerをdrainし、保存済みterminalや既存byteを推測更新しない。欠落はLog.gapとJobResult.log_gapへORで保持しtrueからfalseへ戻さない。保存invariantは [docs/details/statefile.md 詳細本文責務 log整合](statefile.md#phase-19-log-invariants)、取得は [docs/details/api.md 詳細本文責務 log page](api.md#phase-19-log-page-contract) を参照する。
 
 Notificationはqueue/start/terminal/approval待ち/配備停止の各遷移と同じtransactionで1件生成する。既存通知設定の検証済みHTTP/SMTP adapterだけを利用し、bodyは `{event_id,project_id,target_id,event,at,code}`（secret/logなし）。HTTPはContent-Type application/json、timeout10秒、2xx成功、redirect禁止。SMTPは既存TLS境界。通知retryは1秒/4秒後、最大3回、再送event_id不変。失敗はnotification.failedでありrun結果を反転しない。
 

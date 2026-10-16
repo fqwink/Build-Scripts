@@ -16,6 +16,7 @@
 | IaC固定具体入力 / checker | [docs/details/fixture.md fixture証跡責務](details/fixture.md#inhouse-iac-concrete-oracles)、[適用受付境界入力](details/fixture.md#inhouse-iac-admission-vectors)、[main_test.go](../main_test.go) の `TestAdditionalIaCSpecificationVectors` / `TestIaCSpecificationAdmissionVectors` | 実在 |
 | IaC検証root | `testdata/setup/inhouse-iac/` | 未作成 |
 | OIDC固定暗号vector / checker | [基準vector](details/fixture.md#oidc-fixed-vector)、[再署名50case](details/fixture.md#oidc-signed-claim-vectors)、[HTTP具体oracle](details/fixture.md#oidc-http-concrete-oracles)、[main_test.go](../main_test.go) の `TestAdditionalSpecificationVectors` / `TestAdditionalOIDCSignedClaimVectors` | 実在 |
+| streaming log / Log保存 / page / 文書checker | [docs/details/runner.md 詳細本文責務](details/runner.md#phase-19-streaming-log-contract)、[docs/details/statefile.md 詳細本文責務](details/statefile.md#phase-19-log-invariants)、[docs/details/api.md 詳細本文責務](details/api.md#phase-19-log-page-contract)、[docs/details/fixture.md fixture証跡責務](details/fixture.md#phase-19-log-boundary-vectors)、[main_test.go](../main_test.go) の `TestPhase19LogSpecificationVectors` | 実在 |
 | badge視覚 | [DESIGNデザイン責務](DESIGN.md#status-badge-visual-contract) | 実在 |
 
 <a id="document-index-common-reference"></a>

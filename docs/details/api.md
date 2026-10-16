@@ -87,7 +87,7 @@ PasswordChange=`{current_password:text(1,4096),new_password:text(1,4096),totp:nu
 - GrantWrite=`{grant:Grant,expected_generation:int(1,9007199254740991)}`、Root generation一致を要求し、expiry/権限をtransaction内再評価する。Grant列挙をproject-adminで行う場合はqueryにproject_id必須（Pageの固定追加key）。
 - SecretWrite=`{expected_version:int(0,2147483647),value:text(1,4096)}`、SecretView=`{id,version,created_at}`。created_atはcommit済SecretMeta.created_atとSecretCipher.created_atの一致値であり、mtimeや保持期間付き監査から推定しない。secret削除routeはなく、参照しない版のGCはsecurity契約。
 - PlanRequest=`{definition_id,definition_revision,ref_kind,ref,values:ScalarMap}`。RunStartは同field+`plan_digest:Digest`。計画をserver再計算し一致時だけ受付。source取得中の失敗は503。
-- LogQuery=query `stream=stdout|stderr` 必須、cursor省略null、limit_bytes=1..65536（省略65536）。LogPage=`{data,first_offset,next_offset,next_cursor,truncated,gap,terminal}`。cursorは上記署名方式、scopeにrun/attempt/job/stream/offsetを含め期限86400秒。ringより前は410 P19_CURSORであり黙って先頭へ戻さない。UTF-8境界で最大byte以下に切る。現在末尾はdata空でcursor不変。
+- LogQuery / LogPageは [docs/details/api.md 詳細本文責務 log page固定契約](#phase-19-log-page-contract) を参照する。
 - ChunkQuery=query `offset:int(0,1073741824)` 必須。Chunk=`{offset,data:base64,next_offset,total_bytes,digest,final:bool}`、decoded chunk<=12288 bytes、offset>totalは422。ArtifactManifestはarchive正本manifest。
 - Compare=`{from:Digest,to:Digest}`。FileDiff=`{path,kind:added|removed|changed|same,old:null|{size,sha256,mode},new:null|{size,sha256,mode}}`。最大10000行、応答はPageEnvelope、Pageのqueryを追加許可。
 - Pin=`{pin_id:Id,enabled:bool}`、自分のo-IDだけを手動pinに利用可能。cacheDeleteのexpected_revisionはRoot.generation（cache単体revisionなし）。
@@ -96,6 +96,17 @@ PasswordChange=`{current_password:text(1,4096),new_password:text(1,4096),totp:nu
 - Metrics=`{window_from,window_until,success,failed,cancelled,recovery_required,skipped_jobs,retried_jobs,success_rate_basis_points:null|int(0,10000),queue_count,active_jobs,wait_avg_ms:null|int,wait_p95_ms:null|int,run_avg_ms:null|int,run_p95_ms:null|int,workers_online,workers_draining,environments_blocked}`。計算法はrunner正本。
 
 ProjectViewは全Project keyを持ち、platform-adminまたは当該viewer以上ならProject値を返す。approverだけのsubjectにはid/name/revision/enabledのみ実値、source_owner/source_repo/definition_id/quota/toolchain_digestはnull、definition_revisionは0とする。このprojectionをWrite<Project>の入力へ流用しない。WorkerView/TargetViewは保存型からSSH user/host/pathを除きhost_registered=trueだけを追加する（platform-admin自身には保存型を返せる）。UserViewはcredential/totpを含めず `{id,name,revision,enabled,created_at,totp_enabled}`。ServiceViewはtoken_sha256を含めず `{id,revision,enabled,expires_at}`。tokenはOperationResult.one_timeだけへ返す。UserInput=`{id:Id,name:text(1,128),revision:int(1,2147483647),enabled:bool}`、ServiceInput=`{id:Id,revision:int(1,2147483647),enabled:bool,expires_at:Time}` をWrite.valueの完全key集合とする。credential/totp/created_at/token_sha256は入力へ含めず、送信した場合はP19_SCHEMA。資格情報は作成時だけserver生成し、更新で再発行しない。User.created_atは作成commit時刻。User.enabled変更では当該sessionを全失効する。Serviceの初回expiryは発行時から30日以内、更新では元の期限延長を拒否し、再発行が必要なら別IDを作る。Workerのtoolchain_digest/total_memory_mb/leases/last_seenはprobe/runner所有、新規要求はprobe確認値と一致を要求する。Targetを含めserver所有fieldの変更を拒否する。Worker/Targetのleases/last_seenはserver所有で新規は空/null、変更拒否。Root全体・master・暗号文はroute非公開。
+
+<a id="phase-19-log-page-contract"></a>
+**log page固定契約：**
+
+LogQueryはqueryのstream=stdout|stderr必須、cursor省略null、limit_bytes=1..65536（省略65536）だけ。LogPageは全key必須の `{data:string,first_offset:int,next_offset:int,next_cursor:string,truncated:bool,gap:bool,terminal:bool}`。dataはmask済みUTF-8、整数は非負安全整数。保存型と検証は [docs/details/statefile.md 詳細本文責務 Log整合](statefile.md#phase-19-log-invariants)、生成過程は [docs/details/runner.md 詳細本文責務 streaming log](runner.md#phase-19-streaming-log-contract) に接続する。
+
+認証/認可後に対象Logのimmutable snapshotを1回取得する。cursorなしは保存first_offsetから開始する。cursorありは上記共通署名payloadのoperation=logsGet、scope=`{project_id,run_id,attempt,job_id,stream,offset}`、last_key=[offset]、期限86400秒に固定し、scope.offsetとlast_key[0]も一致させる。filter_digestはcursor/limit_bytesを除いた正規化queryとpath scopeから計算し、page sizeの変更だけでは拒否しない。別subject/scope/stream再利用は403、期限/署名/形式不正は410 P19_CURSOR。認可後のcursor失敗でstate/logを書き換えない。
+
+startが保存first_offset未満・next_offset超・scalar途中なら410 P19_CURSOR。dataはstartからlimit_bytes以下の最大完全scalar prefixとし、first_offset=start、next_offset=start+dataのUTF-8 byte長。未読scalarがあるのに1scalarも収まらない場合は422 P19_SCHEMA（固定message validation failed）とし、空の成功pageを返さない。truncated/gapは保存値をそのまま投影し、terminalは保存terminalかつ応答next_offset=保存next_offsetの場合だけtrue。未読pageが残る間は保存終端済みでもterminal=false。JSON escape後の長さをbyte offsetへ使用しない。
+
+次cursorは応答next_offsetを指す。現在末尾でdata空なら入力cursorをbyte同一で返し、有効期限も延長しない。cursorなしの空logだけはoffsetを指すcursorを初回発行する。Log不在は404、保存invariant破損は503 P19_STATE_CORRUPTであり、空pageの成功や先頭への自動巻戻しへ変換しない。
 
 <a id="phase-19-error-catalog"></a>
 **閉じたerror catalog：**

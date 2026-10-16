@@ -40,11 +40,418 @@ expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,tra
 
 **補助固定vector：** canonical JSONは `{"b":2,"a":1}` → `{"a":1,"b":2}`、duplicate keyは拒否。matrix {os:[linux,other],v:[1,2]}はaxis ASCII順で4tuple、exclude={v:2}で2tuple。leaseはnow=untilで失効、approvalもnow=expiresで失効。freezeはfrom含む/until含まない。AES-GCMは [Go標準AEAD仕様](https://pkg.go.dev/crypto/cipher#NewGCM) に加え、[NIST GCM-AES256 Example #1〜4](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/AES_GCM.pdf) のkey/IV/AAD/plaintext/ciphertext/tagを固定独立oracleとして用い、Seal結果をciphertext||tagへbyte完全一致させOpen結果も比較する。空/非空AAD・plainの両方を含め、key/nonce/AAD/tag各1bit反転を拒否する。製品固有AADはsecurity正本の区切りを含むbyte列を別oracleで検査し、roundtripだけでAAD不使用を見逃さない、Ed25519は [RFC8032 §7.1](https://www.rfc-editor.org/rfc/rfc8032#section-7.1) のTEST1〜3を独立既知値として取り込み、公開鍵/署名/message改竄を拒否する。既知値は実装出力で再生成しない。
 
+<a id="phase-19-log-boundary-vectors"></a>
+**streaming log・page境界の文書入力：** 生成処理は [docs/details/runner.md 詳細本文責務](runner.md#phase-19-streaming-log-contract)、保存invariantは [docs/details/statefile.md 詳細本文責務](statefile.md#phase-19-log-invariants)、wireは [docs/details/api.md 詳細本文責務](api.md#phase-19-log-page-contract) を正本とする。次のJSONは現在のmain_test.goのTestPhase19LogSpecificationVectorsで読む純粋な文書oracleであり、製品のpipe/停止/復旧/実diskを検証した証拠ではない。各objectの列挙keyは全必須/unknown・duplicate・null禁止、page_cases.cursor_offsetだけnullを許可する。hexはlowercase偶数桁、空byte列だけ空文字を許可する。patternは既にsecurityで作成済みの合成pattern byte列として与え、secret登録のUTF-8入力条件や本物のsecretではない。
+
+mask_casesは各chunk後の確定済み全prefixをcommitted_hex、EOF後をexpected_hexで比較する。さらに同じjoined入力の全2分割位置と1byte分割でも最終byte同値を検査する。page_casesのexpected_code=ok以外ではdata空/offset0/terminal=false/cursor未更新をoracleの拒否値とする。成功時はfirst/next/data byte長、終端とringのtruncated/gap投影、末尾の入力cursor不変を検査する。budget_casesは実MiB単位の両stream合計境界を検査し、上限一致を拒否しない。保存容量caseはNULを1048576byte生成し有効Log envelopeへ入れ、JSON escape後が6 MiBを超えるがpath上限内であることを独立計算する。goldenを実装から上書きしない。
+
+```json
+{
+  "schema_version": 1,
+  "mask_cases": [
+    {
+      "id": "split-secret",
+      "patterns_hex": [
+        "544f4b454e"
+      ],
+      "chunks_hex": [
+        "54",
+        "4f4b",
+        "454e"
+      ],
+      "committed_hex": [
+        "",
+        "",
+        "5b52454441435445445d"
+      ],
+      "expected_hex": "5b52454441435445445d"
+    },
+    {
+      "id": "longest-overlap",
+      "patterns_hex": [
+        "6162",
+        "616261"
+      ],
+      "chunks_hex": [
+        "6162616261"
+      ],
+      "committed_hex": [
+        "5b52454441435445445d"
+      ],
+      "expected_hex": "5b52454441435445445d6261"
+    },
+    {
+      "id": "single-byte",
+      "patterns_hex": [
+        "78"
+      ],
+      "chunks_hex": [
+        "787879"
+      ],
+      "committed_hex": [
+        "5b52454441435445445d5b52454441435445445d79"
+      ],
+      "expected_hex": "5b52454441435445445d5b52454441435445445d79"
+    },
+    {
+      "id": "partial-at-eof",
+      "patterns_hex": [
+        "544f4b454e"
+      ],
+      "chunks_hex": [
+        "544f4b"
+      ],
+      "committed_hex": [
+        ""
+      ],
+      "expected_hex": "544f4b"
+    },
+    {
+      "id": "invalid-tail",
+      "patterns_hex": [],
+      "chunks_hex": [
+        "ffc3"
+      ],
+      "committed_hex": [
+        "efbfbd"
+      ],
+      "expected_hex": "efbfbdefbfbd"
+    },
+    {
+      "id": "replacement-not-rescanned",
+      "patterns_hex": [
+        "5b",
+        "78"
+      ],
+      "chunks_hex": [
+        "78"
+      ],
+      "committed_hex": [
+        "5b52454441435445445d"
+      ],
+      "expected_hex": "5b52454441435445445d"
+    },
+    {
+      "id": "unicode-split",
+      "patterns_hex": [],
+      "chunks_hex": [
+        "e3",
+        "81",
+        "82"
+      ],
+      "committed_hex": [
+        "",
+        "",
+        "e38182"
+      ],
+      "expected_hex": "e38182"
+    },
+    {
+      "id": "unicode-secret",
+      "patterns_hex": [
+        "e38182"
+      ],
+      "chunks_hex": [
+        "e3",
+        "8182"
+      ],
+      "committed_hex": [
+        "",
+        "5b52454441435445445d"
+      ],
+      "expected_hex": "5b52454441435445445d"
+    },
+    {
+      "id": "mask-before-decode",
+      "patterns_hex": [
+        "ff"
+      ],
+      "chunks_hex": [
+        "ff"
+      ],
+      "committed_hex": [
+        "5b52454441435445445d"
+      ],
+      "expected_hex": "5b52454441435445445d"
+    },
+    {
+      "id": "short-pattern-at-eof",
+      "patterns_hex": [
+        "6162",
+        "616263"
+      ],
+      "chunks_hex": [
+        "6162"
+      ],
+      "committed_hex": [
+        ""
+      ],
+      "expected_hex": "5b52454441435445445d"
+    },
+    {
+      "id": "invalid-run",
+      "patterns_hex": [],
+      "chunks_hex": [
+        "fffe"
+      ],
+      "committed_hex": [
+        "efbfbdefbfbd"
+      ],
+      "expected_hex": "efbfbdefbfbd"
+    },
+    {
+      "id": "empty",
+      "patterns_hex": [],
+      "chunks_hex": [
+        ""
+      ],
+      "committed_hex": [
+        ""
+      ],
+      "expected_hex": ""
+    }
+  ],
+  "page_cases": [
+    {
+      "id": "empty-page",
+      "data_hex": "",
+      "first_offset": 0,
+      "cursor_offset": null,
+      "limit_bytes": 1,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "ok",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": true,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "ascii-page",
+      "data_hex": "616263",
+      "first_offset": 7,
+      "cursor_offset": 7,
+      "limit_bytes": 2,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "ok",
+      "expected_hex": "6162",
+      "expected_first": 7,
+      "expected_next": 9,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "tail",
+      "data_hex": "616263",
+      "first_offset": 7,
+      "cursor_offset": 10,
+      "limit_bytes": 2,
+      "stored_terminal": true,
+      "stored_gap": true,
+      "expected_code": "ok",
+      "expected_hex": "",
+      "expected_first": 10,
+      "expected_next": 10,
+      "expected_terminal": true,
+      "expected_cursor_unchanged": true
+    },
+    {
+      "id": "stale",
+      "data_hex": "616263",
+      "first_offset": 7,
+      "cursor_offset": 6,
+      "limit_bytes": 2,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "P19_CURSOR",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "future",
+      "data_hex": "616263",
+      "first_offset": 7,
+      "cursor_offset": 11,
+      "limit_bytes": 2,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "P19_CURSOR",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "middle-of-scalar",
+      "data_hex": "61e3818262",
+      "first_offset": 10,
+      "cursor_offset": 12,
+      "limit_bytes": 4,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "P19_CURSOR",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "too-small",
+      "data_hex": "61e3818262",
+      "first_offset": 10,
+      "cursor_offset": 11,
+      "limit_bytes": 2,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "P19_SCHEMA",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "unicode-exact",
+      "data_hex": "61e3818262",
+      "first_offset": 10,
+      "cursor_offset": 11,
+      "limit_bytes": 3,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "ok",
+      "expected_hex": "e38182",
+      "expected_first": 11,
+      "expected_next": 14,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "unread-terminal",
+      "data_hex": "61e3818262",
+      "first_offset": 10,
+      "cursor_offset": null,
+      "limit_bytes": 1,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "ok",
+      "expected_hex": "61",
+      "expected_first": 10,
+      "expected_next": 11,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "emoji",
+      "data_hex": "f09f9880",
+      "first_offset": 0,
+      "cursor_offset": 0,
+      "limit_bytes": 4,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "ok",
+      "expected_hex": "f09f9880",
+      "expected_first": 0,
+      "expected_next": 4,
+      "expected_terminal": true,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "corrupt-utf8",
+      "data_hex": "ff",
+      "first_offset": 0,
+      "cursor_offset": null,
+      "limit_bytes": 1,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "P19_STATE_CORRUPT",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "limit-zero",
+      "data_hex": "61",
+      "first_offset": 0,
+      "cursor_offset": null,
+      "limit_bytes": 0,
+      "stored_terminal": false,
+      "stored_gap": false,
+      "expected_code": "P19_SCHEMA",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "limit-large",
+      "data_hex": "61",
+      "first_offset": 0,
+      "cursor_offset": null,
+      "limit_bytes": 65537,
+      "stored_terminal": false,
+      "stored_gap": false,
+      "expected_code": "P19_SCHEMA",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    }
+  ],
+  "budget_cases": [
+    {
+      "id": "below",
+      "output_mb": 1,
+      "stdout_bytes": 1048574,
+      "stderr_bytes": 1,
+      "expected_code": "ok"
+    },
+    {
+      "id": "exact",
+      "output_mb": 1,
+      "stdout_bytes": 1048575,
+      "stderr_bytes": 1,
+      "expected_code": "ok"
+    },
+    {
+      "id": "combined-over",
+      "output_mb": 1,
+      "stdout_bytes": 1048575,
+      "stderr_bytes": 2,
+      "expected_code": "P19_OUTPUT"
+    },
+    {
+      "id": "one-stream-over",
+      "output_mb": 1,
+      "stdout_bytes": 1048577,
+      "stderr_bytes": 0,
+      "expected_code": "P19_OUTPUT"
+    }
+  ]
+}
+```
+
+ring固定入力はring-exact=ASCII aを1048576byte（offset0..1048576/残1048576）、ring-scalar-prefix=UTF-8のあ3byte+ASCII aを1048575byte（offset3..1048578/残1048575）、ring-unicode=UTF-8のあを349526個（offset3..1048578/残1048575）とし、各raw入力から1 MiB以内の最新scalar suffixを比較する。
+
+assertion IDはrunner.log-spec.<case>.result、api.log-spec.<case>.result、statefile.log-spec.escape-capacity.result。診断は責務anchor、expected/actual codeまたはhex、再現commandだけを持ち、入力patternやraw出力を失敗messageへ転載しない。document oracleのmutationはpending保持/最長一致/置換再走査禁止/mask後decode/合算出力上限/UTF-8 page境界/空成功禁止/終端最終page限定/保存容量をそれぞれ選定する。
+
+将来のP19-LOG-UIには同じ境界入力に加え、偽clockの200ms前後、65536確定byte前後、stdout/stderr同時pipe満杯、TERM無視→KILL/Wait、flush/fsync/rename失敗、crash再接続のgap保持、複数try/compile stageの連続offsetと途中terminal禁止、terminal封印後の更新/保存重複byte差替拒否、stream別terminal/410後の利用者再読込をnormal/fault/restart/concurrentの該当variantへ接続する。未知clock/timer/process呼出は失敗、raw/pending/carryのdisk/log/diagnosticへの漏えい0、必須保存失敗を成功へ反転0、全child残存0を比較する。文書oracleの成功でこれらの製品検証や既存legacy log不備をclosedにしない。
+
 <a id="phase-19-checker-entry"></a>
 **checker / workflow：**
 
 <a id="specification-reference-checker"></a>
-全仕様文書の参照検査は `TestSpecificationReferenceIntegrity` とし、AGENTS/READMEとdocs配下全Markdownの説明文linkを対象に、実在path、固定anchor、同一file内anchor一意性を検査する。fenced/inline code内の構文例は参照と混同しない。missing-path/missing-anchor/duplicate-anchorの3負例と構文例を除外する正例でcheckerを検証する。assertion IDは `statefile.spec-reference.positive.accept`、`statefile.spec-reference.<case>.reject`、`statefile.spec-reference.examples.accept`、失敗診断は検出path/line/anchorへ接続する。この検査は意味上の重複・機能完全性を証明しない。
+全仕様文書の参照検査は `TestSpecificationReferenceIntegrity` とし、AGENTS/READMEとdocs配下全Markdownの説明文linkを対象に、実在path、固定anchor、同一file内anchor一意性を検査する。fenced/inline code内の構文例は参照と混同しない。missing-path/missing-anchor/duplicate-anchorの3負例と構文例を除外する正例でcheckerを検証する。assertion IDは `statefile.spec-reference.positive.accept`、`statefile.spec-reference.<case>.reject`、`statefile.spec-reference.examples.accept`、失敗診断は検出path/line/anchorへ接続する。同じrootでROADMAPのPhase行を唯一の登録集合として、現在のPhase1〜21の欠落/重複/未登録行を拒否し、全対象文書のPhase番号参照を照合する。単独番号だけでなくslash/comma/rangeの連記、path表記、英字大小、フェーズ表記も対象にし、番号末尾と日本語本文の間にword boundaryを要求しない。syntheticな次の未登録番号は最大登録番号+1で作り、joined-list/comma-list/range/spaced/path/japanese/leading-zero/zero/unregistered-row/duplicate-rowの10負例を実行する。assertion IDはstatefile.spec-phase.positive.acceptとstatefile.spec-phase.<case>.reject、負例を通すchecker-source mutationは検証失敗とする。この検査は意味上の重複・機能完全性を証明しない。
 
 現時点の文書checker `TestPhase19SpecificationContracts` はregistryのstrict JSON/型式arity/range/参照cycle/環境map/atomic SiteState構造/保持時刻/観測record/通知attempt結合、53操作のSDK/UI/CLI接続、状態表の一致を検査する。negative controlは未知型、arity不足、逆転range、未知関数、duplicate JSON key/enum、型cycle、環境map差替、SiteState counter欠落、SiteOperation保持時刻型差替、Deployment観測数差替、Notification対象attempt上限差替、状態逆戻り、SDK/UI/CLI欠落、route/anchor重複。これらは文書入力の負例であり、製品runtimeのmutation成功件数へ加算しない。checker自体の常時成功化も隔離copyでコンパイル・実行し、負例testが失敗することを確認する。現在のdocument assertionは `runner.phase19-spec.positive.accept` と `runner.phase19-spec.<negative-case>.reject`、fixture前提不足は `runner.phase19-spec.<negative-case>.fixture`。display用subtest名/行番号とは別の安定IDで期待値/実値を診断する。
 

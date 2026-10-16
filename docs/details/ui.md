@@ -70,7 +70,7 @@ projectsはproject設定、definition/templateのJSON editor、入力型editor�
 
 **view state machine：** idle→loading→ready|empty|error|unauthenticated。mutationはready→submitting→accepted→polling→succeeded|failed|recovery_required。submitting応答はOperationResult.operationを採用し、同期terminalならaccepted/pollingを経ずterminal処理へ進む。result=nullなら対象GET/listで取得する。pollingはoperationGet、terminal確認後にaffected list/detail/環境statusを再取得するまで成功表示を確定しない。stale409は現在revisionとplanを再取得し入力内容を保持して差分表示、同じmutationの自動再送禁止。error時は確定前データと新データを混ぜず「更新失敗」状態を表示する。遅延responseはview generationとrequest sequenceが現在と一致する場合だけ適用する。
 
-実行中logは2秒、run/operation/環境進行は5秒、metrics/workerは30秒poll。document.hidden、logout、project/view変更では停止/abortし、復帰時は再取得。1resourceにつきin-flight最大1、429/503はRetry-After秒（1〜30へclamp）、その他失敗はpoll停止し再読込actionを出す。log cursor410は欠落表示と明示再読込、末尾追従は利用者が最下部にいる時だけ。logはtextContent/pre、HTML解釈禁止、最大1 MiB/stream、copy/downloadもmask後だけ。
+実行中logは2秒、run/operation/環境進行は5秒、metrics/workerは30秒poll。document.hidden、logout、project/view変更では停止/abortし、復帰時は再取得。1resourceにつきin-flight最大1、429/503はRetry-After秒（1〜30へclamp）、その他失敗はpoll停止し再読込actionを出す。log cursor410は欠落表示と明示再読込、末尾追従は利用者が最下部にいる時だけ。logはtextContent/pre、HTML解釈禁止、最大1 MiB/stream、copy/downloadもmask後だけ。表示bufferの容量はUTF-8 byteで数え、完全scalar単位で先頭を落とす。logsGetの各stream/attempt別next_cursorをそのまま保持し、空page/terminal=falseでも同一cursorを次pollへ渡す。片streamのterminalで他streamの未読pageを止めず、410ではbuffer/cursorを破棄する前に欠落状態を示し、利用者の再読込だけでcursorなし取得へ戻す。
 
 開始/取消/rollback/秘密更新/権限変更/drainはconfirmationでproject/対象ID/revision/digest/環境世代を固定する。確認後のselection変化で無効化。submit中二重押下禁止、o-IDはフォーム1回の操作に固定。secret入力は送信/close/logoutで消去しDOM再描画へ残さない。one-time credentialはそのresponse内でだけ表示しview離脱で破棄する。approveとdeploy開始は別action、受付を配備完了や復旧成功と表示しない。
 

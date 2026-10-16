@@ -58,6 +58,32 @@ func TestSpecificationReferenceIntegrity(t *testing.T) {
 	if err := specificationReferenceIntegrity(documents, exists); err != nil {
 		t.Fatalf("statefile.spec-reference.positive.accept: expected valid references, actual %v", err)
 	}
+	if err := specificationPhaseReferenceIntegrity(documents); err != nil {
+		t.Fatalf("statefile.spec-phase.positive.accept: expected registered phases, actual %v", err)
+	}
+	for _, control := range []struct{ id, expression string }{
+		{"joined-list", "Phase20/21/" + strconv.Itoa(21+1)},
+		{"comma-list", "Phase19,20," + strconv.Itoa(21+1)},
+		{"range", "Phase19~" + strconv.Itoa(21+1)},
+		{"spaced", "Phase " + strconv.Itoa(21+1)},
+		{"path", "phase-" + strconv.Itoa(21+1) + "-synthetic"},
+		{"japanese", "フェーズ" + strconv.Itoa(21+1)},
+		{"leading-zero", "Phase020"},
+		{"zero", "Phase0"},
+		{"unregistered-row", "| Phase " + strconv.Itoa(21+1) + " | synthetic |"},
+		{"duplicate-row", "| Phase 21 | synthetic |"},
+	} {
+		t.Run("phase-"+control.id, func(t *testing.T) {
+			changed := make(map[string]string, len(documents))
+			for path, content := range documents {
+				changed[path] = content
+			}
+			changed["docs/ROADMAP.md"] += "\n" + control.expression + "\n"
+			if err := specificationPhaseReferenceIntegrity(changed); err == nil {
+				t.Fatalf("statefile.spec-phase.%s.reject: expected unregistered/duplicate Phase rejected, actual accepted; fixture.md#specification-reference-checker", control.id)
+			}
+		})
+	}
 	for _, control := range []struct {
 		name    string
 		content string
@@ -79,6 +105,340 @@ func TestSpecificationReferenceIntegrity(t *testing.T) {
 	if err := specificationReferenceIntegrity(input, func(path string) bool { _, ok := input[path]; return ok }); err != nil {
 		t.Fatalf("statefile.spec-reference.examples.accept: expected literal examples ignored, actual %v", err)
 	}
+}
+
+func phase19LogRingOracle(data []byte, first int64) ([]byte, int64, int64) {
+	drop := len(data) - 1048576
+	if drop < 0 {
+		drop = 0
+	}
+	for drop < len(data) && !utf8.RuneStart(data[drop]) {
+		drop++
+	}
+	return data[drop:], first + int64(drop), first + int64(len(data))
+}
+
+type phase19LogSpecificationVector struct {
+	SchemaVersion int `json:"schema_version"`
+	MaskCases     []struct {
+		ID        string   `json:"id"`
+		Patterns  []string `json:"patterns_hex"`
+		Chunks    []string `json:"chunks_hex"`
+		Committed []string `json:"committed_hex"`
+		Expected  string   `json:"expected_hex"`
+	} `json:"mask_cases"`
+	PageCases []struct {
+		ID               string `json:"id"`
+		Data             string `json:"data_hex"`
+		First            int64  `json:"first_offset"`
+		Cursor           *int64 `json:"cursor_offset"`
+		Limit            int    `json:"limit_bytes"`
+		Terminal         bool   `json:"stored_terminal"`
+		Gap              bool   `json:"stored_gap"`
+		Code             string `json:"expected_code"`
+		Expected         string `json:"expected_hex"`
+		ExpectedFirst    int64  `json:"expected_first"`
+		ExpectedNext     int64  `json:"expected_next"`
+		ExpectedTerminal bool   `json:"expected_terminal"`
+		Unchanged        bool   `json:"expected_cursor_unchanged"`
+	} `json:"page_cases"`
+	BudgetCases []struct {
+		ID       string `json:"id"`
+		OutputMB int64  `json:"output_mb"`
+		Stdout   int64  `json:"stdout_bytes"`
+		Stderr   int64  `json:"stderr_bytes"`
+		Code     string `json:"expected_code"`
+	} `json:"budget_cases"`
+}
+
+func decodePhase19LogSpecification(input []byte) (phase19LogSpecificationVector, error) {
+	var v phase19LogSpecificationVector
+	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return v, err
+	}
+	var before, after any
+	if json.Unmarshal(input, &before) != nil || json.Unmarshal(encoded, &after) != nil ||
+		!bytes.Equal(iacSpecificationCanonical(before), iacSpecificationCanonical(after)) {
+		return v, fmt.Errorf("required fields and null boundary")
+	}
+	if v.SchemaVersion != 1 || v.MaskCases == nil || v.PageCases == nil || v.BudgetCases == nil {
+		return v, fmt.Errorf("vector identity")
+	}
+	validHex := func(s string) bool {
+		_, err := hex.DecodeString(s)
+		return err == nil && strings.ToLower(s) == s
+	}
+	seen := map[string]bool{}
+	id := func(s string) bool {
+		if !regexp.MustCompile(`^[a-z][a-z0-9-]*$`).MatchString(s) || seen[s] {
+			return false
+		}
+		seen[s] = true
+		return true
+	}
+	for _, c := range v.MaskCases {
+		if !id(c.ID) || c.Patterns == nil || c.Chunks == nil || c.Committed == nil ||
+			len(c.Chunks) != len(c.Committed) || !validHex(c.Expected) {
+			return v, fmt.Errorf("mask schema")
+		}
+		for _, p := range c.Patterns {
+			if p == "" || !validHex(p) {
+				return v, fmt.Errorf("pattern schema")
+			}
+		}
+		for _, s := range append(append([]string{}, c.Chunks...), c.Committed...) {
+			if !validHex(s) {
+				return v, fmt.Errorf("chunk schema")
+			}
+		}
+	}
+	for _, c := range v.PageCases {
+		if !id(c.ID) || !validHex(c.Data) || !validHex(c.Expected) {
+			return v, fmt.Errorf("page schema")
+		}
+	}
+	for _, c := range v.BudgetCases {
+		if !id(c.ID) || c.OutputMB < 1 || c.OutputMB > 16 || c.Stdout < 0 || c.Stderr < 0 {
+			return v, fmt.Errorf("budget schema")
+		}
+	}
+	return v, nil
+}
+
+// Pure published-input oracles; these do not run a product worker or read its logs.
+func phase19LogMaskOracle(patterns, chunks [][]byte) ([]byte, []string) {
+	sorted := append([][]byte(nil), patterns...)
+	sort.Slice(sorted, func(i, j int) bool {
+		if len(sorted[i]) != len(sorted[j]) {
+			return len(sorted[i]) > len(sorted[j])
+		}
+		return bytes.Compare(sorted[i], sorted[j]) < 0
+	})
+	longest := 1
+	for _, p := range sorted {
+		if len(p) > longest {
+			longest = len(p)
+		}
+	}
+	var pending, carry, output []byte
+	commit := func(final bool) {
+		for len(pending) > 0 && (final || len(pending) >= longest) {
+			count := 0
+			for _, p := range sorted {
+				if bytes.HasPrefix(pending, p) {
+					carry = append(carry, []byte("[REDACTED]")...)
+					count = len(p)
+					break
+				}
+			}
+			if count == 0 {
+				carry = append(carry, pending[0])
+				count = 1
+			}
+			pending = pending[count:]
+		}
+		for len(carry) > 0 {
+			if !final && !utf8.FullRune(carry) {
+				break
+			}
+			r, size := utf8.DecodeRune(carry)
+			if r == utf8.RuneError && size == 1 {
+				output = append(output, []byte("\uFFFD")...)
+			} else {
+				output = append(output, carry[:size]...)
+			}
+			carry = carry[size:]
+		}
+	}
+	var committed []string
+	for _, chunk := range chunks {
+		pending = append(pending, chunk...)
+		commit(false)
+		committed = append(committed, hex.EncodeToString(output))
+	}
+	commit(true)
+	return output, committed
+}
+
+func phase19LogPageOracle(data []byte, first int64, cursor *int64, limit int, terminal, gap bool) (string, []byte, int64, int64, bool, bool, bool, bool) {
+	if limit < 1 || limit > 65536 {
+		return "P19_SCHEMA", nil, 0, 0, false, false, false, false
+	}
+	if !utf8.Valid(data) || first < 0 || first > 9007199254740991-int64(len(data)) {
+		return "P19_STATE_CORRUPT", nil, 0, 0, false, false, false, false
+	}
+	start := first
+	if cursor != nil {
+		start = *cursor
+	}
+	last := first + int64(len(data))
+	if start < first || start > last {
+		return "P19_CURSOR", nil, 0, 0, false, false, false, false
+	}
+	index := int(start - first)
+	if index < len(data) && !utf8.RuneStart(data[index]) {
+		return "P19_CURSOR", nil, 0, 0, false, false, false, false
+	}
+	end := index
+	for end < len(data) {
+		_, size := utf8.DecodeRune(data[end:])
+		if end-index+size > limit {
+			break
+		}
+		end += size
+	}
+	if end == index && index < len(data) {
+		return "P19_SCHEMA", nil, 0, 0, false, false, false, false
+	}
+	return "ok", data[index:end], start, first + int64(end), terminal && end == len(data), cursor != nil && end == index, first > 0, gap
+}
+
+func phase19LogBudgetOracle(outputMB, stdout, stderr int64) string {
+	if stdout+stderr > outputMB*1048576 {
+		return "P19_OUTPUT"
+	}
+	return "ok"
+}
+
+func TestPhase19LogSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	match := regexp.MustCompile("(?s)<a id=\"phase-19-log-boundary-vectors\"></a>.*?\x60\x60\x60json\\n(.*?)\\n\x60\x60\x60").FindStringSubmatch(document)
+	if len(match) != 2 {
+		t.Fatal("runner.log-spec.presence: missing fixed input")
+	}
+	v, err := decodePhase19LogSpecification([]byte(match[1]))
+	if err != nil || len(v.MaskCases) != 12 || len(v.PageCases) != 13 || len(v.BudgetCases) != 4 {
+		t.Fatalf("runner.log-spec.schema: expected 12/13/4 valid cases, actual %v", err)
+	}
+	decode := func(s string) []byte {
+		b, err := hex.DecodeString(s)
+		if err != nil {
+			t.Fatal("fixture hex")
+		}
+		return b
+	}
+	for _, c := range v.MaskCases {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			var patterns, chunks [][]byte
+			for _, p := range c.Patterns {
+				patterns = append(patterns, decode(p))
+			}
+			for _, b := range c.Chunks {
+				chunks = append(chunks, decode(b))
+			}
+			got, commits := phase19LogMaskOracle(patterns, chunks)
+			if hex.EncodeToString(got) != c.Expected || !phase11StringSlicesEqual(commits, c.Committed) {
+				t.Fatalf("runner.log-spec.%s.result: expected published committed/final bytes, actual differs; runner.md#phase-19-streaming-log-contract; reproduce: go test . -run '^TestPhase19LogSpecificationVectors$' -count=1", c.ID)
+			}
+			joined := bytes.Join(chunks, nil)
+			for split := 0; split <= len(joined); split++ {
+				got, _ := phase19LogMaskOracle(patterns, [][]byte{joined[:split], joined[split:]})
+				if hex.EncodeToString(got) != c.Expected {
+					t.Fatalf("runner.log-spec.%s.result: split=%d changed final oracle", c.ID, split)
+				}
+			}
+			var singles [][]byte
+			for i := range joined {
+				singles = append(singles, joined[i:i+1])
+			}
+			got, _ = phase19LogMaskOracle(patterns, singles)
+			if hex.EncodeToString(got) != c.Expected {
+				t.Fatalf("runner.log-spec.%s.result: byte chunks changed final oracle", c.ID)
+			}
+		})
+	}
+	for _, c := range v.PageCases {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			code, data, first, next, terminal, unchanged, truncated, gap := phase19LogPageOracle(decode(c.Data), c.First, c.Cursor, c.Limit, c.Terminal, c.Gap)
+			if code != c.Code || hex.EncodeToString(data) != c.Expected || first != c.ExpectedFirst || next != c.ExpectedNext || terminal != c.ExpectedTerminal || unchanged != c.Unchanged || truncated != (code == "ok" && c.First > 0) || gap != (code == "ok" && c.Gap) {
+				t.Fatalf("api.log-spec.%s.result: expected code=%s offsets=%d..%d terminal=%t, actual code=%s offsets=%d..%d terminal=%t; api.md#phase-19-log-page-contract; reproduce: go test . -run '^TestPhase19LogSpecificationVectors$' -count=1", c.ID, c.Code, c.ExpectedFirst, c.ExpectedNext, c.ExpectedTerminal, code, first, next, terminal)
+			}
+		})
+	}
+	for _, c := range v.BudgetCases {
+		if got := phase19LogBudgetOracle(c.OutputMB, c.Stdout, c.Stderr); got != c.Code {
+			t.Fatalf("runner.log-spec.%s.result: expected %s, actual %s; runner.md#phase-19-streaming-log-contract", c.ID, c.Code, got)
+		}
+	}
+	for _, c := range []struct {
+		id          string
+		data        []byte
+		first, next int64
+		size        int
+	}{
+		{"ring-exact", bytes.Repeat([]byte("a"), 1048576), 0, 1048576, 1048576},
+		{"ring-scalar-prefix", append([]byte{0xe3, 0x81, 0x82}, bytes.Repeat([]byte("a"), 1048575)...), 3, 1048578, 1048575},
+		{"ring-unicode", bytes.Repeat([]byte{0xe3, 0x81, 0x82}, 349526), 3, 1048578, 1048575},
+	} {
+		data, first, next := phase19LogRingOracle(c.data, 0)
+		if !utf8.Valid(data) || len(data) != c.size || first != c.first || next != c.next {
+			t.Fatalf("runner.log-spec.%s.result: expected ring bytes=%d offsets=%d..%d, actual bytes=%d offsets=%d..%d; runner.md#phase-19-streaming-log-contract", c.id, c.size, c.first, c.next, len(data), first, next)
+		}
+	}
+	log := map[string]any{"schema_version": 1, "project_id": strings.Repeat("p", 64), "run_id": "r-" + strings.Repeat("a", 32), "attempt": 100, "job_id": strings.Repeat("j", 64), "stream": "stdout", "first_offset": int64(9007199254740991 - 1048576), "next_offset": int64(9007199254740991), "data": strings.Repeat("\x00", 1048576), "truncated": true, "gap": true, "terminal": true}
+	encoded, err := json.Marshal(log)
+	state := phase11MustReadText(t, "docs/details/statefile.md")
+	capacity := regexp.MustCompile("\\| Log / ([0-9]+)").FindStringSubmatch(state)
+	if err != nil || len(capacity) != 2 {
+		t.Fatal("statefile.log-spec.escape-capacity.result: missing serialized bound")
+	}
+	maximum, err := strconv.Atoi(capacity[1])
+	if err != nil || len(encoded) <= 6*1048576 || len(encoded) > maximum {
+		t.Fatalf("statefile.log-spec.escape-capacity.result: expected encoded NUL log above 6MiB and within cap, actual bytes=%d cap=%d; statefile.md#phase-19-log-invariants", len(encoded), maximum)
+	}
+	for _, c := range []struct{ id, input string }{
+		{"missing", strings.Replace(match[1], "\"schema_version\": 1,", "", 1)},
+		{"unknown", strings.Replace(match[1], "{", "{\"unknown\":true,", 1)},
+		{"duplicate", strings.Replace(match[1], "\"schema_version\": 1", "\"schema_version\":1,\"schema_version\":1", 1)},
+		{"null", regexp.MustCompile(`"patterns_hex": \[[^\]]*\]`).ReplaceAllString(match[1], `"patterns_hex": null`)},
+		{"trailing", match[1] + " {}"},
+		{"utf8", string([]byte{0xff}) + match[1]},
+	} {
+		if _, err := decodePhase19LogSpecification([]byte(c.input)); err == nil {
+			t.Fatalf("runner.log-spec.schema-%s.result: expected malformed input rejected, actual accepted", c.id)
+		}
+	}
+}
+
+func specificationPhaseReferenceIntegrity(documents map[string]string) error {
+	rows := regexp.MustCompile(`(?m)^\| Phase ([0-9]+) \|`).FindAllStringSubmatch(documents["docs/ROADMAP.md"], -1)
+	known := make(map[string]bool)
+	for _, row := range rows {
+		phase, err := strconv.Atoi(row[1])
+		if err != nil || phase < 1 || phase > 21 || known[row[1]] || strconv.Itoa(phase) != row[1] {
+			return fmt.Errorf("invalid or duplicate Phase row %s", row[1])
+		}
+		known[row[1]] = true
+	}
+	if len(known) != 21 {
+		return fmt.Errorf("expected 21 registered Phase rows, got %d", len(known))
+	}
+	expressions := regexp.MustCompile(`(?i:phase|フェーズ)[ _\t-]*[0-9]+(?:[ \t]*[/,、〜～~-][ \t]*(?:(?i:phase|フェーズ)[ _\t-]*)?[0-9]+)*`)
+	numbers := regexp.MustCompile(`[0-9]+`)
+	paths := make([]string, 0, len(documents))
+	for path := range documents {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	for _, path := range paths {
+		for number, line := range strings.Split(documents[path], "\n") {
+			for _, expression := range expressions.FindAllString(line, -1) {
+				for _, phase := range numbers.FindAllString(expression, -1) {
+					if !known[phase] {
+						return fmt.Errorf("unregistered Phase %s in %s:%d", phase, path, number+1)
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func specificationReferenceIntegrity(documents map[string]string, exists func(string) bool) error {

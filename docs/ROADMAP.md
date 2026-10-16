@@ -97,7 +97,7 @@ Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない�
 `改訂予定` の行に記載する詳細入口は、仕様策定先または再評価先を示す。`改訂予定` の詳細入口は、実装着手根拠、Phase 11 実装対象、または `仕様化済み・未実装` の代替根拠として扱わない。`仕様化済み・未実装` の行であっても、実装着手可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze)、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を同時に満たす場合だけ成立する。
 
 <a id="specification-completeness-status"></a>
-**仕様全般詳細化の現在状態：** 統合機能インベントリの既存要求について、owner本文・入力/出力/状態/異常系/復旧・具体fixture入力/expected・Phase/実装PR境界を照合し、検出済み仕様不備は解消した。Phase20/21/22と従来改訂予定27項目は仕様成熟度として `仕様化済み・未実装` とする。根拠は [同一仕様PRのinventory/batch/反復検査証跡](https://github.com/fqwink/Build-Scripts/pull/100)。これは製品機能テスト完了、実機受入完了、実装着手許可、active Phase設定を意味しない。既存namespaceとPhase19専用namespaceの割当は独立のまま、製品実装と実機検証は未着手である。
+**仕様全般詳細化の現在状態：** 統合機能インベントリの既存要求について、owner本文・入力/出力/状態/異常系/復旧・具体fixture入力/expected・Phase/実装PR境界を照合し、検出済み仕様不備は解消した。Phase20/21の各機能は仕様成熟度として `仕様化済み・未実装` とする。根拠は [同一仕様PRのinventory/batch/反復検査証跡](https://github.com/fqwink/Build-Scripts/pull/100)。これは製品機能テスト完了、実機受入完了、実装着手許可、active Phase設定を意味しない。既存namespaceとPhase19専用namespaceの割当は独立のまま、製品実装と実機検証は未着手である。
 
 | 仕様化済み範囲 | 現在状態 / 詳細・検証入口 |
 |---|---|
@@ -161,7 +161,7 @@ Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない�
 | 実装済み | 本番検証 | Phase 18 secret / destructive operation / opaque metadata / document drift gate | [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](details/fixture.md#phase-18-vps-pull-bootstrap-evidence) |
 | 仕様化済み・未実装 | CI / CD | Phase 19 GitHub Actions required check / 内製 CI 実行 / 内製 CD / deploy / rollback / release verification gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 19 内製 CI/CD 強化参照](DETAIL_INDEX.md#phase-19-inhouse-cicd-entry) |
 | 仕様化済み・未実装 | Infrastructure | Phase 20 内製 IaC / infrastructure manifest / plan / apply / rollback / drift detection / provider operation boundary | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 20 内製 IaC 参照](DETAIL_INDEX.md#phase-20-inhouse-iac-entry) |
-| 仕様化済み・未実装 | 本番検証 | Phase 17 エックスサーバ VPS 本番環境同等検証判断 | [`docs/details/production-validation.md` 本番検証詳細本文責務 エックスサーバ VPS 将来判断契約](details/production-validation.md#phase-17-xserver-future-contract) |
+| 将来計画 | 本番検証 | Phase 17 エックスサーバ VPS 本番環境同等検証判断 | [`docs/details/production-validation.md` 本番検証詳細本文責務 エックスサーバ VPS 将来判断契約](details/production-validation.md#phase-17-xserver-future-contract) |
 | 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的配布物構成・Archive 検証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的 HTTP 配信 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ビルドタイムアウト | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
