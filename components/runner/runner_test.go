@@ -445,42 +445,38 @@ func TestRunnerPhase2PipelineConfigInvalidDoesNotStartBuild(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			state := newRunnerState(t, "old-blob", nil)
-			marker := filepath.Join(state, "pipeline-started")
-			buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
-			writeExecutable(t, buildBin, fmt.Sprintf(`#!/usr/bin/env bash
-set -u
-if [ "${1:-}" = "--version" ]; then
-  printf 'adlaire-ci-build V.0.0-dev go=fake\n'
-  exit 0
-fi
-printf started > %q
-exit 0
-`, marker))
-			t.Setenv("ADLAIRE_CI_BUILD_BIN", buildBin)
+			rejectShellStartup(t)
+			trace := filepath.Join(state, "builder-trace")
+			useNativeBuilder(t, nativeBuilderFixture{Trace: trace})
+			caseID := strings.ReplaceAll(tc.name, "_", "-")
 			if err := os.WriteFile(filepath.Join(state, ".pipeline_config"), []byte(tc.content+"\n"), 0600); err != nil {
 				t.Fatal(err)
 			}
 			server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 			withRunnerServer(t, server.URL, func() {
 				var stdout, stderr bytes.Buffer
-				if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 2 {
-					t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
-				}
-				if _, err := os.Stat(marker); !os.IsNotExist(err) {
-					t.Fatalf("builder body must not start, marker err=%v", err)
-				}
-				if readFile(t, filepath.Join(state, ".last_sha")) != "{\"sha\":\"old-blob\"}\n" {
-					t.Fatalf("sha changed on invalid pipeline config")
-				}
+				code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr)
 				log := onlyBuildLog(t, state)
+				if code != 2 {
+					t.Fatalf("runner.pipeline-config-invalid.%s.result: fixture.md#15a-f-runner-初期受け入れ-fixture-契約 expected exit=2 actual=%d stdout=%q stderr=%q status=%s category=%s error=%s; reproduce go test ./components/runner -run TestRunnerPhase2PipelineConfigInvalidDoesNotStartBuild -count=1", caseID, code, stdout.String(), stderr.String(), log.TargetStatus, derefString(log.FailureCategory, ""), derefString(log.Error, ""))
+				}
+				if actual := readFile(t, trace); actual != "version\n" {
+					t.Fatalf("runner.pipeline-config-invalid.%s.native-trace: expected version-only trace actual=%q", caseID, actual)
+				}
+				if _, err := os.Stat(filepath.Join(state, "dist", "site")); !os.IsNotExist(err) {
+					t.Fatalf("runner.pipeline-config-invalid.%s.no-output: expected output absent actual=%v", caseID, err)
+				}
+				if actual := readFile(t, filepath.Join(state, ".last_sha")); actual != "{\"sha\":\"old-blob\"}\n" {
+					t.Fatalf("runner.pipeline-config-invalid.%s.sha-unchanged: expected old SHA actual=%q", caseID, actual)
+				}
 				if log.TargetStatus != "failure_pipeline_config" || log.Pipeline.ExitCode == nil || *log.Pipeline.ExitCode != 2 || log.RetryCount != 0 || len(log.Attempts) != 1 {
-					t.Fatalf("unexpected pipeline config failure log: %+v", log)
+					t.Fatalf("runner.pipeline-config-invalid.%s.log: expected failure_pipeline_config/exit2/retry0/attempt1 actual=%+v", caseID, log)
 				}
 				if log.FailureCategory == nil || *log.FailureCategory != "config_error" || log.Error == nil || *log.Error != "pipeline config invalid" {
-					t.Fatalf("pipeline config category/error mismatch: %+v", log)
+					t.Fatalf("runner.pipeline-config-invalid.%s.category: expected config_error/pipeline config invalid actual=%+v", caseID, log)
 				}
 				if len(log.FailureEvidence) != 1 || log.FailureEvidence[0].Source != "config" || log.FailureEvidence[0].Code != "config_error" {
-					t.Fatalf("pipeline config evidence mismatch: %+v", log.FailureEvidence)
+					t.Fatalf("runner.pipeline-config-invalid.%s.evidence: expected one config/config_error evidence actual=%+v", caseID, log.FailureEvidence)
 				}
 			})
 		})
