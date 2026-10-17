@@ -1,6 +1,86 @@
 # Adlaire CI — Admin 詳細仕様
 
+<a id="phase-19-admin-contract"></a>
+
+**Phase 19 CLI / package契約：**
+
+ownerは `admin`、実装主体は [components/admin/](../../components/admin/)。既存CLIへ `cicd` namespaceを追加する。API routeは [`docs/details/api.md` 詳細本文責務 operation catalog](api.md#phase-19-operation-catalog)、認証/権限はsecurity正本。管理clientはAPI操作だけを行いstate-dirを直接更新しない。
+
+exact形は `adlaire-ci-admin --api-url URL --token-file ABS --json cicd COMMAND --params-file ABS --body-file ABS`。token-fileと既存token-stdinは排他、loginだけtoken不要。params-fileはpath/query keyのJSON object（Emptyなら{}）、body-fileはrequest JSON（body不要ならnull）、各1 MiBまでregular0600・symlink拒否、secret含むfileはcheckout外。body-fileに `-` を指定してstdin読取可、token-stdinとの併用禁止。未知/重複/省略optionを拒否、--name valueだけ。login/logout以外のmutationには `--idempotency-key o-HEX` 必須。--waitは受け付けず、operation-getで明示照会する。
+
+<a id="phase-19-admin-operation-result"></a>
+**CLIの要求結果境界：** key分類・HTTP結果は [docs/details/api.md 詳細本文責務 operation受付](api.md#phase-19-operation-admission) と一致させ、不要な--idempotency-keyはnetwork前入力拒否する。mutation応答はoperation.id/kind/target_attemptと送信対象を照合し、不一致をprotocol失敗とする。timeout/通信断は非zero終了であり未実行の証明ではない。固定診断だけを出し、keyを付け替えた自動再送、stdin再読込、秘密bodyのcacheを行わない。照会は既知keyをparams-fileへ指定したoperation-getで行い、404を「再実行可」に変換しない。user/service作成のone_time消失は再表示不可として扱い、照会のために別user/serviceを作成しない。
+
+<a id="phase-19-admin-plan-boundary"></a>
+**CLIの計画と再実行：** plan/run-getは [docs/details/api.md 詳細本文責務 計画受付](api.md#phase-19-plan-request-boundary) の完全Planを1回のJSON出力で保持し、selected=falseの除去、展開Idの短縮、表示用Plan.digest再計算をしない。run-startはbody-file内の明示plan_digestだけを送信する。run-retry/run-resumeはparams-fileのattemptとbody-fileのexpected_revisionを渡し、欠落をlatestで補完せず入力拒否する。エラー後のplan取得・新digest採用・新attempt再要求を自動実行しない。受信Planの型/ID/needs不整合はexit5で部分成功JSONを出さない。
+
+<a id="phase-19-admin-artifact-chunk"></a>
+**CLIの成果物範囲読取：** artifact-downloadはparams-fileのproject/digest/offsetで1回だけ [docs/details/api.md 詳細本文責務 download wire](api.md#phase-19-artifact-download) を呼ぶ。要求offset/digest・strict base64・全byte不変条件を検査後、単一Chunkを含むAPI envelopeをJSON1行でstdoutへ返す。protocol不一致はexit5、部分JSONを成功出力せず固定診断だけを返す。CLIはarchiveを自動生成/保存せず、final=trueを全file hash検証済みと表示しない。複数chunkの連結・最終digest確認は明示caller責務であり、失敗時の自動巻戻し・自動retry・pin作成を行わない。
+
+| COMMAND | operation結合key |
+|---|---|
+| `login` | login |
+| `logout` | logout |
+| `password-change` | passwordChange |
+| `projects-list` | projectsList |
+| `project-put` | projectPut |
+| `workers-list` | workersList |
+| `worker-put` | workerPut |
+| `targets-list` | targetsList |
+| `target-put` | targetPut |
+| `users-list` | usersList |
+| `user-put` | userPut |
+| `services-list` | servicesList |
+| `service-put` | servicePut |
+| `definitions-list` | definitionsList |
+| `definition-put` | definitionPut |
+| `templates-list` | templatesList |
+| `template-put` | templatePut |
+| `environments-list` | environmentsList |
+| `environment-put` | environmentPut |
+| `grants-list` | grantsList |
+| `grant-put` | grantPut |
+| `secret-put` | secretPut |
+| `secrets-list` | secretsList |
+| `worker-drain` | workerDrain |
+| `worker-resume` | workerResume |
+| `plan` | plan |
+| `run-start` | runStart |
+| `runs-list` | runsList |
+| `run-get` | runGet |
+| `run-retry` | runRetry |
+| `run-resume` | runResume |
+| `run-cancel` | runCancel |
+| `logs-get` | logsGet |
+| `artifacts-list` | artifactsList |
+| `artifact-get` | artifactGet |
+| `artifact-download` | artifactDownload |
+| `artifact-compare` | artifactCompare |
+| `artifact-pin` | artifactPin |
+| `caches-list` | cachesList |
+| `cache-delete` | cacheDelete |
+| `environment-status` | environmentStatus |
+| `deployment-plan` | deploymentPlan |
+| `deployment-start` | deploymentStart |
+| `deployments-list` | deploymentsList |
+| `deployment-get` | deploymentGet |
+| `deployment-approve` | deploymentApprove |
+| `deployment-reject` | deploymentReject |
+| `deployment-cancel` | deploymentCancel |
+| `deployment-rollback` | deploymentRollback |
+| `deployment-reconcile` | deploymentReconcile |
+| `operation-get` | operationGet |
+| `metrics-get` | metricsGet |
+| `audits-list` | auditsList |
+
+HTTP method/path/body/query/authはcatalogへ一致、JSON successをstdoutへ1行、errorもAPI envelopeをstdoutへ1行、診断はmask済みstderrへ。exit0はHTTP2xx（202は未完了を維持）、2入力、3認証/権限、4HTTP4xx/5xx、5transport/protocol。network自動retryなし、timeout10秒。secret/token/passwordはJSON出力の一回だけでstderrやデバッグに載せない。responseも1 MiB上限（planが超過する場合はP19_BODYで失敗し表示省略による成功を返さない）。
+
+admin archiveには既存のindex.html/adlaire-ci-sdk.jsを同cohortで含め、新たなbundle/依存/runtimeを追加しない。未実装methodをruntime stub成功で埋めない。CLIとAPI catalogの全件wire比較、SDK/UI同cohortの検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)。
+
 ---
+
+<a id="phase-19-admin-implementation-classification"></a>
+**実装分類：** CLI/catalog変換・入力file境界は `INHOUSE`、使用primitiveはflag、encoding/json、net/http、os（`STD`）。入力/状態/異常系は[`docs/details/admin.md` 詳細本文責務](#phase-19-admin-contract)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `admin`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="0-責務境界"></a>
 
@@ -48,6 +128,10 @@ admin archive の検証は以下の順序に固定する。
 
 いずれかの検証に失敗した場合は、既存 `$INSTALL_DIR/admin/` を変更しない。
 
+archive入力は圧縮8MiB以下、展開合計16MiB以下、各file8MiB以下とする。gzip memberは1件、trailing data/multistreamは禁止、CRC/sizeをEOFまで検証する。tarはrelease正本と同じUSTAR形式の通常file2件だけとし、directory、PAX/GNU拡張header、重複名、長名entryも拒否する。size上限を超えた時点で読込を止め、検証完了前に最終配置先へ展開しない。安全なstagingの確保/cleanup/終了codeは [setup詳細本文責務](setup.md#sec-26-7) を使用する。`STD`、Goのarchive/tar・compress/gzipと標準I/Oだけを使用する。
+
+gzipはbuffered ByteReader上でMultistream(false)として読み、tar EOF後も展開上限内でgzip EOFまで読み切る。tar終端後の展開byteはzero paddingだけを許可し、gzip EOF後に圧縮入力byteが残れば拒否する。header列挙完了だけでCRC/trailing検査を完了扱いにしない。
+
 ---
 
 <a id="a3-静的配信契約"></a>
@@ -65,6 +149,8 @@ admin archive の検証は以下の順序に固定する。
 未定義 path、directory listing、path traversal、hidden file、状態ファイル、secret file へのアクセスは `404` とする。認証前に配信する file は [`docs/details/admin.md` 詳細本文責務 §A3](admin.md#a3-静的配信契約) の固定表の静的 file だけとし、API response、状態ファイル、credential、build log、snapshot を静的配信してはならない。
 
 静的配信処理は request body を読まない。`GET` と `HEAD` 以外の method は `405` を返す。
+
+raw request pathのpercent encoding/backslash/空segment/dot segmentを正規化redirectで許可pathへ変換しない。queryはfile選択へ使用しない。path未登録はmethodによらず404、登録pathのmethod不正は405とAllow=`GET, HEAD`。成功HEADはGETと同じContent-Type/Cache-Control/Content-Length、body0byteとする。Range/If-None-Match/If-Modified-Sinceは処理せず、206/304/ETag/Last-Modifiedを生成しない。静的fileは毎requestで安全なdirectory descriptorに対する固定basenameのnon-follow openとfstatで通常file/hardlink数1を確認し、pathnameの事前Lstatだけを安全性判定にしない。symlink/型不正/不在は404、読取不能は500、どちらもpath/OS errorを応答へ含めない。X-Content-Type-Options=`nosniff`を全静的応答へ付与する。業務state、audit、admin eventを書かず、共通access logだけを適用する。
 
 ---
 

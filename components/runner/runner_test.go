@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
@@ -20,6 +21,112 @@ import (
 	"testing"
 	"time"
 )
+
+type nativeBuilderFixture struct {
+	Code         int    `json:"code"`
+	Stdout       string `json:"stdout"`
+	Stderr       string `json:"stderr"`
+	VersionFault string `json:"version_fault"`
+	Trace        string `json:"trace"`
+	PipelineArgs string `json:"pipeline_args"`
+}
+
+func TestMain(m *testing.M) {
+	if raw := os.Getenv("RUNNER_NATIVE_BUILDER_FIXTURE"); raw != "" {
+		var fixture nativeBuilderFixture
+		if err := json.Unmarshal([]byte(raw), &fixture); err != nil {
+			os.Exit(98)
+		}
+		stage := "build"
+		if len(os.Args) == 2 && os.Args[1] == "--version" {
+			stage = "version"
+		}
+		if fixture.Trace != "" {
+			file, err := os.OpenFile(fixture.Trace, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+			if err != nil {
+				os.Exit(98)
+			}
+			_, writeErr := fmt.Fprintln(file, stage)
+			closeErr := file.Close()
+			if writeErr != nil || closeErr != nil {
+				os.Exit(98)
+			}
+		}
+		if stage == "version" {
+			switch fixture.VersionFault {
+			case "timeout":
+				time.Sleep(time.Hour)
+			case "stderr":
+				fmt.Fprintln(os.Stderr, "warn")
+			case "empty_go_token":
+				fmt.Println("adlaire-ci-build V.0.0-dev go=")
+				os.Exit(0)
+			case "extra_token":
+				fmt.Println("adlaire-ci-build V.0.0-dev go=fake extra")
+				os.Exit(0)
+			}
+			fmt.Println("adlaire-ci-build V.0.0-dev go=fake")
+			os.Exit(0)
+		}
+		if fixture.PipelineArgs != "" {
+			for key, want := range map[string]string{"PIPELINE_ENV": "pipeline", "BRANCH_VALUE": "pipeline-wins", "BRANCH_ONLY": "branch-only"} {
+				if os.Getenv(key) != want {
+					fmt.Fprintln(os.Stderr, "pipeline environment mismatch")
+					os.Exit(6)
+				}
+			}
+			if err := os.WriteFile(fixture.PipelineArgs, []byte(strings.Join(os.Args[1:], "\n")+"\n"), 0600); err != nil {
+				os.Exit(98)
+			}
+			if err := os.WriteFile(filepath.Join(os.Getenv("ADLAIRE_CI_STATE_DIR"), ".pipeline_config"), []byte(`{"extra_args":[],"env":{"MUTATED":"yes"}}`), 0600); err != nil {
+				os.Exit(98)
+			}
+			fmt.Fprintln(os.Stdout, "secret="+os.Getenv("PIPELINE_SECRET"))
+		}
+		if fixture.Code == 0 {
+			out := os.Getenv("ADLAIRE_CI_OUT")
+			if out == "" || os.MkdirAll(filepath.Join(out, "assets"), 0755) != nil {
+				os.Exit(98)
+			}
+			for name, body := range map[string]string{"index.html": "<html></html>", "assets/style.css": "body{}", "assets/app.js": `console.log("ok")`, "assets/search-index.json": "[]"} {
+				if err := os.WriteFile(filepath.Join(out, name), []byte(body), 0644); err != nil {
+					os.Exit(98)
+				}
+			}
+		}
+		fmt.Fprint(os.Stdout, fixture.Stdout)
+		fmt.Fprint(os.Stderr, fixture.Stderr)
+		os.Exit(fixture.Code)
+	}
+	os.Exit(m.Run())
+}
+
+func useNativeBuilder(t *testing.T, fixture nativeBuilderFixture) {
+	t.Helper()
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ADLAIRE_CI_BUILD_BIN", executable)
+	t.Setenv("RUNNER_NATIVE_BUILDER_FIXTURE", string(data))
+	t.Setenv("GORACE", "atexit_sleep_ms=0")
+}
+
+func rejectShellStartup(t *testing.T) {
+	t.Helper()
+	startup := filepath.Join(t.TempDir(), "startup")
+	if err := os.WriteFile(startup, []byte("exit 97\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("BASH_ENV", startup)
+	if err := exec.Command("bash", "--noprofile", "--norc", "-c", "exit 0").Run(); err == nil {
+		t.Fatal("shell startup negative control did not fail")
+	}
+}
 
 func TestRunnerFixtureR1CLI(t *testing.T) {
 	var stdout, stderr bytes.Buffer
@@ -78,13 +185,23 @@ func TestRunnerFixtureR2NoChange(t *testing.T) {
 
 func TestRunnerFixtureR3BuildSuccessNoDeploy(t *testing.T) {
 	state := newRunnerState(t, "old-blob", nil)
-	writePipeline(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "")
+	rejectShellStartup(t)
+	trace := filepath.Join(state, "builder-trace")
+	useNativeBuilder(t, nativeBuilderFixture{Stdout: `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, Trace: trace})
 	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
 		code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr)
 		if code != 0 {
-			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+			log := onlyBuildLog(t, state)
+			problem := ""
+			if log.Error != nil {
+				problem = *log.Error
+			}
+			t.Fatalf("exit=%d stdout=%s stderr=%s status=%s error=%s", code, stdout.String(), stderr.String(), log.TargetStatus, problem)
+		}
+		if readFile(t, trace) != "version\nbuild\n" {
+			t.Fatal("native builder invocation order mismatch")
 		}
 		if readFile(t, filepath.Join(state, ".last_sha")) != "{\"sha\":\"new-blob\"}\n" {
 			t.Fatalf("sha not updated: %s", readFile(t, filepath.Join(state, ".last_sha")))
@@ -148,13 +265,18 @@ func TestRunnerFixtureR3BuildSuccessNoDeploy(t *testing.T) {
 
 func TestRunnerFixtureR4PipelineFailure(t *testing.T) {
 	state := newRunnerState(t, "old-blob", nil)
-	writePipeline(t, state, 7, "before fail", "failed")
+	rejectShellStartup(t)
+	trace := filepath.Join(state, "builder-trace")
+	useNativeBuilder(t, nativeBuilderFixture{Code: 7, Stdout: "before fail", Stderr: "failed", Trace: trace})
 	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
 		code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr)
 		if code != 1 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		if readFile(t, trace) != "version\nbuild\n" {
+			t.Fatal("native builder invocation order mismatch")
 		}
 		if readFile(t, filepath.Join(state, ".last_sha")) != "{\"sha\":\"old-blob\"}\n" {
 			t.Fatalf("sha changed on failure")
@@ -175,44 +297,9 @@ func TestRunnerFixtureR4PipelineFailure(t *testing.T) {
 func TestRunnerPhase2PipelineConfigAppliesArgsEnvAndMasksSecret(t *testing.T) {
 	state := newRunnerState(t, "old-blob", nil)
 	argsFile := filepath.Join(state, "args.txt")
-	buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
-	writeExecutable(t, buildBin, fmt.Sprintf(`#!/usr/bin/env bash
-set -u
-if [ "${1:-}" = "--version" ]; then
-  printf 'adlaire-ci-build V.0.0-dev go=fake\n'
-  exit 0
-fi
-out=""
-for arg in "$@"; do
-  printf '%%s\n' "$arg" >> %q
-  if [ "$arg" = "--out" ]; then
-    shift
-    out="${1:-}"
-  fi
-  shift || true
-done
-if [ "${PIPELINE_ENV:-}" != "pipeline" ]; then
-  printf 'pipeline env mismatch' >&2
-  exit 6
-fi
-if [ "${BRANCH_VALUE:-}" != "pipeline-wins" ]; then
-  printf 'pipeline env precedence mismatch' >&2
-  exit 7
-fi
-if [ "${BRANCH_ONLY:-}" != "branch-only" ]; then
-  printf 'branch env missing' >&2
-  exit 8
-fi
-printf '{"extra_args":[],"env":{"MUTATED":"yes"}}' > "$ADLAIRE_CI_STATE_DIR/.pipeline_config"
-mkdir -p "$out/assets"
-printf '<html></html>' > "$out/index.html"
-printf 'body{}' > "$out/assets/style.css"
-printf 'console.log("ok")' > "$out/assets/app.js"
-printf '[]' > "$out/assets/search-index.json"
-printf 'secret=%%s\n' "$PIPELINE_SECRET"
-printf '[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default'
-`, argsFile))
-	t.Setenv("ADLAIRE_CI_BUILD_BIN", buildBin)
+	trace := filepath.Join(state, "builder-trace")
+	useNativeBuilder(t, nativeBuilderFixture{PipelineArgs: argsFile, Trace: trace, Stdout: "[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default"})
+	rejectShellStartup(t)
 	var branches branchConfigFile
 	readJSON(t, filepath.Join(state, ".branch_config"), &branches)
 	branches.BranchTargets[0].Env = map[string]string{"BRANCH_VALUE": "branch", "BRANCH_ONLY": "branch-only"}
@@ -229,78 +316,108 @@ printf '[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
 		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
-			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+			t.Fatalf("runner.pipeline-env.native.result: expected exit0 actual=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		if got := readFile(t, trace); got != "version\nbuild\n" {
+			t.Fatalf("runner.pipeline-env.native.order: fixture.md#15a-f-runner-初期受け入れ-fixture-契約 expected version/build actual=%q", got)
 		}
 		args := strings.Split(strings.TrimSpace(readFile(t, argsFile)), "\n")
 		wantSuffix := []string{"--theme", "adlaire-alt", "--flag=value"}
 		if len(args) < len(wantSuffix) || strings.Join(args[len(args)-len(wantSuffix):], "\n") != strings.Join(wantSuffix, "\n") {
-			t.Fatalf("pipeline extra args not appended: %#v", args)
+			t.Fatalf("runner.pipeline-env.native.args: expected pipeline extra args appended actual=%#v", args)
+		}
+		var changed pipelineConfigFile
+		readJSON(t, filepath.Join(state, ".pipeline_config"), &changed)
+		if len(changed.Env) != 1 || changed.Env["MUTATED"] != "yes" {
+			t.Fatal("runner.pipeline-env.native.snapshot: expected fake config replacement, actual unchanged")
 		}
 		log := onlyBuildLog(t, state)
 		if strings.Contains(log.Pipeline.Stdout, "super-secret") || !strings.Contains(log.Pipeline.Stdout, "secret=***") {
-			t.Fatalf("pipeline secret was not masked: %q", log.Pipeline.Stdout)
+			t.Fatalf("runner.pipeline-env.native.mask: expected secret masked actual=%q", log.Pipeline.Stdout)
 		}
 		if log.Environment.BuilderVersion != "V.0.0-dev" || log.Environment.Hostname == "" || log.Environment.StateDir == "" || log.Environment.CapturedAt == "" || log.Environment.DiskFreeBytes == nil {
 			t.Fatalf("environment record incomplete: %+v", log.Environment)
 		}
 		if got, want := strings.Join(log.Environment.EnvKeys, ","), "BRANCH_ONLY,BRANCH_VALUE,PIPELINE_ENV,PIPELINE_SECRET"; got != want {
-			t.Fatalf("environment keys mismatch got=%q want=%q", got, want)
+			t.Fatalf("runner.pipeline-env.native.env-keys: expected=%q actual=%q", want, got)
 		}
 	})
+
+	for _, wrong := range []string{"PIPELINE_ENV", "BRANCH_VALUE", "BRANCH_ONLY"} {
+		t.Run("native-reject-"+wrong, func(t *testing.T) {
+			caseID := strings.ReplaceAll(strings.ToLower(wrong), "_", "-")
+			root := t.TempDir()
+			fixture := nativeBuilderFixture{PipelineArgs: filepath.Join(root, "args")}
+			data, err := json.Marshal(fixture)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command(os.Getenv("ADLAIRE_CI_BUILD_BIN"), "--out", filepath.Join(root, "out"))
+			for _, value := range os.Environ() {
+				key, _, _ := strings.Cut(value, "=")
+				if key != "RUNNER_NATIVE_BUILDER_FIXTURE" && key != "PIPELINE_ENV" && key != "BRANCH_VALUE" && key != "BRANCH_ONLY" && key != "ADLAIRE_CI_OUT" && key != "ADLAIRE_CI_STATE_DIR" {
+					cmd.Env = append(cmd.Env, value)
+				}
+			}
+			cmd.Env = append(cmd.Env, "RUNNER_NATIVE_BUILDER_FIXTURE="+string(data), "ADLAIRE_CI_OUT="+filepath.Join(root, "out"), "ADLAIRE_CI_STATE_DIR="+state)
+			for key, value := range map[string]string{"PIPELINE_ENV": "pipeline", "BRANCH_VALUE": "pipeline-wins", "BRANCH_ONLY": "branch-only"} {
+				if key == wrong {
+					value = "wrong"
+				}
+				cmd.Env = append(cmd.Env, key+"="+value)
+			}
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			err = cmd.Run()
+			var exit *exec.ExitError
+			if !errors.As(err, &exit) || exit.ExitCode() != 6 || stdout.Len() != 0 || stderr.String() != "pipeline environment mismatch\n" {
+				t.Fatalf("runner.pipeline-env.native.%s.reject: fixture.md#15a-f-runner-初期受け入れ-fixture-契約 expected exit6/empty stdout/fixed reason actual=%v/%q/%q", caseID, err, stdout.String(), stderr.String())
+			}
+			for _, name := range []string{fixture.PipelineArgs, filepath.Join(root, "out")} {
+				if _, err := os.Lstat(name); !errors.Is(err, os.ErrNotExist) {
+					t.Fatalf("runner.pipeline-env.native.%s.%s.no-write: expected absent fake output actual=%v", caseID, filepath.Base(name), err)
+				}
+			}
+		})
+	}
 }
 
 func TestRunnerPhase2BuilderVersionPrecheckStrict(t *testing.T) {
-	oldTimeout := runnerBuilderVersionTimeout
-	runnerBuilderVersionTimeout = 20 * time.Millisecond
-	defer func() { runnerBuilderVersionTimeout = oldTimeout }()
-
-	cases := []struct {
-		name          string
-		versionScript string
-	}{
-		{
-			name:          "stderr",
-			versionScript: "printf 'adlaire-ci-build V.0.0-dev go=fake\\n'\nprintf 'warn\\n' >&2\nexit 0",
-		},
-		{
-			name:          "empty_go_token",
-			versionScript: "printf 'adlaire-ci-build V.0.0-dev go=\\n'\nexit 0",
-		},
-		{
-			name:          "extra_token",
-			versionScript: "printf 'adlaire-ci-build V.0.0-dev go=fake extra\\n'\nexit 0",
-		},
-		{
-			name:          "timeout",
-			versionScript: "sleep 1\nprintf 'adlaire-ci-build V.0.0-dev go=fake\\n'\nexit 0",
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, fault := range []string{"stderr", "empty_go_token", "extra_token", "timeout"} {
+		t.Run(fault, func(t *testing.T) {
+			if fault == "timeout" {
+				old := runnerBuilderVersionTimeout
+				runnerBuilderVersionTimeout = 20 * time.Millisecond
+				t.Cleanup(func() { runnerBuilderVersionTimeout = old })
+			}
 			state := newRunnerState(t, "old-blob", nil)
-			marker := filepath.Join(state, "builder-started")
-			buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
-			writeExecutable(t, buildBin, fmt.Sprintf(`#!/usr/bin/env bash
-set -u
-if [ "${1:-}" = "--version" ]; then
-%s
-fi
-printf started > %q
-exit 0
-`, tc.versionScript, marker))
-			t.Setenv("ADLAIRE_CI_BUILD_BIN", buildBin)
+			trace := filepath.Join(state, "builder-trace")
+			useNativeBuilder(t, nativeBuilderFixture{VersionFault: fault, Trace: trace})
+			prefix := "build binary version mismatch: "
+			if fault == "stderr" {
+				prefix = "build binary version wrote stderr: "
+			} else if fault == "timeout" {
+				prefix = "build binary version timeout: "
+			}
+			if _, err := precheckRunnerTarget(RunnerConfig{}, BranchTarget{Out: filepath.Join(state, "dist", "site")}); err == nil || !strings.HasPrefix(err.Error(), prefix) {
+				t.Fatalf("wrong internal precheck cause: expected=%s actual=%v", prefix, err)
+			}
 			server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 			withRunnerServer(t, server.URL, func() {
 				var stdout, stderr bytes.Buffer
 				if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 1 {
 					t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 				}
-				if _, err := os.Stat(marker); !os.IsNotExist(err) {
-					t.Fatalf("builder body must not start, marker err=%v", err)
+				data, err := os.ReadFile(trace)
+				if (err != nil && !os.IsNotExist(err)) || (fault != "timeout" && string(data) != "version\nversion\n") || strings.Contains(string(data), "build\n") {
+					t.Fatalf("builder must not start after precheck failure: trace=%q err=%v", data, err)
 				}
 				log := onlyBuildLog(t, state)
 				if log.TargetStatus != "failure_precheck" || log.FailureCategory == nil || *log.FailureCategory != "resource_error" || log.Environment.BuilderVersion != "" {
 					t.Fatalf("unexpected precheck log: %+v", log)
+				}
+				if log.Error == nil || *log.Error != "precheck failed" {
+					t.Fatal("public precheck error must remain fixed")
 				}
 			})
 		})
@@ -328,42 +445,38 @@ func TestRunnerPhase2PipelineConfigInvalidDoesNotStartBuild(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			state := newRunnerState(t, "old-blob", nil)
-			marker := filepath.Join(state, "pipeline-started")
-			buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
-			writeExecutable(t, buildBin, fmt.Sprintf(`#!/usr/bin/env bash
-set -u
-if [ "${1:-}" = "--version" ]; then
-  printf 'adlaire-ci-build V.0.0-dev go=fake\n'
-  exit 0
-fi
-printf started > %q
-exit 0
-`, marker))
-			t.Setenv("ADLAIRE_CI_BUILD_BIN", buildBin)
+			rejectShellStartup(t)
+			trace := filepath.Join(state, "builder-trace")
+			useNativeBuilder(t, nativeBuilderFixture{Trace: trace})
+			caseID := strings.ReplaceAll(tc.name, "_", "-")
 			if err := os.WriteFile(filepath.Join(state, ".pipeline_config"), []byte(tc.content+"\n"), 0600); err != nil {
 				t.Fatal(err)
 			}
 			server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 			withRunnerServer(t, server.URL, func() {
 				var stdout, stderr bytes.Buffer
-				if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 2 {
-					t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
-				}
-				if _, err := os.Stat(marker); !os.IsNotExist(err) {
-					t.Fatalf("builder body must not start, marker err=%v", err)
-				}
-				if readFile(t, filepath.Join(state, ".last_sha")) != "{\"sha\":\"old-blob\"}\n" {
-					t.Fatalf("sha changed on invalid pipeline config")
-				}
+				code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr)
 				log := onlyBuildLog(t, state)
+				if code != 2 {
+					t.Fatalf("runner.pipeline-config-invalid.%s.result: fixture.md#15a-f-runner-初期受け入れ-fixture-契約 expected exit=2 actual=%d stdout=%q stderr=%q status=%s category=%s error=%s; reproduce go test ./components/runner -run TestRunnerPhase2PipelineConfigInvalidDoesNotStartBuild -count=1", caseID, code, stdout.String(), stderr.String(), log.TargetStatus, derefString(log.FailureCategory, ""), derefString(log.Error, ""))
+				}
+				if actual := readFile(t, trace); actual != "version\n" {
+					t.Fatalf("runner.pipeline-config-invalid.%s.native-trace: expected version-only trace actual=%q", caseID, actual)
+				}
+				if _, err := os.Stat(filepath.Join(state, "dist", "site")); !os.IsNotExist(err) {
+					t.Fatalf("runner.pipeline-config-invalid.%s.no-output: expected output absent actual=%v", caseID, err)
+				}
+				if actual := readFile(t, filepath.Join(state, ".last_sha")); actual != "{\"sha\":\"old-blob\"}\n" {
+					t.Fatalf("runner.pipeline-config-invalid.%s.sha-unchanged: expected old SHA actual=%q", caseID, actual)
+				}
 				if log.TargetStatus != "failure_pipeline_config" || log.Pipeline.ExitCode == nil || *log.Pipeline.ExitCode != 2 || log.RetryCount != 0 || len(log.Attempts) != 1 {
-					t.Fatalf("unexpected pipeline config failure log: %+v", log)
+					t.Fatalf("runner.pipeline-config-invalid.%s.log: expected failure_pipeline_config/exit2/retry0/attempt1 actual=%+v", caseID, log)
 				}
 				if log.FailureCategory == nil || *log.FailureCategory != "config_error" || log.Error == nil || *log.Error != "pipeline config invalid" {
-					t.Fatalf("pipeline config category/error mismatch: %+v", log)
+					t.Fatalf("runner.pipeline-config-invalid.%s.category: expected config_error/pipeline config invalid actual=%+v", caseID, log)
 				}
 				if len(log.FailureEvidence) != 1 || log.FailureEvidence[0].Source != "config" || log.FailureEvidence[0].Code != "config_error" {
-					t.Fatalf("pipeline config evidence mismatch: %+v", log.FailureEvidence)
+					t.Fatalf("runner.pipeline-config-invalid.%s.evidence: expected one config/config_error evidence actual=%+v", caseID, log.FailureEvidence)
 				}
 			})
 		})

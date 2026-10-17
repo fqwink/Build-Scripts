@@ -99,7 +99,7 @@ Go 実装の標準配置は [docs/SPEC.md 方針責務 §4.3](docs/SPEC.md#sec-4
 
 active Phase 内に未実装、未検証、仕様不整合、[`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) の未達、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の該当証跡不足、状態更新不足が残る場合は、実装作業を完了扱いにしてはならない。既存 Pull Request がある場合も Phase 全体完了まで work in progress として扱い、review ready、merge 可能、または完了済みと報告してはならない。
 
-Go 実装では、対象ファイルに `gofmt -l ...` を実行し、Go module が存在する場合は `go test ./...` を実行する。JavaScript 系実装では、[`docs/SPEC.md` 方針責務 §4 技術方針表](docs/SPEC.md#direction-technical) に従い、Deno stable runtime で対象 JavaScript file に `deno check ...` を実行する。Node.js、npm、bundler、transpiler を JavaScript 系実装の標準検証コマンドとして代替使用してはならない。テスト証跡の必要性および完了可否は [`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) に従う。実行できない確認は、未実施理由を Pull Request 本文へ記録する。
+Go 実装では、対象ファイルに `gofmt -l ...` を実行し、Go module が存在する場合は `go test ./...` を実行する。JavaScript 系実装では、[`docs/SPEC.md` 方針責務 §4 技術方針表](docs/SPEC.md#direction-technical) に従い、Deno stable runtime で対象 JavaScript file に `deno check ...` を実行する。runtime と command の適合性は [`docs/SPEC.md` ポリシー責務 §4a Node 全面禁止契約](docs/SPEC.md#policy-node-runtime-ban) と [`docs/SPEC.md` 方針責務 §4 技術方針表](docs/SPEC.md#direction-technical) で確認する。テスト証跡の必要性および完了可否は [`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) に従う。実行できない確認は、未実施理由を Pull Request 本文へ記録する。
 
 API、SDK、UI のいずれかを変更する場合は、対応する endpoint、SDK method、UI 操作、状態副作用、認証・認可、成功後再取得、失敗時固定、fixture 証跡を同じ変更で確認する。
 
@@ -258,7 +258,7 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 開発自動化を変更する場合、または正式検証を提出する場合は、以下を順に実施する。方針と必須条件は [`docs/SPEC.md` 方針責務 §5.3](docs/SPEC.md#sec-5-3) と [`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](docs/SPEC.md#policy-development-actions)、証跡 schema は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の開発 Actions 証跡を参照し、本手順で再定義しない。
 
-1. 実在 workflow、対象 ref、trigger、job、runner、権限、secret 利用境界、required check と保護設定を読み取り、責務正本との適用差分を特定する。
+1. 実在 workflow、対象 ref、trigger、job、runner、権限、secret 利用境界、required check と保護設定を読み取り、責務正本との適用差分を特定する。作業用 command と内部・間接依存の適合性は [`docs/SPEC.md` ポリシー責務 §4a Node 全面禁止契約](docs/SPEC.md#policy-node-runtime-ban) で確認し、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の Node 非依存開発検証契約の実行前検査へ接続する。
 2. workflow 定義 record と適用対象を確認する。変更が必要なファイル、runner、GitHub 設定、実行副作用を個別に提示し、[承認ルール](#agents-approval-rules) の承認済み範囲を確定してから変更・実行する。文書策定と運用適用を混同しない。
 3. ローカル補助確認を行い、承認済みの branch / ref で対象 workflow を実行する。公開・配備を伴う run は承認対象と実行入力の対応を再確認する。
 4. `gh run view`、`gh pr checks` または GitHub API で実際の run / attempt / job と結果を取得し、最新 source SHA、base SHA、tested SHA、実行環境を照合する。集約表示だけでなく対象必須 job と未実行項目を確認する。

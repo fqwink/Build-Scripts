@@ -1,17 +1,29 @@
 package main
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
+	"crypto"
+	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io"
 	"io/fs"
+	"math/big"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -20,6 +32,3930 @@ import (
 	"time"
 	"unicode/utf8"
 )
+
+func TestSpecificationReferenceIntegrity(t *testing.T) {
+	t.Parallel()
+	documents := map[string]string{}
+	paths := []string{"AGENTS.md", "README.md", "CONTRIBUTING.md", "SECURITY.md"}
+	if err := filepath.WalkDir("docs", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() && strings.HasSuffix(path, ".md") {
+			paths = append(paths, path)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range paths {
+		documents[filepath.ToSlash(path)] = phase11MustReadText(t, path)
+	}
+	exists := func(path string) bool {
+		_, err := os.Lstat(filepath.FromSlash(path))
+		return err == nil
+	}
+	if err := specificationReferenceIntegrity(documents, exists); err != nil {
+		t.Fatalf("statefile.spec-reference.positive.accept: expected valid references, actual %v", err)
+	}
+	if err := specificationPhaseReferenceIntegrity(documents); err != nil {
+		t.Fatalf("statefile.spec-phase.positive.accept: expected registered phases, actual %v", err)
+	}
+	if reason := specificationGovernanceIntegrity(documents["docs/SPEC.md"]); reason != "" {
+		t.Fatalf("statefile.spec-governance.positive.accept: fixture.md#specification-reference-checker expected valid responsibility routing, actual %s", reason)
+	}
+	if reason := specificationTestRoutingIntegrity(documents); reason != "" {
+		t.Fatalf("statefile.spec-routing.positive.accept: fixture.md#test-artifact-traceability-contract expected valid owners and test routing, actual %s", reason)
+	}
+	for _, control := range []struct{ id, from, to, reason string }{
+		{"owner-missing", "`mcp`、`obsidian` の14件", "`mcp` の14件", "assertion-owner"},
+		{"owner-extra", "`mcp`、`obsidian` の14件", "`mcp`、`obsidian`、`unknown` の14件", "assertion-owner"},
+		{"local-test", "../../components/commitstatus/commitstatus_test.go", "missing-local-test", "test-routing"},
+		{"obsidian-test", "../../components/obsidian/obsidian_test.go", "missing-obsidian-test", "test-routing"},
+		{"old-glob", "`components/*/*_test.go`", "`components/*_test.go`", "test-glob"},
+	} {
+		t.Run("routing-"+control.id, func(t *testing.T) {
+			changed := make(map[string]string, len(documents))
+			for path, content := range documents {
+				changed[path] = content
+			}
+			if !strings.Contains(changed["docs/details/fixture.md"], control.from) {
+				t.Fatalf("statefile.spec-routing.%s.fixture: expected mutation target, actual missing", control.id)
+			}
+			changed["docs/details/fixture.md"] = strings.ReplaceAll(changed["docs/details/fixture.md"], control.from, control.to)
+			if reason := specificationTestRoutingIntegrity(changed); reason != control.reason {
+				t.Fatalf("statefile.spec-routing.%s.reject: fixture.md#test-artifact-traceability-contract expected=%s actual=%s; reproduce go test . -run TestSpecificationReferenceIntegrity -count=1", control.id, control.reason, reason)
+			}
+		})
+	}
+	for _, control := range []struct{ id, anchor, from, to string }{
+		{"artifact-absence", "sec-4-2a", "", "単独の専用 Go 実装 artifact を持たない"},
+		{"layout-current-state", "sec-4-3", "", "実在化済み"},
+		{"freeze-route", "policy-spec-freeze", "DETAIL_INDEX.md#0i-詳細節対応表", "DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力"},
+		{"format-source", "sec-5-3", "SPEC.md#direction-technical", "SPEC.md#sec-4-1"},
+		{"format-restatement", "sec-5-3", "", "workflow から読み書きする Adlaire CI の入力、出力"},
+	} {
+		t.Run("governance-"+control.id, func(t *testing.T) {
+			marker := `<a id="` + control.anchor + `"></a>`
+			before, after, ok := strings.Cut(documents["docs/SPEC.md"], marker)
+			if !ok || (control.from != "" && !strings.Contains(after, control.from)) {
+				t.Fatalf("statefile.spec-governance.%s.fixture: expected mutation target at SPEC.md#%s, actual missing", control.id, control.anchor)
+			}
+			if control.from == "" {
+				after = "\n" + control.to + "\n" + after
+			} else {
+				after = strings.Replace(after, control.from, control.to, 1)
+			}
+			if reason := specificationGovernanceIntegrity(before + marker + after); reason != control.id {
+				t.Fatalf("statefile.spec-governance.%s.reject: fixture.md#specification-reference-checker expected=%s actual=%q; reproduce go test . -run TestSpecificationReferenceIntegrity -count=1", control.id, control.id, reason)
+			}
+		})
+	}
+	for _, control := range []struct{ id, expression string }{
+		{"joined-list", "Phase20/21/" + strconv.Itoa(21+1)},
+		{"comma-list", "Phase19,20," + strconv.Itoa(21+1)},
+		{"range", "Phase19~" + strconv.Itoa(21+1)},
+		{"spaced", "Phase " + strconv.Itoa(21+1)},
+		{"path", "phase-" + strconv.Itoa(21+1) + "-synthetic"},
+		{"japanese", "フェーズ" + strconv.Itoa(21+1)},
+		{"leading-zero", "Phase020"},
+		{"zero", "Phase0"},
+		{"unregistered-row", "| Phase " + strconv.Itoa(21+1) + " | synthetic |"},
+		{"duplicate-row", "| Phase 21 | synthetic |"},
+	} {
+		t.Run("phase-"+control.id, func(t *testing.T) {
+			changed := make(map[string]string, len(documents))
+			for path, content := range documents {
+				changed[path] = content
+			}
+			changed["docs/ROADMAP.md"] += "\n" + control.expression + "\n"
+			if err := specificationPhaseReferenceIntegrity(changed); err == nil {
+				t.Fatalf("statefile.spec-phase.%s.reject: expected unregistered/duplicate Phase rejected, actual accepted; fixture.md#specification-reference-checker", control.id)
+			}
+		})
+	}
+	for _, control := range []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{"missing-path", "[target](missing.md)", "missing path"},
+		{"missing-anchor", "[target](target.md#missing)", "missing anchor"},
+		{"duplicate-anchor", "<a id=\"same\"></a><a id=\"same\"></a>", "duplicate anchor"},
+	} {
+		t.Run(control.name, func(t *testing.T) {
+			input := map[string]string{"index.md": control.content, "target.md": "<a id=\"valid\"></a>"}
+			err := specificationReferenceIntegrity(input, func(path string) bool { _, ok := input[path]; return ok })
+			if err == nil || !strings.Contains(err.Error(), control.want) {
+				t.Fatalf("statefile.spec-reference.%s.reject: expected %s, actual %v", control.name, control.want, err)
+			}
+		})
+	}
+	input := map[string]string{"index.md": "`[example](missing.md)`\n```text\n[example](missing.md)\n```\n[ok](target.md#valid)", "target.md": "<a id=\"valid\"></a>"}
+	if err := specificationReferenceIntegrity(input, func(path string) bool { _, ok := input[path]; return ok }); err != nil {
+		t.Fatalf("statefile.spec-reference.examples.accept: expected literal examples ignored, actual %v", err)
+	}
+}
+
+type phase19SpecificationGroup struct {
+	Anchor string `json:"anchor"`
+	Group  string `json:"group"`
+	Cases  int    `json:"case_count"`
+}
+
+// This shape is independent of the case-ID registry being checked.
+func phase19SpecificationRequiredGroups() []phase19SpecificationGroup {
+	return []phase19SpecificationGroup{
+		{"phase-19-status-vectors", "cases", 21},
+		{"phase-19-plan-vectors", "input_cases", 22},
+		{"phase-19-plan-vectors", "matrix_cases", 11},
+		{"phase-19-plan-vectors", "dag_cases", 7},
+		{"phase-19-plan-vectors", "selector_cases", 7},
+		{"phase-19-plan-vectors", "event_cases", 3},
+		{"phase-19-worker-vectors", "ack_cases", 12},
+		{"phase-19-worker-vectors", "chunk_cases", 16},
+		{"phase-19-worker-vectors", "lease_cases", 12},
+		{"phase-19-content-vectors", "chunk_cases", 11},
+		{"phase-19-content-vectors", "query_cases", 8},
+		{"phase-19-content-vectors", "wire_cases", 12},
+		{"phase-19-content-vectors", "cache_cases", 9},
+		{"phase-19-content-vectors", "key_cases", 3},
+		{"phase-19-content-vectors", "envelope_cases", 13},
+		{"phase-19-operation-vectors", "admission_cases", 8},
+		{"phase-19-operation-vectors", "transition_cases", 12},
+		{"phase-19-operation-vectors", "gc_cases", 8},
+		{"phase-19-log-boundary-vectors", "mask_cases", 12},
+		{"phase-19-log-boundary-vectors", "page_cases", 13},
+		{"phase-19-log-boundary-vectors", "budget_cases", 4},
+	}
+}
+
+func phase19SpecificationRegistryIntegrity(registry map[string]map[string]string) error {
+	required := phase19SpecificationRequiredGroups()
+	want := map[string]map[string]int{}
+	total := 0
+	for _, r := range required {
+		if want[r.Anchor] == nil {
+			want[r.Anchor] = map[string]int{}
+		}
+		if r.Anchor == "" || r.Group == "" || r.Cases < 2 || want[r.Anchor][r.Group] != 0 {
+			return fmt.Errorf("case registry: requirements")
+		}
+		want[r.Anchor][r.Group] = r.Cases
+		total += r.Cases
+	}
+	if len(required) != 21 || len(want) != 6 || total != 224 {
+		return fmt.Errorf("case registry: requirements count")
+	}
+	if len(registry) != len(want) {
+		return fmt.Errorf("case registry: scope count")
+	}
+	seen := map[string]map[string]bool{}
+	validID := regexp.MustCompile("^[a-z][a-z0-9-]*$")
+	for _, r := range required {
+		groups, exists := registry[r.Anchor]
+		if !exists || len(groups) != len(want[r.Anchor]) {
+			return fmt.Errorf("case registry: %s group set", r.Anchor)
+		}
+		ids, exists := groups[r.Group]
+		if !exists {
+			return fmt.Errorf("case registry: %s/%s missing group", r.Anchor, r.Group)
+		}
+		fields := strings.Fields(ids)
+		if len(fields) != r.Cases {
+			return fmt.Errorf("case registry: %s/%s expected %d cases actual %d", r.Anchor, r.Group, r.Cases, len(fields))
+		}
+		if seen[r.Anchor] == nil {
+			seen[r.Anchor] = map[string]bool{}
+		}
+		for _, id := range fields {
+			if !validID.MatchString(id) || seen[r.Anchor][id] {
+				return fmt.Errorf("case registry: %s/%s invalid or duplicate identity", r.Anchor, r.Group)
+			}
+			seen[r.Anchor][id] = true
+		}
+	}
+	return nil
+}
+
+func phase19SpecificationExecutionPlan() []string {
+	plan := []string{"canonical-number-token", "canonical-array-order", "canonical-object-order", "canonical-string-escape"}
+	seen := map[string]bool{}
+	for _, r := range phase19SpecificationRequiredGroups() {
+		if !seen[r.Anchor] {
+			plan = append(plan, r.Anchor+"-baseline")
+			seen[r.Anchor] = true
+		}
+		for _, control := range []string{"unknown-id", "clone-body", "missing-case", "duplicate-id", "reorder"} {
+			plan = append(plan, strings.TrimPrefix(r.Anchor, "phase-19-")+"-"+strings.ReplaceAll(r.Group, "_", "-")+"-"+control)
+		}
+	}
+	return plan
+}
+
+func phase19SpecificationExecutionIntegrity(planned, completed []string) error {
+	want := map[string]bool{}
+	if len(planned) == 0 || len(completed) != len(planned) {
+		return fmt.Errorf("case execution: count")
+	}
+	for _, id := range planned {
+		if id == "" || want[id] {
+			return fmt.Errorf("case execution: plan identity")
+		}
+		want[id] = true
+	}
+	seen := map[string]bool{}
+	for _, id := range completed {
+		if !want[id] || seen[id] {
+			return fmt.Errorf("case execution: missing, extra or duplicate identity")
+		}
+		seen[id] = true
+	}
+	return nil
+}
+
+func TestSpecificationVectorRegistryIntegrity(t *testing.T) {
+	t.Parallel()
+	doc := phase11MustReadText(t, "docs/details/fixture.md")
+	_, block, found := strings.Cut(doc, "<a id=\"specification-vector-registry-integrity\"></a>")
+	_, block, jsonFound := strings.Cut(block, "```json\n")
+	block, _, endFound := strings.Cut(block, "\n```")
+	var declared []phase19SpecificationGroup
+	if !found || !jsonFound || !endFound {
+		t.Fatal("statefile.spec-registry.document.fixture: fixture.md#specification-vector-registry-integrity missing fixed input")
+	}
+	err := developmentActionsDecodeJSON([]byte(block), &declared, 65536, true)
+	actual, _ := json.Marshal(declared)
+	expected, _ := json.Marshal(phase19SpecificationRequiredGroups())
+	if err != nil || !bytes.Equal(expected, actual) {
+		t.Fatalf("statefile.spec-registry.document.match: fixture.md#specification-vector-registry-integrity expected=%s actual=%s error=%v", expected, actual, err)
+	}
+	if err := phase19SpecificationRegistryIntegrity(phase19SpecificationCaseGroups()); err != nil {
+		t.Fatalf("statefile.spec-registry.original.accept: expected valid registry actual=%v", err)
+	}
+	controls := []struct{ anchor, group, operation string }{{"", "", "extra-suite"}}
+	seen := map[string]bool{}
+	for _, r := range phase19SpecificationRequiredGroups() {
+		if !seen[r.Anchor] {
+			for _, op := range []string{"drop-suite", "rename-suite", "empty-suite", "extra-group"} {
+				controls = append(controls, struct{ anchor, group, operation string }{r.Anchor, "", op})
+			}
+			seen[r.Anchor] = true
+		}
+		for _, op := range []string{"drop", "rename", "short", "long", "duplicate", "invalid", "empty"} {
+			controls = append(controls, struct{ anchor, group, operation string }{r.Anchor, r.Group, op})
+		}
+	}
+	if len(controls) != 172 {
+		t.Fatalf("statefile.spec-registry.controls.fixture: expected 172 controls actual=%d", len(controls))
+	}
+	for _, c := range controls {
+		name := strings.TrimPrefix(c.anchor, "phase-19-") + "-" + strings.ReplaceAll(c.group, "_", "-") + "-" + c.operation
+		name = strings.Trim(name, "-")
+		t.Run(name, func(t *testing.T) {
+			registry := phase19SpecificationCaseGroups()
+			groups := registry[c.anchor]
+			switch c.operation {
+			case "extra-suite":
+				registry["unknown-suite"] = map[string]string{"cases": "one two"}
+			case "drop-suite":
+				delete(registry, c.anchor)
+			case "rename-suite":
+				registry["unknown-suite"] = groups
+				delete(registry, c.anchor)
+			case "empty-suite":
+				registry[c.anchor] = nil
+			case "extra-group":
+				groups["unknown_cases"] = "one two"
+			case "drop":
+				delete(groups, c.group)
+			case "rename":
+				groups["unknown_cases"] = groups[c.group]
+				delete(groups, c.group)
+			case "empty":
+				groups[c.group] = ""
+			default:
+				ids := strings.Fields(groups[c.group])
+				switch c.operation {
+				case "short":
+					ids = ids[1:]
+				case "long":
+					ids = append(ids, "extra-case")
+				case "duplicate":
+					ids[0] = ids[1]
+				case "invalid":
+					ids[0] = "INVALID_CASE"
+				}
+				groups[c.group] = strings.Join(ids, " ")
+			}
+			err := phase19SpecificationRegistryIntegrity(registry)
+			if err == nil || !strings.HasPrefix(err.Error(), "case registry:") {
+				t.Fatalf("statefile.spec-registry.%s.reject: fixture.md#specification-vector-registry-integrity expected case registry rejection actual=%v; reproduce go test . -run TestSpecificationVectorRegistryIntegrity -count=1", name, err)
+			}
+		})
+	}
+}
+
+func TestSpecificationVectorExecutionIntegrity(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		id                 string
+		planned, completed []string
+		valid              bool
+	}{
+		{"original", []string{"one", "two"}, []string{"one", "two"}, true},
+		{"reorder", []string{"one", "two"}, []string{"two", "one"}, true},
+		{"missing", []string{"one", "two"}, []string{"one"}, false},
+		{"extra", []string{"one", "two"}, []string{"one", "two", "three"}, false},
+		{"duplicate", []string{"one", "two"}, []string{"one", "one"}, false},
+		{"substitute", []string{"one", "two"}, []string{"one", "three"}, false},
+		{"empty-plan", nil, nil, false},
+		{"duplicate-plan", []string{"one", "one"}, []string{"one", "two"}, false},
+		{"empty-completed", []string{"one", "two"}, nil, false},
+	} {
+		t.Run(c.id, func(t *testing.T) {
+			err := phase19SpecificationExecutionIntegrity(c.planned, c.completed)
+			if (err == nil) != c.valid || err != nil && !strings.HasPrefix(err.Error(), "case execution:") {
+				outcome := "reject"
+				if c.valid {
+					outcome = "accept"
+				}
+				t.Fatalf("statefile.spec-execution.%s.%s: fixture.md#specification-vector-registry-integrity expected valid=%t actual=%v; reproduce go test . -run TestSpecificationVectorExecutionIntegrity -count=1", c.id, outcome, c.valid, err)
+			}
+		})
+	}
+}
+
+func phase19SpecificationCaseGroups() map[string]map[string]string {
+	return map[string]map[string]string{
+		"phase-19-status-vectors": {
+			"cases": "running different-run-attempt new-run new-attempt same-time-id same-time-attempt scope-owner scope-repo scope-sha scope-project-id scope-definition-id queued-only queued-newer cancel-requested succeeded failed cancelled recovery-required delayed-start existing-claim scope-ascii-case",
+		},
+		"phase-19-plan-vectors": {
+			"input_cases":    "default-missing false-present zero-present empty-present optional-absent required-value required-missing required-default explicit-null string-number boolean-number integer-fraction integer-range utf8-equal utf8-over unknown-key duplicate-choice default-not-choice choice-mismatch reversed-range integer-exponent integer-negative-zero",
+			"matrix_cases":   "matrix-none matrix-order matrix-exclude matrix-reinclude matrix-duplicate matrix-type matrix-empty matrix-unknown-axis matrix-long-id matrix-limit matrix-over",
+			"dag_cases":      "dag-origin dag-transitive-skip dag-own-skip dag-unknown dag-cycle dag-duplicate-edge dag-duplicate-id",
+			"selector_cases": "selector-tag-only-branch selector-branch-only-tag selector-both-empty selector-branch-match selector-typed-input selector-deleted-path selector-empty-source",
+			"event_cases":    "event-base event-definition event-revision",
+		},
+		"phase-19-worker-vectors": {
+			"ack_cases":   "ack-normal ack-duplex ack-reverse ack-next-seq ack-pending ack-no-pending ack-mismatch ack-duplicate ack-seq-gap ack-seq-repeat ack-error-stop ack-after-ack",
+			"chunk_cases": "chunk-empty chunk-one chunk-two chunk-max chunk-tail chunk-over chunk-no-final chunk-gap chunk-duplicate-final chunk-early-final chunk-extra-byte chunk-empty-middle chunk-bad-padding chunk-newline chunk-digest chunk-changed-digest",
+			"lease_cases": "lease-before lease-wall-equal lease-mono-equal lease-backward lease-renew lease-old-ack lease-same-ack lease-generation lease-save-failed lease-too-far lease-skew-limit lease-no-query-renew",
+		},
+		"phase-19-content-vectors": {
+			"chunk_cases":    "chunk-one chunk-exact chunk-first chunk-last chunk-unaligned chunk-tail chunk-future chunk-negative chunk-empty-metadata chunk-max chunk-large-metadata",
+			"query_cases":    "query-zero query-max query-large query-leading-zero query-sign query-space query-exponent query-overflow",
+			"wire_cases":     "receive-one receive-tail receive-padding receive-digest receive-offset receive-short receive-final receive-empty receive-gap receive-zero receive-overlong receive-whitespace",
+			"cache_cases":    "cache-hit cache-no-metadata cache-no-payload cache-corrupt cache-other-key cache-deleting cache-disabled-quota cache-at-expiry cache-after-expiry",
+			"key_cases":      "key-alpha key-beta key-env",
+			"envelope_cases": "envelope-empty-file envelope-one envelope-block envelope-split envelope-extra-member envelope-gzip-zero envelope-gzip-byte envelope-crc envelope-truncated envelope-tar-zero envelope-short-end envelope-padding envelope-pax",
+		},
+		"phase-19-operation-vectors": {
+			"admission_cases":  "new-create new-denied replay-denied replay-stale-revision replay-current digest-conflict subject-conflict new-stale",
+			"transition_cases": "accept-success accept-failure accept-uncertain recover-success recover-failure accept-noop recover-noop success-noop failure-noop terminal-reverse terminal-change recover-reaccept",
+			"gc_cases":         "gc-before gc-at gc-after gc-failure gc-accepted gc-recovery gc-protected gc-protected-failure",
+		},
+		"phase-19-log-boundary-vectors": {
+			"mask_cases":   "split-secret longest-overlap single-byte partial-at-eof invalid-tail replacement-not-rescanned unicode-split unicode-secret mask-before-decode short-pattern-at-eof invalid-run empty",
+			"page_cases":   "empty-page ascii-page tail stale future middle-of-scalar too-small unicode-exact unread-terminal emoji corrupt-utf8 limit-zero limit-large",
+			"budget_cases": "below exact combined-over one-stream-over",
+		},
+	}
+}
+
+// Case identities are independent of the document under test.
+func phase19SpecificationCaseCoverage(input []byte, groups map[string]string) error {
+	var document map[string]any
+	decoder := json.NewDecoder(bytes.NewReader(input))
+	decoder.UseNumber()
+	if err := decoder.Decode(&document); err != nil || len(groups) == 0 {
+		return fmt.Errorf("case coverage: invalid registry or input")
+	}
+	keys := make([]string, 0, len(groups))
+	for key := range groups {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		cases, ok := document[key].([]any)
+		expected := strings.Fields(groups[key])
+		if !ok || len(cases) != len(expected) {
+			return fmt.Errorf("case coverage: %s count", key)
+		}
+		seenIDs, seenBodies := map[string]bool{}, map[string]bool{}
+		for _, value := range cases {
+			record, ok := value.(map[string]any)
+			id, idOK := record["id"].(string)
+			if !ok || !idOK || !phase17StringInSlice(id, expected) || seenIDs[id] {
+				return fmt.Errorf("case coverage: %s identity", key)
+			}
+			seenIDs[id] = true
+			delete(record, "id")
+			body := string(iacSpecificationCanonical(record))
+			if seenBodies[body] {
+				return fmt.Errorf("case coverage: %s duplicate body", key)
+			}
+			seenBodies[body] = true
+		}
+	}
+	return nil
+}
+
+func decodePhase19SpecificationVector(anchor string, input []byte) error {
+	switch anchor {
+	case "phase-19-status-vectors":
+		_, err := decodePhase19StatusSpecification(input)
+		return err
+	case "phase-19-plan-vectors":
+		_, err := decodePhase19PlanSpecification(input)
+		return err
+	case "phase-19-worker-vectors":
+		_, err := decodePhase19WorkerSpecification(input)
+		return err
+	case "phase-19-content-vectors":
+		_, err := decodePhase19ContentSpecification(input)
+		return err
+	case "phase-19-operation-vectors":
+		_, err := decodePhase19OperationSpecification(input)
+		return err
+	case "phase-19-log-boundary-vectors":
+		_, err := decodePhase19LogSpecification(input)
+		return err
+	default:
+		return fmt.Errorf("unknown vector anchor")
+	}
+}
+
+func TestSpecificationVectorCaseIntegrity(t *testing.T) {
+	t.Parallel()
+	planned := phase19SpecificationExecutionPlan()
+	completed := []string{}
+	if len(planned) != 115 {
+		t.Fatalf("statefile.spec-execution.plan.fixture: expected 115 identities actual=%d", len(planned))
+	}
+	if err := phase19SpecificationRegistryIntegrity(phase19SpecificationCaseGroups()); err != nil {
+		t.Fatalf("statefile.spec-registry.current.accept: expected complete registry actual=%v", err)
+	}
+	for _, c := range []struct {
+		id    string
+		input string
+		valid bool
+	}{
+		{"number-token", `{"cases":[{"id":"one","value":1},{"id":"two","value":1e0}]}`, true},
+		{"array-order", `{"cases":[{"id":"one","value":[1,2]},{"id":"two","value":[2,1]}]}`, true},
+		{"object-order", `{"cases":[{"id":"one","value":{"a":1,"b":2}},{"id":"two","value":{"b":2,"a":1}}]}`, false},
+		{"string-escape", `{"cases":[{"id":"one","value":"a"},{"id":"two","value":"\u0061"}]}`, false},
+	} {
+		t.Run(c.id, func(t *testing.T) {
+			err := phase19SpecificationCaseCoverage([]byte(c.input), map[string]string{"cases": "one two"})
+			if (err == nil) != c.valid {
+				t.Fatalf("statefile.spec-vector.%s.canonical: fixture.md#specification-vector-case-integrity expected valid=%t actual=%v; reproduce go test . -run TestSpecificationVectorCaseIntegrity -count=1", c.id, c.valid, err)
+			}
+			completed = append(completed, "canonical-"+c.id)
+		})
+	}
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	registry := map[string]map[string]int{}
+	for _, r := range phase19SpecificationRequiredGroups() {
+		if registry[r.Anchor] == nil {
+			registry[r.Anchor] = map[string]int{}
+		}
+		registry[r.Anchor][r.Group] = r.Cases
+	}
+	anchors := make([]string, 0, len(registry))
+	for anchor := range registry {
+		anchors = append(anchors, anchor)
+	}
+	sort.Strings(anchors)
+	for _, anchor := range anchors {
+		_, block, found := strings.Cut(document, "<a id=\""+anchor+"\"></a>")
+		_, block, jsonFound := strings.Cut(block, "```json\n")
+		block, _, endFound := strings.Cut(block, "\n```")
+		if !found || !jsonFound || !endFound {
+			t.Fatalf("statefile.spec-vector.%s.fixture: fixture.md#%s fixed input missing", anchor, anchor)
+		}
+		input := []byte(block)
+		if err := decodePhase19SpecificationVector(anchor, input); err != nil {
+			t.Fatalf("statefile.spec-vector.%s.accept: fixture.md#%s expected valid input actual=%v", anchor, anchor, err)
+		}
+		completed = append(completed, anchor+"-baseline")
+		keys := make([]string, 0, len(registry[anchor]))
+		for key := range registry[anchor] {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			for _, control := range []string{"unknown-id", "clone-body", "missing-case", "duplicate-id", "reorder"} {
+				name := strings.TrimPrefix(anchor, "phase-19-") + "-" + strings.ReplaceAll(key, "_", "-") + "-" + control
+				t.Run(name, func(t *testing.T) {
+					var raw map[string]any
+					decoder := json.NewDecoder(bytes.NewReader(input))
+					decoder.UseNumber()
+					if err := decoder.Decode(&raw); err != nil {
+						t.Fatalf("statefile.spec-vector.%s.fixture: %v", name, err)
+					}
+					cases := raw[key].([]any)
+					first, second := cases[0].(map[string]any), cases[1].(map[string]any)
+					switch control {
+					case "unknown-id":
+						first["id"] = "replacement-case"
+					case "clone-body":
+						id := first["id"]
+						for k := range first {
+							delete(first, k)
+						}
+						for k, v := range second {
+							first[k] = v
+						}
+						first["id"] = id
+					case "missing-case":
+						raw[key] = cases[1:]
+					case "duplicate-id":
+						first["id"] = second["id"]
+					case "reorder":
+						for i, j := 0, len(cases)-1; i < j; i, j = i+1, j-1 {
+							cases[i], cases[j] = cases[j], cases[i]
+						}
+					}
+					mutated, err := json.Marshal(raw)
+					if err != nil {
+						t.Fatalf("statefile.spec-vector.%s.fixture: %v", name, err)
+					}
+					err = decodePhase19SpecificationVector(anchor, mutated)
+					if control == "reorder" {
+						if err != nil {
+							t.Fatalf("statefile.spec-vector.%s.accept: fixture.md#specification-vector-case-integrity expected valid reordered set actual=%v", name, err)
+						}
+					} else if err == nil || !strings.HasPrefix(err.Error(), "case coverage:") {
+						t.Fatalf("statefile.spec-vector.%s.reject: fixture.md#specification-vector-case-integrity expected case coverage rejection actual=%v; reproduce go test . -run TestSpecificationVectorCaseIntegrity -count=1", name, err)
+					}
+					completed = append(completed, name)
+				})
+			}
+		}
+	}
+	if err := phase19SpecificationExecutionIntegrity(planned, completed); err != nil {
+		t.Fatalf("statefile.spec-execution.complete.match: fixture.md#specification-vector-registry-integrity expected planned/completed set equality actual=%v; reproduce go test . -run TestSpecificationVectorCaseIntegrity -count=1", err)
+	}
+}
+
+type phase19StatusRun struct {
+	Owner      string `json:"owner"`
+	Repo       string `json:"repo"`
+	SHA        string `json:"sha"`
+	Project    string `json:"project_id"`
+	Definition string `json:"definition_id"`
+	Run        string `json:"run_id"`
+	Attempt    int    `json:"attempt"`
+	Created    string `json:"created_at"`
+	State      string `json:"state"`
+}
+
+type phase19StatusDecision struct {
+	Run      string `json:"run_id"`
+	Attempt  int    `json:"attempt"`
+	State    string `json:"state"`
+	Decision string `json:"decision"`
+}
+
+type phase19StatusSpecification struct {
+	Version  int              `json:"schema_version"`
+	Baseline phase19StatusRun `json:"baseline"`
+	Cases    []struct {
+		ID       string                       `json:"id"`
+		Runs     []map[string]json.RawMessage `json:"runs"`
+		Event    map[string]json.RawMessage   `json:"event"`
+		Existing bool                         `json:"existing"`
+		Expected phase19StatusDecision        `json:"expected"`
+	} `json:"cases"`
+}
+
+func phase19StatusProjection(runs []phase19StatusRun, event phase19StatusRun, existing bool) phase19StatusDecision {
+	fold := func(s string) string {
+		return strings.Map(func(r rune) rune {
+			if r >= 'A' && r <= 'Z' {
+				return r + ('a' - 'A')
+			}
+			return r
+		}, s)
+	}
+	candidates := []phase19StatusRun{}
+	for _, r := range runs {
+		if fold(r.Owner) == fold(event.Owner) && fold(r.Repo) == fold(event.Repo) && r.SHA == event.SHA && r.Project == event.Project && r.Definition == event.Definition && r.State != "queued" {
+			candidates = append(candidates, r)
+		}
+	}
+	if len(candidates) == 0 {
+		return phase19StatusDecision{Decision: "idle"}
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		a, b := candidates[i], candidates[j]
+		if a.Created != b.Created {
+			return a.Created < b.Created
+		}
+		if a.Run != b.Run {
+			return a.Run < b.Run
+		}
+		return a.Attempt < b.Attempt
+	})
+	latest := candidates[len(candidates)-1]
+	states := map[string]string{"running": "pending", "cancel_requested": "pending", "succeeded": "success", "failed": "failure", "cancelled": "error", "recovery_required": "error"}
+	result := phase19StatusDecision{Run: latest.Run, Attempt: latest.Attempt, State: states[latest.State], Decision: "send"}
+	if event.Run != latest.Run || event.Attempt != latest.Attempt || event.State != latest.State {
+		result.Decision = "superseded"
+	} else if existing {
+		result.Decision = "deduplicated"
+	}
+	return result
+}
+
+func phase19StatusExpand(base phase19StatusRun, patch map[string]json.RawMessage) (phase19StatusRun, error) {
+	var r phase19StatusRun
+	if patch == nil {
+		return r, fmt.Errorf("null projection")
+	}
+	data, _ := json.Marshal(base)
+	var fields map[string]json.RawMessage
+	_ = json.Unmarshal(data, &fields)
+	for k, v := range patch {
+		if _, ok := fields[k]; !ok || bytes.Equal(v, []byte("null")) {
+			return r, fmt.Errorf("projection field")
+		}
+		fields[k] = v
+	}
+	data, _ = json.Marshal(fields)
+	if err := developmentActionsDecodeJSON(data, &r, 65536, true); err != nil {
+		return r, err
+	}
+	clock, err := time.Parse("2006-01-02T15:04:05Z", r.Created)
+	if err != nil || clock.Year() < 1970 || clock.Format("2006-01-02T15:04:05Z") != r.Created || r.Attempt < 1 || r.Attempt > 100 || !regexp.MustCompile("^[0-9a-f]{40}$").MatchString(r.SHA) {
+		return r, fmt.Errorf("projection value")
+	}
+	for _, name := range []string{r.Owner, r.Repo} {
+		if !utf8.ValidString(name) || len(name) < 1 || len(name) > 100 || strings.ContainsRune(name, 0) {
+			return r, fmt.Errorf("projection source name")
+		}
+	}
+	for _, id := range []string{r.Project, r.Definition, r.Run} {
+		if !regexp.MustCompile("^[a-z][a-z0-9_-]{0,63}$").MatchString(id) {
+			return r, fmt.Errorf("projection identity")
+		}
+	}
+	if !phase17StringInSlice(r.State, []string{"queued", "running", "cancel_requested", "succeeded", "failed", "cancelled", "recovery_required"}) {
+		return r, fmt.Errorf("projection state")
+	}
+	return r, nil
+}
+
+func decodePhase19StatusSpecification(input []byte) (phase19StatusSpecification, error) {
+	var v phase19StatusSpecification
+	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	if err := phase19SpecificationCaseCoverage(input, phase19SpecificationCaseGroups()["phase-19-status-vectors"]); err != nil {
+		return v, err
+	}
+	encoded, _ := json.Marshal(v)
+	var a, b any
+	if json.Unmarshal(input, &a) != nil || json.Unmarshal(encoded, &b) != nil || !bytes.Equal(iacSpecificationCanonical(a), iacSpecificationCanonical(b)) || v.Version != 1 || len(v.Cases) != 21 {
+		return v, fmt.Errorf("required fields / case set")
+	}
+	if _, err := phase19StatusExpand(v.Baseline, map[string]json.RawMessage{}); err != nil {
+		return v, err
+	}
+	seen := map[string]bool{}
+	for _, c := range v.Cases {
+		if !regexp.MustCompile("^[a-z][a-z0-9-]*$").MatchString(c.ID) || seen[c.ID] || c.Runs == nil || c.Event == nil {
+			return v, fmt.Errorf("case identity")
+		}
+		seen[c.ID] = true
+		for _, p := range append(append([]map[string]json.RawMessage{}, c.Runs...), c.Event) {
+			if _, err := phase19StatusExpand(v.Baseline, p); err != nil {
+				return v, err
+			}
+		}
+		if !phase17StringInSlice(c.Expected.Decision, []string{"send", "idle", "superseded", "deduplicated"}) {
+			return v, fmt.Errorf("expected decision")
+		}
+	}
+	return v, nil
+}
+
+func TestPhase19StatusSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	doc := phase11MustReadText(t, "docs/details/fixture.md")
+	_, block, found := strings.Cut(doc, `<a id="phase-19-status-vectors"></a>`)
+	_, block, jsonFound := strings.Cut(block, "```json\n")
+	block, _, endFound := strings.Cut(block, "\n```")
+	if !found || !jsonFound || !endFound {
+		t.Fatal("commitstatus.status-spec.presence.reject: fixture.md#phase-19-status-vectors expected fixed JSON input, actual missing")
+	}
+	input := []byte(block)
+	v, err := decodePhase19StatusSpecification(input)
+	if err != nil {
+		t.Fatalf("commitstatus.status-spec.schema.reject: expected valid fixed input, actual %v", err)
+	}
+	for _, c := range v.Cases {
+		t.Run(c.ID, func(t *testing.T) {
+			runs := []phase19StatusRun{}
+			for _, p := range c.Runs {
+				r, _ := phase19StatusExpand(v.Baseline, p)
+				runs = append(runs, r)
+			}
+			event, _ := phase19StatusExpand(v.Baseline, c.Event)
+			actual := phase19StatusProjection(runs, event, c.Existing)
+			if actual != c.Expected {
+				t.Fatalf("commitstatus.status-spec.%s.result: commitstatus.md#phase-19-status-delivery expected=%+v actual=%+v; reproduce go test . -run TestPhase19StatusSpecificationVectors -count=1", c.ID, c.Expected, actual)
+			}
+		})
+	}
+	for _, id := range []string{"unknown", "missing", "null", "duplicate-case", "projection-field", "projection-null"} {
+		t.Run("schema-"+id, func(t *testing.T) {
+			var raw map[string]any
+			_ = json.Unmarshal(input, &raw)
+			cases := raw["cases"].([]any)
+			switch id {
+			case "unknown":
+				raw["unknown"] = true
+			case "missing":
+				delete(raw, "baseline")
+			case "null":
+				raw["cases"] = nil
+			case "duplicate-case":
+				cases[1].(map[string]any)["id"] = cases[0].(map[string]any)["id"]
+			case "projection-field":
+				cases[0].(map[string]any)["event"] = map[string]any{"unknown": true}
+			case "projection-null":
+				cases[0].(map[string]any)["event"] = map[string]any{"state": nil}
+			}
+			changed, _ := json.Marshal(raw)
+			if _, err := decodePhase19StatusSpecification(changed); err == nil {
+				t.Fatalf("commitstatus.status-spec.%s.reject: fixture.md#phase-19-status-vectors expected schema rejection, actual accepted", id)
+			}
+		})
+	}
+}
+
+func specificationTestRoutingIntegrity(documents map[string]string) string {
+	detail := documents["docs/DETAIL_INDEX.md"]
+	_, detail, _ = strings.Cut(detail, `<a id="0b-詳細仕様参照表"></a>`)
+	detail, _, _ = strings.Cut(detail, `<a id="owner-detail-verification-route"></a>`)
+	owners := regexp.MustCompile("(?m)^\\| `([a-z]+)` \\|").FindAllStringSubmatch(detail, -1)
+	fixture := documents["docs/details/fixture.md"]
+	_, assertion, _ := strings.Cut(fixture, "owner segment は ")
+	assertion, _, _ = strings.Cut(assertion, "必要な場合だけ")
+	listed := regexp.MustCompile("`([a-z]+)`").FindAllStringSubmatch(assertion, -1)
+	want, got := []string{}, []string{}
+	for _, owner := range owners {
+		want = append(want, owner[1])
+	}
+	for _, owner := range listed {
+		got = append(got, owner[1])
+	}
+	sort.Strings(want)
+	sort.Strings(got)
+	if len(want) == 0 || !phase11StringSlicesEqual(want, got) {
+		return "assertion-owner"
+	}
+	_, routing, _ := strings.Cut(fixture, `<a id="test-artifact-traceability-contract"></a>`)
+	routing, _, _ = strings.Cut(routing, "\n以下は実在する実装 artifact")
+	paths := []string{"main_test.go"}
+	for _, owner := range want {
+		path := "components/" + owner + "/" + owner + "_test.go"
+		if owner == "sdk" || owner == "ui" {
+			path = owner + "_contract_test.go"
+		}
+		paths = append(paths, path)
+	}
+	for _, path := range paths {
+		if !strings.Contains(routing, "](../../"+path+")") {
+			return "test-routing"
+		}
+	}
+	if strings.Contains(fixture, "`components/*_test.go`") {
+		return "test-glob"
+	}
+	return ""
+}
+
+func specificationGovernanceIntegrity(spec string) string {
+	section := func(start, end string) string {
+		_, body, ok := strings.Cut(spec, `<a id="`+start+`"></a>`)
+		if !ok {
+			return ""
+		}
+		body, _, ok = strings.Cut(body, `<a id="`+end+`"></a>`)
+		if !ok {
+			return ""
+		}
+		return body
+	}
+	principle := section("sec-4-2a", "direction-change-history-single-source")
+	if principle == "" || strings.Contains(principle, "単独の専用 Go 実装 artifact を持たない") {
+		return "artifact-absence"
+	}
+	layout := section("sec-4-3", "sec-4-4")
+	if layout == "" || strings.Contains(layout, "実在化済み") {
+		return "layout-current-state"
+	}
+	freeze := section("policy-spec-freeze", "policy-phase-unit")
+	row := ""
+	for _, line := range strings.Split(freeze, "\n") {
+		if strings.HasPrefix(line, "| 対応表 |") {
+			row = line
+		}
+	}
+	if !strings.Contains(row, "DETAIL_INDEX.md#0i-詳細節対応表") || !strings.Contains(row, "DETAIL_INDEX.md#phase-19-owner-route") || !strings.Contains(row, "DETAIL_INDEX.md#phase-20-inhouse-iac-entry") {
+		return "freeze-route"
+	}
+	actions := section("sec-5-3", "direction-inhouse-cicd")
+	if !strings.Contains(actions, "SPEC.md#direction-technical") {
+		return "format-source"
+	}
+	if strings.Contains(actions, "workflow から読み書きする Adlaire CI の入力、出力") {
+		return "format-restatement"
+	}
+	return ""
+}
+
+type phase19PlanInputCase struct {
+	ID       string                     `json:"id"`
+	Kind     string                     `json:"kind"`
+	Min      int64                      `json:"min"`
+	Max      int64                      `json:"max"`
+	Required bool                       `json:"required"`
+	Default  json.RawMessage            `json:"default"`
+	Choices  []json.RawMessage          `json:"choices"`
+	Values   map[string]json.RawMessage `json:"values"`
+	Expected map[string]json.RawMessage `json:"expected"`
+	Code     string                     `json:"expected_code"`
+}
+
+type phase19PlanMatrixCase struct {
+	ID        string                       `json:"id"`
+	Base      string                       `json:"base"`
+	Axes      map[string][]json.RawMessage `json:"axes"`
+	Exclude   []map[string]json.RawMessage `json:"exclude"`
+	Include   []map[string]json.RawMessage `json:"include"`
+	Count     int                          `json:"expected_count"`
+	Digest    string                       `json:"expected_digest"`
+	IDsDigest string                       `json:"expected_ids_digest"`
+	Code      string                       `json:"expected_code"`
+}
+
+type phase19PlanDAGJob struct {
+	ID    string   `json:"id"`
+	Needs []string `json:"needs"`
+	Match bool     `json:"own_match"`
+}
+
+type phase19PlanEvent struct {
+	Project    string  `json:"project_id"`
+	Definition string  `json:"definition_id"`
+	Revision   int     `json:"definition_revision"`
+	Kind       string  `json:"kind"`
+	Trigger    string  `json:"trigger_id"`
+	SHA        string  `json:"source_sha"`
+	Due        *string `json:"due"`
+}
+
+type phase19PlanSpecificationVector struct {
+	Version  int                     `json:"schema_version"`
+	Inputs   []phase19PlanInputCase  `json:"input_cases"`
+	Matrices []phase19PlanMatrixCase `json:"matrix_cases"`
+	DAGs     []struct {
+		ID       string              `json:"id"`
+		Jobs     []phase19PlanDAGJob `json:"jobs"`
+		IDs      []string            `json:"expected_ids"`
+		Selected []bool              `json:"expected_selected"`
+		Code     string              `json:"expected_code"`
+	} `json:"dag_cases"`
+	Selectors []struct {
+		ID       string                     `json:"id"`
+		Kind     string                     `json:"kind"`
+		Branches []string                   `json:"branches"`
+		Tags     []string                   `json:"tags"`
+		Paths    []string                   `json:"paths"`
+		Changed  []string                   `json:"changed"`
+		Equals   map[string]json.RawMessage `json:"equals"`
+		Values   map[string]json.RawMessage `json:"values"`
+		Expected bool                       `json:"expected"`
+	} `json:"selector_cases"`
+	Events []struct {
+		ID     string           `json:"id"`
+		Input  phase19PlanEvent `json:"input"`
+		Digest string           `json:"expected_digest"`
+	} `json:"event_cases"`
+}
+
+func phase19PlanScalar(raw json.RawMessage) (string, []byte, bool) {
+	var value any
+	if json.Unmarshal(raw, &value) != nil {
+		return "", nil, false
+	}
+	canonical, err := json.Marshal(value)
+	if err != nil {
+		return "", nil, false
+	}
+	switch value.(type) {
+	case string:
+		return "string", canonical, true
+	case bool:
+		return "boolean", canonical, true
+	case float64:
+		s := strings.TrimSpace(string(raw))
+		n, err := strconv.ParseInt(s, 10, 64)
+		if err != nil || strconv.FormatInt(n, 10) != s || n < -2147483648 || n > 2147483647 {
+			return "", nil, false
+		}
+		return "integer", canonical, true
+	default:
+		return "", nil, false
+	}
+}
+
+func phase19PlanInputOracle(c phase19PlanInputCase) (map[string]json.RawMessage, string) {
+	empty := map[string]json.RawMessage{}
+	fail := func() (map[string]json.RawMessage, string) { return empty, "P19_SCHEMA" }
+	if c.Min > c.Max || (c.Kind == "string" && (c.Min < 0 || c.Max > 4096)) ||
+		(c.Kind == "boolean" && (c.Min != 0 || c.Max != 1)) ||
+		!phase17StringInSlice(c.Kind, []string{"string", "integer", "boolean"}) {
+		return fail()
+	}
+	valid := func(raw json.RawMessage) bool {
+		kind, _, ok := phase19PlanScalar(raw)
+		if !ok || kind != c.Kind {
+			return false
+		}
+		if kind == "string" {
+			var s string
+			if json.Unmarshal(raw, &s) != nil {
+				return false
+			}
+			return int64(len([]byte(s))) >= c.Min && int64(len([]byte(s))) <= c.Max
+		}
+		if kind == "integer" {
+			n, err := strconv.ParseInt(strings.TrimSpace(string(raw)), 10, 64)
+			return err == nil && n >= c.Min && n <= c.Max
+		}
+		return true
+	}
+	choiceSet := map[string]bool{}
+	for _, raw := range c.Choices {
+		if !valid(raw) {
+			return fail()
+		}
+		_, key, _ := phase19PlanScalar(raw)
+		if choiceSet[string(key)] {
+			return fail()
+		}
+		choiceSet[string(key)] = true
+	}
+	allowed := func(raw json.RawMessage) bool {
+		if !valid(raw) {
+			return false
+		}
+		_, key, _ := phase19PlanScalar(raw)
+		return len(choiceSet) == 0 || choiceSet[string(key)]
+	}
+	hasDefault := string(c.Default) != "null"
+	if (c.Required && hasDefault) || (hasDefault && !allowed(c.Default)) {
+		return fail()
+	}
+	for key := range c.Values {
+		if key != "x" {
+			return fail()
+		}
+	}
+	raw, present := c.Values["x"]
+	if !present {
+		if c.Required {
+			return fail()
+		}
+		if !hasDefault {
+			return empty, "ok"
+		}
+		raw = c.Default
+	}
+	if !allowed(raw) {
+		return fail()
+	}
+	return map[string]json.RawMessage{"x": raw}, "ok"
+}
+
+func phase19PlanCanonicalHash(value any) string {
+	b, err := json.Marshal(value)
+	if err != nil {
+		return ""
+	}
+	var decoded any
+	if json.Unmarshal(b, &decoded) != nil {
+		return ""
+	}
+	h := sha256.Sum256(iacSpecificationCanonical(decoded))
+	return hex.EncodeToString(h[:])
+}
+
+func phase19PlanMatrixOracle(c phase19PlanMatrixCase) ([]map[string]json.RawMessage, []string, string) {
+	fail := func() ([]map[string]json.RawMessage, []string, string) {
+		return []map[string]json.RawMessage{}, []string{}, "P19_MATRIX"
+	}
+	axes := []string{}
+	kinds := map[string]string{}
+	if len(c.Axes) > 4 {
+		return fail()
+	}
+	for axis, values := range c.Axes {
+		if len(values) == 0 || len(values) > 32 {
+			return fail()
+		}
+		axes = append(axes, axis)
+		seen := map[string]bool{}
+		for _, raw := range values {
+			kind, key, ok := phase19PlanScalar(raw)
+			if !ok || (kinds[axis] != "" && kinds[axis] != kind) || seen[string(key)] {
+				return fail()
+			}
+			kinds[axis] = kind
+			seen[string(key)] = true
+		}
+	}
+	sort.Strings(axes)
+	for _, list := range []struct {
+		values   []map[string]json.RawMessage
+		complete bool
+	}{{c.Exclude, false}, {c.Include, true}} {
+		for _, tuple := range list.values {
+			if (list.complete && len(tuple) != len(axes)) || (!list.complete && len(tuple) == 0) {
+				return fail()
+			}
+			for key, raw := range tuple {
+				kind, _, ok := phase19PlanScalar(raw)
+				if !ok || kinds[key] == "" || kinds[key] != kind {
+					return fail()
+				}
+			}
+		}
+	}
+	tuples := []map[string]json.RawMessage{}
+	var walk func(int, map[string]json.RawMessage)
+	walk = func(index int, tuple map[string]json.RawMessage) {
+		if index < len(axes) {
+			axis := axes[index]
+			for _, raw := range c.Axes[axis] {
+				tuple[axis] = raw
+				walk(index+1, tuple)
+			}
+			return
+		}
+		for _, excluded := range c.Exclude {
+			matches := true
+			for key, raw := range excluded {
+				_, a, _ := phase19PlanScalar(raw)
+				_, b, _ := phase19PlanScalar(tuple[key])
+				if !bytes.Equal(a, b) {
+					matches = false
+					break
+				}
+			}
+			if matches {
+				return
+			}
+		}
+		copyTuple := map[string]json.RawMessage{}
+		for key, raw := range tuple {
+			copyTuple[key] = raw
+		}
+		tuples = append(tuples, copyTuple)
+	}
+	walk(0, map[string]json.RawMessage{})
+	seen := map[string]bool{}
+	for _, tuple := range tuples {
+		seen[phase19PlanCanonicalHash(tuple)] = true
+	}
+	for _, tuple := range c.Include {
+		h := phase19PlanCanonicalHash(tuple)
+		if seen[h] {
+			return fail()
+		}
+		seen[h] = true
+		tuples = append(tuples, tuple)
+	}
+	if len(tuples) == 0 || len(tuples) > 256 {
+		return fail()
+	}
+	ids := []string{}
+	for i := range tuples {
+		id := c.Base
+		if len(axes) > 0 {
+			id += "_m" + strconv.Itoa(i+1)
+		}
+		if len(id) > 64 {
+			return fail()
+		}
+		ids = append(ids, id)
+	}
+	return tuples, ids, "ok"
+}
+
+func phase19PlanDAGOracle(jobs []phase19PlanDAGJob) ([]string, []bool, string) {
+	fail := func() ([]string, []bool, string) { return []string{}, []bool{}, "P19_DAG" }
+	index := map[string]int{}
+	for i, job := range jobs {
+		if _, ok := index[job.ID]; ok {
+			return fail()
+		}
+		index[job.ID] = i
+	}
+	degrees := make([]int, len(jobs))
+	done := make([]bool, len(jobs))
+	selection := map[string]bool{}
+	for i, job := range jobs {
+		seen := map[string]bool{}
+		for _, need := range job.Needs {
+			if _, ok := index[need]; !ok || need == job.ID || seen[need] {
+				return fail()
+			}
+			seen[need] = true
+			degrees[i]++
+		}
+	}
+	ids := []string{}
+	selected := []bool{}
+	for len(ids) < len(jobs) {
+		chosen := -1
+		for i := range jobs {
+			if !done[i] && degrees[i] == 0 {
+				chosen = i
+				break
+			}
+		}
+		if chosen < 0 {
+			return fail()
+		}
+		job := jobs[chosen]
+		value := job.Match
+		for _, need := range job.Needs {
+			value = value && selection[need]
+		}
+		done[chosen] = true
+		selection[job.ID] = value
+		ids = append(ids, job.ID)
+		selected = append(selected, value)
+		for i, other := range jobs {
+			for _, need := range other.Needs {
+				if need == job.ID {
+					degrees[i]--
+				}
+			}
+		}
+	}
+	return ids, selected, "ok"
+}
+
+func phase19PlanSelectorOracle(kind string, branches, tags, paths, changed []string, equals, values map[string]json.RawMessage) bool {
+	list, other, ref := branches, tags, "main"
+	if kind == "tag" {
+		list, other, ref = tags, branches, "v1"
+	}
+	if len(list) == 0 && len(other) > 0 {
+		return false
+	}
+	if len(list) > 0 && !phase17StringInSlice(ref, list) {
+		return false
+	}
+	if len(paths) > 0 {
+		matched := false
+		for _, p := range paths {
+			if phase17StringInSlice(p, changed) {
+				matched = true
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	for key, want := range equals {
+		got, ok := values[key]
+		if !ok {
+			return false
+		}
+		wk, wb, wok := phase19PlanScalar(want)
+		gk, gb, gok := phase19PlanScalar(got)
+		if !wok || !gok || wk != gk || !bytes.Equal(wb, gb) {
+			return false
+		}
+	}
+	return true
+}
+
+func decodePhase19PlanSpecification(input []byte) (phase19PlanSpecificationVector, error) {
+	var v phase19PlanSpecificationVector
+	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	if err := phase19SpecificationCaseCoverage(input, phase19SpecificationCaseGroups()["phase-19-plan-vectors"]); err != nil {
+		return v, err
+	}
+	encoded, err := json.Marshal(v)
+	var a, b any
+	if err != nil || json.Unmarshal(input, &a) != nil || json.Unmarshal(encoded, &b) != nil || !bytes.Equal(iacSpecificationCanonical(a), iacSpecificationCanonical(b)) {
+		return v, fmt.Errorf("required fields")
+	}
+	if v.Version != 1 || v.Inputs == nil || v.Matrices == nil || v.DAGs == nil || v.Selectors == nil || v.Events == nil {
+		return v, fmt.Errorf("vector identity")
+	}
+	seen := map[string]bool{}
+	checkID := func(id string) bool {
+		if !regexp.MustCompile("^[a-z][a-z0-9-]*$").MatchString(id) || seen[id] {
+			return false
+		}
+		seen[id] = true
+		return true
+	}
+	code := func(s string) bool {
+		return phase17StringInSlice(s, []string{"ok", "P19_SCHEMA", "P19_MATRIX", "P19_DAG"})
+	}
+	for _, c := range v.Inputs {
+		if !checkID(c.ID) || c.Choices == nil || c.Values == nil || c.Expected == nil || len(c.Default) == 0 || !code(c.Code) {
+			return v, fmt.Errorf("input identity")
+		}
+	}
+	for _, c := range v.Matrices {
+		if !checkID(c.ID) || c.Axes == nil || c.Exclude == nil || c.Include == nil || !phase17IsLowerHexSHA256(c.Digest) || !phase17IsLowerHexSHA256(c.IDsDigest) || !code(c.Code) {
+			return v, fmt.Errorf("matrix identity")
+		}
+	}
+	for _, c := range v.DAGs {
+		if !checkID(c.ID) || c.Jobs == nil || c.IDs == nil || c.Selected == nil || !code(c.Code) {
+			return v, fmt.Errorf("dag identity")
+		}
+		for _, j := range c.Jobs {
+			if j.Needs == nil {
+				return v, fmt.Errorf("dag needs")
+			}
+		}
+	}
+	for _, c := range v.Selectors {
+		if !checkID(c.ID) || !phase17StringInSlice(c.Kind, []string{"branch", "tag"}) || c.Branches == nil || c.Tags == nil || c.Paths == nil || c.Changed == nil || c.Equals == nil || c.Values == nil {
+			return v, fmt.Errorf("selector identity")
+		}
+	}
+	for _, c := range v.Events {
+		if !checkID(c.ID) || c.Input.Project == "" || c.Input.Definition == "" || c.Input.Revision < 1 || !phase17IsLowerHexSHA256(c.Digest) {
+			return v, fmt.Errorf("event identity")
+		}
+	}
+	return v, nil
+}
+
+func TestPhase19PlanSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	doc := phase11MustReadText(t, "docs/details/fixture.md")
+	match := regexp.MustCompile("(?s)<a id=\"phase-19-plan-vectors\"></a>.*?\x60\x60\x60json\\n(.*?)\\n\x60\x60\x60").FindStringSubmatch(doc)
+	if len(match) != 2 {
+		t.Fatal("runner.plan-spec.presence: missing fixed input")
+	}
+	input := []byte(match[1])
+	v, err := decodePhase19PlanSpecification(input)
+	if err != nil || len(v.Inputs) != 22 || len(v.Matrices) != 11 || len(v.DAGs) != 7 || len(v.Selectors) != 7 || len(v.Events) != 3 {
+		t.Fatalf("runner.plan-spec.schema: expected 22/11/7/7/3 vectors actual %v", err)
+	}
+	for _, c := range v.Inputs {
+		t.Run(c.ID, func(t *testing.T) {
+			actual, code := phase19PlanInputOracle(c)
+			if code != c.Code || phase19PlanCanonicalHash(actual) != phase19PlanCanonicalHash(c.Expected) {
+				t.Fatalf("runner.plan-spec.%s.result: runner.md#phase-19-input-normalization expected=%s/%s actual=%s/%s", c.ID, c.Code, phase19PlanCanonicalHash(c.Expected), code, phase19PlanCanonicalHash(actual))
+			}
+		})
+	}
+	for _, c := range v.Matrices {
+		t.Run(c.ID, func(t *testing.T) {
+			tuples, ids, code := phase19PlanMatrixOracle(c)
+			if code != c.Code || len(tuples) != c.Count || phase19PlanCanonicalHash(tuples) != c.Digest || phase19PlanCanonicalHash(ids) != c.IDsDigest {
+				t.Fatalf("runner.plan-spec.%s.result: runner.md#phase-19-matrix-order expected=%s/%d/%s/%s actual=%s/%d/%s/%s", c.ID, c.Code, c.Count, c.Digest, c.IDsDigest, code, len(tuples), phase19PlanCanonicalHash(tuples), phase19PlanCanonicalHash(ids))
+			}
+		})
+	}
+	for _, c := range v.DAGs {
+		t.Run(c.ID, func(t *testing.T) {
+			ids, selected, code := phase19PlanDAGOracle(c.Jobs)
+			if code != c.Code || phase19PlanCanonicalHash(ids) != phase19PlanCanonicalHash(c.IDs) || phase19PlanCanonicalHash(selected) != phase19PlanCanonicalHash(c.Selected) {
+				t.Fatalf("runner.plan-spec.%s.result: runner.md#phase-19-plan-selection expected=%s/%v/%v actual=%s/%v/%v", c.ID, c.Code, c.IDs, c.Selected, code, ids, selected)
+			}
+		})
+	}
+	for _, c := range v.Selectors {
+		t.Run(c.ID, func(t *testing.T) {
+			actual := phase19PlanSelectorOracle(c.Kind, c.Branches, c.Tags, c.Paths, c.Changed, c.Equals, c.Values)
+			if actual != c.Expected {
+				t.Fatalf("runner.plan-spec.%s.result: runner.md#phase-19-plan-selection expected=%t actual=%t", c.ID, c.Expected, actual)
+			}
+		})
+	}
+	for _, c := range v.Events {
+		t.Run(c.ID, func(t *testing.T) {
+			actual := phase19PlanCanonicalHash(c.Input)
+			if actual != c.Digest {
+				t.Fatalf("runner.plan-spec.%s.result: runner.md#phase-19-trigger-state expected=%s actual=%s", c.ID, c.Digest, actual)
+			}
+		})
+	}
+	var nullValue map[string]json.RawMessage
+	if err := json.Unmarshal(input, &nullValue); err != nil {
+		t.Fatal(err)
+	}
+	nullValue["input_cases"] = json.RawMessage("null")
+	nullInput, err := json.Marshal(nullValue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		id    string
+		input []byte
+	}{
+		{"missing", []byte(strings.Replace(string(input), "\"schema_version\": 1,", "", 1))},
+		{"unknown", []byte(strings.Replace(string(input), "\"schema_version\": 1,", "\"schema_version\": 1,\"unknown\":true,", 1))},
+		{"duplicate", []byte(strings.Replace(string(input), "\"schema_version\": 1,", "\"schema_version\": 1,\"schema_version\": 1,", 1))},
+		{"null", nullInput},
+		{"trailing", append(append([]byte{}, input...), []byte("{}")...)},
+		{"invalid-utf8", append([]byte{0xff}, input...)},
+	} {
+		t.Run("schema-"+c.id, func(t *testing.T) {
+			if _, err := decodePhase19PlanSpecification(c.input); err == nil {
+				t.Fatalf("runner.plan-spec.schema-%s.reject: fixture.md#phase-19-plan-vectors expected rejected actual accepted", c.id)
+			}
+		})
+	}
+}
+
+type phase19WorkerFrame struct {
+	Direction string `json:"direction"`
+	Type      string `json:"type"`
+	Seq       int64  `json:"seq"`
+	Ack       int64  `json:"ack_seq"`
+}
+
+type phase19WorkerAckCase struct {
+	ID      string               `json:"id"`
+	Frames  []phase19WorkerFrame `json:"frames"`
+	Pending []int                `json:"expected_pending"`
+	Code    string               `json:"expected_code"`
+}
+
+type phase19WorkerChunk struct {
+	Offset int64  `json:"offset"`
+	Data   string `json:"data"`
+	Repeat int    `json:"repeat"`
+	Final  bool   `json:"final"`
+	Digest string `json:"digest"`
+}
+
+type phase19WorkerChunkCase struct {
+	ID     string               `json:"id"`
+	Total  int64                `json:"total_bytes"`
+	Digest string               `json:"digest"`
+	Chunks []phase19WorkerChunk `json:"chunks"`
+	Code   string               `json:"expected_code"`
+}
+
+type phase19WorkerLeaseCase struct {
+	ID           string `json:"id"`
+	Wall         int64  `json:"wall_ms"`
+	Mono         int64  `json:"mono_ms"`
+	Until        int64  `json:"until_ms"`
+	Deadline     int64  `json:"deadline_ms"`
+	Proposed     int64  `json:"proposed_ms"`
+	Generation   bool   `json:"generation_matches"`
+	Durable      bool   `json:"durable"`
+	WantUntil    int64  `json:"expected_until_ms"`
+	WantDeadline int64  `json:"expected_deadline_ms"`
+	Code         string `json:"expected_code"`
+}
+
+type phase19WorkerSpecificationVector struct {
+	Version int                      `json:"schema_version"`
+	Acks    []phase19WorkerAckCase   `json:"ack_cases"`
+	Chunks  []phase19WorkerChunkCase `json:"chunk_cases"`
+	Leases  []phase19WorkerLeaseCase `json:"lease_cases"`
+}
+
+func phase19WorkerAckOracle(frames []phase19WorkerFrame) ([2]int, string) {
+	next, waiting := [2]int64{1, 1}, [2]int64{}
+	pending := func() [2]int {
+		count := [2]int{}
+		for i, seq := range waiting {
+			if seq != 0 {
+				count[i] = 1
+			}
+		}
+		return count
+	}
+	for _, f := range frames {
+		d := 0
+		if f.Direction == "w2c" {
+			d = 1
+		} else if f.Direction != "c2w" {
+			return pending(), "P19_INPUT"
+		}
+		if f.Seq != next[d] || f.Seq > 9007199254740991 {
+			return pending(), "P19_INPUT"
+		}
+		switch f.Type {
+		case "ack":
+			if waiting[1-d] == 0 || f.Ack != waiting[1-d] {
+				return pending(), "P19_INPUT"
+			}
+			waiting[1-d] = 0
+		case "error":
+			return pending(), "P19_TRANSPORT"
+		default:
+			if !phase17StringInSlice(f.Type, []string{"hello", "assign", "chunk", "start", "heartbeat", "log", "result", "cancel", "query"}) || f.Ack != 0 || waiting[d] != 0 {
+				return pending(), "P19_INPUT"
+			}
+			waiting[d] = f.Seq
+		}
+		next[d]++
+	}
+	return pending(), "ok"
+}
+
+func phase19WorkerChunkOracle(c phase19WorkerChunkCase) string {
+	data, final := []byte{}, false
+	for _, chunk := range c.Chunks {
+		wire := chunk.Data
+		if chunk.Repeat > 1 {
+			one, err := base64.StdEncoding.Strict().DecodeString(wire)
+			if err != nil || len(one) != 1 {
+				return "P19_INPUT"
+			}
+			wire = base64.StdEncoding.EncodeToString(bytes.Repeat(one, chunk.Repeat))
+		}
+		part, err := base64.StdEncoding.Strict().DecodeString(wire)
+		if err != nil || base64.StdEncoding.EncodeToString(part) != wire || final || chunk.Offset != int64(len(data)) || len(part) > 12288 {
+			return "P19_INPUT"
+		}
+		end := int64(len(data)) + int64(len(part))
+		if end > c.Total || chunk.Final != (end == c.Total) || (len(part) == 0 && !(c.Total == 0 && chunk.Final && chunk.Offset == 0)) {
+			return "P19_INPUT"
+		}
+		if chunk.Digest != c.Digest {
+			return "P19_DIGEST"
+		}
+		data = append(data, part...)
+		final = chunk.Final
+	}
+	if !final || int64(len(data)) != c.Total {
+		return "P19_INPUT"
+	}
+	digest := sha256.Sum256(data)
+	if hex.EncodeToString(digest[:]) != c.Digest {
+		return "P19_DIGEST"
+	}
+	return "ok"
+}
+
+func phase19WorkerLeaseOracle(c phase19WorkerLeaseCase) (int64, int64, string) {
+	if c.Wall >= c.Until || c.Mono >= c.Deadline || !c.Generation {
+		return c.Until, c.Deadline, "P19_LEASE"
+	}
+	if c.Proposed == 0 || c.Proposed <= c.Until {
+		return c.Until, c.Deadline, "ok"
+	}
+	remaining := c.Proposed - c.Wall
+	if remaining <= 0 || remaining > 35000 || !c.Durable {
+		return c.Until, c.Deadline, "P19_LEASE"
+	}
+	if remaining > 30000 {
+		remaining = 30000
+	}
+	return c.Proposed, c.Mono + remaining, "ok"
+}
+
+func decodePhase19WorkerSpecification(input []byte) (phase19WorkerSpecificationVector, error) {
+	var v phase19WorkerSpecificationVector
+	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	if err := phase19SpecificationCaseCoverage(input, phase19SpecificationCaseGroups()["phase-19-worker-vectors"]); err != nil {
+		return v, err
+	}
+	encoded, err := json.Marshal(v)
+	var a, b any
+	if err != nil || json.Unmarshal(input, &a) != nil || json.Unmarshal(encoded, &b) != nil || !bytes.Equal(iacSpecificationCanonical(a), iacSpecificationCanonical(b)) {
+		return v, fmt.Errorf("required fields")
+	}
+	if v.Version != 1 || v.Acks == nil || v.Chunks == nil || v.Leases == nil {
+		return v, fmt.Errorf("vector identity")
+	}
+	seen := map[string]bool{}
+	id := func(s, code string) bool {
+		if !regexp.MustCompile("^[a-z][a-z0-9-]*$").MatchString(s) || seen[s] || !phase17StringInSlice(code, []string{"ok", "P19_INPUT", "P19_TRANSPORT", "P19_DIGEST", "P19_LEASE"}) {
+			return false
+		}
+		seen[s] = true
+		return true
+	}
+	for _, c := range v.Acks {
+		if !id(c.ID, c.Code) || c.Frames == nil || len(c.Frames) == 0 || len(c.Pending) != 2 || c.Pending[0] < 0 || c.Pending[0] > 1 || c.Pending[1] < 0 || c.Pending[1] > 1 {
+			return v, fmt.Errorf("ack case")
+		}
+	}
+	for _, c := range v.Chunks {
+		if !id(c.ID, c.Code) || c.Total < 0 || c.Total > 2097152 || !phase17IsLowerHexSHA256(c.Digest) || len(c.Chunks) == 0 {
+			return v, fmt.Errorf("chunk case")
+		}
+		for _, x := range c.Chunks {
+			if x.Repeat < 1 || x.Repeat > 12289 || !phase17IsLowerHexSHA256(x.Digest) {
+				return v, fmt.Errorf("chunk generator")
+			}
+		}
+	}
+	for _, c := range v.Leases {
+		if !id(c.ID, c.Code) || c.Mono < 0 || c.Until < 0 || c.Deadline < 0 || c.Proposed < 0 {
+			return v, fmt.Errorf("lease case")
+		}
+	}
+	return v, nil
+}
+
+func TestPhase19WorkerSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	doc := phase11MustReadText(t, "docs/details/fixture.md")
+	match := regexp.MustCompile("(?s)<a id=\"phase-19-worker-vectors\"></a>.*?\\x60\\x60\\x60json\\n(.*?)\\n\\x60\\x60\\x60").FindStringSubmatch(doc)
+	if len(match) != 2 {
+		t.Fatal("runner.worker-spec.presence: missing fixed input")
+	}
+	input := []byte(match[1])
+	v, err := decodePhase19WorkerSpecification(input)
+	if err != nil || len(v.Acks) != 12 || len(v.Chunks) != 16 || len(v.Leases) != 12 {
+		t.Fatalf("runner.worker-spec.schema: fixture.md#phase-19-worker-vectors expected 12/16/12 cases actual %v", err)
+	}
+	for _, c := range v.Acks {
+		t.Run(c.ID, func(t *testing.T) {
+			pending, code := phase19WorkerAckOracle(c.Frames)
+			if code != c.Code || pending != [2]int{c.Pending[0], c.Pending[1]} {
+				t.Fatalf("runner.worker-spec.%s.result: runner.md#phase-19-ipc-framing expected=%s/%v actual=%s/%v; reproduce: go test . -run '^TestPhase19WorkerSpecificationVectors$' -count=1", c.ID, c.Code, c.Pending, code, pending)
+			}
+		})
+	}
+	for _, c := range v.Chunks {
+		t.Run(c.ID, func(t *testing.T) {
+			if code := phase19WorkerChunkOracle(c); code != c.Code {
+				t.Fatalf("runner.worker-spec.%s.result: runner.md#phase-19-worker-session expected=%s actual=%s; reproduce: go test . -run '^TestPhase19WorkerSpecificationVectors$' -count=1", c.ID, c.Code, code)
+			}
+		})
+	}
+	for _, c := range v.Leases {
+		t.Run(c.ID, func(t *testing.T) {
+			until, deadline, code := phase19WorkerLeaseOracle(c)
+			if code != c.Code || until != c.WantUntil || deadline != c.WantDeadline {
+				t.Fatalf("runner.worker-spec.%s.result: runner.md#phase-19-worker-lease-deadlines expected=%s/%d/%d actual=%s/%d/%d; reproduce: go test . -run '^TestPhase19WorkerSpecificationVectors$' -count=1", c.ID, c.Code, c.WantUntil, c.WantDeadline, code, until, deadline)
+			}
+		})
+	}
+	var nullValue map[string]json.RawMessage
+	if err := json.Unmarshal(input, &nullValue); err != nil {
+		t.Fatal(err)
+	}
+	nullValue["ack_cases"] = json.RawMessage("null")
+	nullInput, err := json.Marshal(nullValue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		id    string
+		input []byte
+	}{
+		{"missing", []byte(strings.Replace(string(input), "\"schema_version\": 1,", "", 1))},
+		{"unknown", []byte(strings.Replace(string(input), "\"schema_version\": 1,", "\"schema_version\": 1,\"unknown\":true,", 1))},
+		{"duplicate", []byte(strings.Replace(string(input), "\"schema_version\": 1,", "\"schema_version\": 1,\"schema_version\": 1,", 1))},
+		{"null", nullInput},
+		{"trailing", append(append([]byte{}, input...), []byte("{}")...)},
+		{"invalid-utf8", append([]byte{0xff}, input...)},
+	} {
+		t.Run("schema-"+c.id, func(t *testing.T) {
+			if _, err := decodePhase19WorkerSpecification(c.input); err == nil {
+				t.Fatalf("runner.worker-spec.schema-%s.reject: fixture.md#phase-19-worker-vectors expected rejected actual accepted", c.id)
+			}
+		})
+	}
+}
+
+func phase19LogRingOracle(data []byte, first int64) ([]byte, int64, int64) {
+	drop := len(data) - 1048576
+	if drop < 0 {
+		drop = 0
+	}
+	for drop < len(data) && !utf8.RuneStart(data[drop]) {
+		drop++
+	}
+	return data[drop:], first + int64(drop), first + int64(len(data))
+}
+
+type phase19ContentChunk struct {
+	Offset int64  `json:"offset"`
+	Data   string `json:"data"`
+	Next   int64  `json:"next_offset"`
+	Total  int64  `json:"total_bytes"`
+	Digest string `json:"digest"`
+	Final  bool   `json:"final"`
+}
+
+type phase19CacheKeyInput struct {
+	Project   string            `json:"project_id"`
+	Trust     string            `json:"trust"`
+	Plan      string            `json:"plan_digest"`
+	Job       string            `json:"job_id"`
+	Source    string            `json:"source_tree_digest"`
+	Toolchain string            `json:"toolchain_digest"`
+	OS        string            `json:"os"`
+	Arch      string            `json:"arch"`
+	Env       map[string]string `json:"env"`
+}
+
+type phase19ContentSpecificationVector struct {
+	SchemaVersion int `json:"schema_version"`
+	Chunks        []struct {
+		ID     string `json:"id"`
+		Total  int64  `json:"total_bytes"`
+		Offset int64  `json:"offset"`
+		Bytes  int64  `json:"expected_bytes"`
+		Next   int64  `json:"expected_next"`
+		Final  bool   `json:"expected_final"`
+		Code   string `json:"expected_code"`
+	} `json:"chunk_cases"`
+	Queries []struct {
+		ID     string `json:"id"`
+		Offset string `json:"offset"`
+		Code   string `json:"expected_code"`
+	} `json:"query_cases"`
+	Wires []struct {
+		ID     string              `json:"id"`
+		Offset int64               `json:"requested_offset"`
+		Digest string              `json:"requested_digest"`
+		Wire   phase19ContentChunk `json:"wire"`
+		Code   string              `json:"expected_code"`
+	} `json:"wire_cases"`
+	Caches []struct {
+		ID          string `json:"id"`
+		Metadata    bool   `json:"metadata"`
+		MatchingKey bool   `json:"matching_key"`
+		Published   bool   `json:"published"`
+		Deleting    bool   `json:"deleting"`
+		Quota       int    `json:"quota_mb"`
+		Now         int64  `json:"now"`
+		Expires     int64  `json:"expires_at"`
+		Verified    bool   `json:"verified"`
+		Expected    string `json:"expected"`
+	} `json:"cache_cases"`
+	Keys []struct {
+		ID       string               `json:"id"`
+		Input    phase19CacheKeyInput `json:"input"`
+		Expected string               `json:"expected_sha256"`
+	} `json:"key_cases"`
+	Envelopes []struct {
+		ID       string  `json:"id"`
+		Sizes    []int64 `json:"sizes"`
+		Mutation string  `json:"mutation"`
+		Code     string  `json:"expected_code"`
+	} `json:"envelope_cases"`
+}
+
+func decodePhase19ContentSpecification(input []byte) (phase19ContentSpecificationVector, error) {
+	var v phase19ContentSpecificationVector
+	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	if err := phase19SpecificationCaseCoverage(input, phase19SpecificationCaseGroups()["phase-19-content-vectors"]); err != nil {
+		return v, err
+	}
+	encoded, err := json.Marshal(v)
+	var a, b any
+	if err != nil || json.Unmarshal(input, &a) != nil || json.Unmarshal(encoded, &b) != nil ||
+		!bytes.Equal(iacSpecificationCanonical(a), iacSpecificationCanonical(b)) {
+		return v, fmt.Errorf("required fields and null boundary")
+	}
+	if v.SchemaVersion != 1 || v.Chunks == nil || v.Queries == nil || v.Wires == nil || v.Caches == nil || v.Keys == nil || v.Envelopes == nil {
+		return v, fmt.Errorf("vector identity")
+	}
+	seen := map[string]bool{}
+	id := func(s string) bool {
+		if !regexp.MustCompile(`^[a-z][a-z0-9-]*$`).MatchString(s) || seen[s] {
+			return false
+		}
+		seen[s] = true
+		return true
+	}
+	validCode := func(s string) bool {
+		return phase17StringInSlice(s, []string{"ok", "P19_INPUT", "P19_SCHEMA", "P19_STATE_CORRUPT", "P19_ARCHIVE", "protocol"})
+	}
+	for _, c := range v.Chunks {
+		if !id(c.ID) || !validCode(c.Code) {
+			return v, fmt.Errorf("chunk schema")
+		}
+	}
+	for _, c := range v.Queries {
+		if !id(c.ID) || !validCode(c.Code) {
+			return v, fmt.Errorf("query schema")
+		}
+	}
+	for _, c := range v.Wires {
+		if !id(c.ID) || !validCode(c.Code) || !phase17IsLowerHexSHA256(c.Digest) || !phase17IsLowerHexSHA256(c.Wire.Digest) {
+			return v, fmt.Errorf("wire schema")
+		}
+	}
+	for _, c := range v.Caches {
+		if !id(c.ID) || c.Quota < 0 || c.Now < 0 || c.Expires < 0 || !phase17StringInSlice(c.Expected, []string{"hit", "miss", "invalidate"}) {
+			return v, fmt.Errorf("cache schema")
+		}
+	}
+	for _, c := range v.Keys {
+		k := c.Input
+		if !id(c.ID) || !phase17IsLowerHexSHA256(c.Expected) || k.Env == nil || k.Project == "" || k.Job == "" || k.Trust != "registered" || k.OS != "linux" || k.Arch != "amd64" ||
+			!phase17IsLowerHexSHA256(k.Plan) || !phase17IsLowerHexSHA256(k.Source) || !phase17IsLowerHexSHA256(k.Toolchain) {
+			return v, fmt.Errorf("key schema")
+		}
+	}
+	for _, c := range v.Envelopes {
+		if !id(c.ID) || c.Sizes == nil || len(c.Sizes) < 1 || len(c.Sizes) > 2 || !validCode(c.Code) ||
+			!phase17StringInSlice(c.Mutation, []string{"none", "gzip-empty-member", "gzip-trailing-zero", "gzip-trailing-byte", "gzip-crc", "gzip-truncated", "tar-extra-zero", "tar-short-terminator", "tar-data-padding", "tar-pax-prefix"}) {
+			return v, fmt.Errorf("envelope schema")
+		}
+		for _, size := range c.Sizes {
+			if size < 0 || size > 1024 {
+				return v, fmt.Errorf("synthetic file size")
+			}
+		}
+	}
+	return v, nil
+}
+
+func phase19ChunkRangeOracle(total, offset int64) (int64, int64, bool, string) {
+	if total < 1 || total > 1073741824 {
+		return 0, 0, false, "P19_STATE_CORRUPT"
+	}
+	if offset < 0 || offset > total {
+		return 0, 0, false, "P19_SCHEMA"
+	}
+	n := total - offset
+	if n > 12288 {
+		n = 12288
+	}
+	next := offset + n
+	return n, next, next == total, "ok"
+}
+
+func phase19ChunkQueryOracle(offset string) string {
+	if !regexp.MustCompile(`^(0|[1-9][0-9]*)$`).MatchString(offset) {
+		return "P19_INPUT"
+	}
+	n, err := strconv.ParseUint(offset, 10, 64)
+	if err != nil || n > 1073741824 {
+		return "P19_SCHEMA"
+	}
+	return "ok"
+}
+
+func phase19ChunkWireOracle(offset int64, digest string, c phase19ContentChunk) string {
+	n, next, final, code := phase19ChunkRangeOracle(c.Total, offset)
+	data, err := base64.StdEncoding.Strict().DecodeString(c.Data)
+	if code != "ok" || c.Offset != offset || c.Digest != digest || err != nil || base64.StdEncoding.EncodeToString(data) != c.Data ||
+		int64(len(data)) != n || c.Next != next || c.Final != final {
+		return "protocol"
+	}
+	return "ok"
+}
+
+func phase19CacheHitOracle(metadata, matchingKey, published, deleting bool, quota int, now, expires int64, verified bool) string {
+	if !metadata || !matchingKey || deleting || quota == 0 || now >= expires {
+		return "miss"
+	}
+	if !published || !verified {
+		return "invalidate"
+	}
+	return "hit"
+}
+
+func phase19CacheKeyOracle(input phase19CacheKeyInput) (string, error) {
+	b, err := json.Marshal(input)
+	if err != nil {
+		return "", err
+	}
+	var value any
+	if err := json.Unmarshal(b, &value); err != nil {
+		return "", err
+	}
+	h := sha256.Sum256(iacSpecificationCanonical(value))
+	return hex.EncodeToString(h[:]), nil
+}
+
+func phase19ContentEnvelopeOracle(payload []byte, sizes []int64) string {
+	expected := int64(1024)
+	for _, size := range sizes {
+		expected += 512 + ((size+511)/512)*512
+	}
+	if !bytes.HasPrefix(payload, []byte{0x1f, 0x8b, 8, 0, 0, 0, 0, 0, 2, 255}) {
+		return "P19_ARCHIVE"
+	}
+	compressed := bytes.NewReader(payload)
+	gr, err := gzip.NewReader(compressed)
+	if err != nil {
+		return "P19_ARCHIVE"
+	}
+	gr.Multistream(false)
+	raw, err := io.ReadAll(io.LimitReader(gr, expected+1))
+	closeErr := gr.Close()
+	if err != nil || closeErr != nil || int64(len(raw)) != expected || compressed.Len() != 0 {
+		return "P19_ARCHIVE"
+	}
+	pos := int64(0)
+	for _, size := range sizes {
+		header := raw[pos : pos+512]
+		if header[156] != '0' || !bytes.Equal(header[257:265], []byte{'u', 's', 't', 'a', 'r', 0, '0', '0'}) {
+			return "P19_ARCHIVE"
+		}
+		end := pos + 512 + size
+		padded := pos + 512 + ((size+511)/512)*512
+		if !bytes.Equal(raw[end:padded], make([]byte, padded-end)) {
+			return "P19_ARCHIVE"
+		}
+		pos = padded
+	}
+	if !bytes.Equal(raw[pos:], make([]byte, 1024)) {
+		return "P19_ARCHIVE"
+	}
+	tr := tar.NewReader(bytes.NewReader(raw))
+	for i, size := range sizes {
+		h, err := tr.Next()
+		if err != nil || h.Name != string(rune('a'+i)) || h.Typeflag != tar.TypeReg || h.Size != size || h.Mode != 0644 || h.Uid != 0 || h.Gid != 0 || h.Uname != "" || h.Gname != "" || h.ModTime.Unix() != 0 {
+			return "P19_ARCHIVE"
+		}
+		data, err := io.ReadAll(tr)
+		if err != nil || !bytes.Equal(data, bytes.Repeat([]byte{'a'}, int(size))) {
+			return "P19_ARCHIVE"
+		}
+	}
+	if _, err := tr.Next(); err != io.EOF {
+		return "P19_ARCHIVE"
+	}
+	return "ok"
+}
+
+func TestPhase19ContentSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	doc := phase11MustReadText(t, "docs/details/fixture.md")
+	match := regexp.MustCompile("(?s)<a id=\"phase-19-content-vectors\"></a>.*?\x60\x60\x60json\\n(.*?)\\n\x60\x60\x60").FindStringSubmatch(doc)
+	if len(match) != 2 {
+		t.Fatal("archive.content-spec.presence: missing fixed input")
+	}
+	input := []byte(match[1])
+	v, err := decodePhase19ContentSpecification(input)
+	if err != nil || len(v.Chunks) != 11 || len(v.Queries) != 8 || len(v.Wires) != 12 || len(v.Caches) != 9 || len(v.Keys) != 3 || len(v.Envelopes) != 13 {
+		t.Fatalf("archive.content-spec.schema: expected 11/8/12/9/3/13 valid vectors actual %v", err)
+	}
+	for _, c := range v.Chunks {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			n, next, final, code := phase19ChunkRangeOracle(c.Total, c.Offset)
+			if n != c.Bytes || next != c.Next || final != c.Final || code != c.Code {
+				t.Fatalf("api.content-spec.%s.result: spec=docs/details/api.md#phase-19-artifact-download expected=%d/%d/%t/%s actual=%d/%d/%t/%s", c.ID, c.Bytes, c.Next, c.Final, c.Code, n, next, final, code)
+			}
+		})
+	}
+	for _, c := range v.Queries {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			if got := phase19ChunkQueryOracle(c.Offset); got != c.Code {
+				t.Fatalf("api.content-spec.%s.result: spec=docs/details/api.md#phase-19-artifact-download expected=%s actual=%s", c.ID, c.Code, got)
+			}
+		})
+	}
+	for _, c := range v.Wires {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			if got := phase19ChunkWireOracle(c.Offset, c.Digest, c.Wire); got != c.Code {
+				t.Fatalf("api.content-spec.%s.result: spec=docs/details/api.md#phase-19-artifact-download expected=%s actual=%s", c.ID, c.Code, got)
+			}
+		})
+	}
+	for _, c := range v.Caches {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			if got := phase19CacheHitOracle(c.Metadata, c.MatchingKey, c.Published, c.Deleting, c.Quota, c.Now, c.Expires, c.Verified); got != c.Expected {
+				t.Fatalf("runner.content-spec.%s.result: spec=docs/details/runner.md#phase-19-cache-lifecycle expected=%s actual=%s", c.ID, c.Expected, got)
+			}
+		})
+	}
+	for _, c := range v.Keys {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			if got, err := phase19CacheKeyOracle(c.Input); err != nil || got != c.Expected {
+				t.Fatalf("runner.content-spec.%s.result: spec=docs/details/runner.md#phase-19-cache-lifecycle expected=%s actual=%s error=%v", c.ID, c.Expected, got, err)
+			}
+		})
+	}
+	gzipBytes := func(raw []byte) []byte {
+		var out bytes.Buffer
+		gw, err := gzip.NewWriterLevel(&out, gzip.BestCompression)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = gw.Write(raw); err != nil {
+			t.Fatal(err)
+		}
+		if err = gw.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return out.Bytes()
+	}
+	for _, c := range v.Envelopes {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			for i, size := range c.Sizes {
+				header := &tar.Header{Name: string(rune('a' + i)), Mode: 0644, Size: size, Typeflag: tar.TypeReg, ModTime: time.Unix(0, 0).UTC(), Format: tar.FormatUSTAR}
+				if c.Mutation == "tar-pax-prefix" && i == 0 {
+					header.Format = tar.FormatPAX
+					header.PAXRecords = map[string]string{"comment": "x"}
+				}
+				if err := tw.WriteHeader(header); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := tw.Write(bytes.Repeat([]byte{'a'}, int(size))); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := tw.Close(); err != nil {
+				t.Fatal(err)
+			}
+			raw := append([]byte{}, buf.Bytes()...)
+			switch c.Mutation {
+			case "tar-extra-zero":
+				raw = append(raw, make([]byte, 512)...)
+			case "tar-short-terminator":
+				raw = raw[:len(raw)-512]
+			case "tar-data-padding":
+				raw[512+c.Sizes[0]] = 1
+			}
+			payload := gzipBytes(raw)
+			switch c.Mutation {
+			case "gzip-empty-member":
+				payload = append(payload, gzipBytes(nil)...)
+			case "gzip-trailing-zero":
+				payload = append(payload, 0)
+			case "gzip-trailing-byte":
+				payload = append(payload, 1)
+			case "gzip-crc":
+				payload[len(payload)-8] ^= 1
+			case "gzip-truncated":
+				payload = payload[:len(payload)-1]
+			}
+			if got := phase19ContentEnvelopeOracle(payload, c.Sizes); got != c.Code {
+				t.Fatalf("archive.content-spec.%s.result: spec=docs/details/archive.md#phase-19-archive-envelope expected=%s actual=%s", c.ID, c.Code, got)
+			}
+		})
+	}
+	for _, bad := range []struct {
+		id    string
+		input []byte
+	}{
+		{"missing", []byte(strings.Replace(string(input), `"schema_version": 1,`, "", 1))},
+		{"unknown", []byte(strings.Replace(string(input), `"schema_version": 1,`, `"schema_version": 1, "unknown": true,`, 1))},
+		{"duplicate", []byte(strings.Replace(string(input), `"schema_version": 1,`, `"schema_version": 1, "schema_version": 1,`, 1))},
+		{"null", []byte(strings.Replace(string(input), `"metadata": true`, `"metadata": null`, 1))},
+		{"trailing", append(append([]byte{}, input...), []byte("{}")...)},
+		{"utf8", append(append([]byte{}, input...), 0xff)},
+	} {
+		t.Run("schema-"+bad.id, func(t *testing.T) {
+			if _, err := decodePhase19ContentSpecification(bad.input); err == nil {
+				t.Fatalf("statefile.content-spec.schema-%s.reject: expected rejected actual accepted", bad.id)
+			}
+		})
+	}
+}
+
+type phase19OperationSpecificationVector struct {
+	SchemaVersion int `json:"schema_version"`
+	Admission     []struct {
+		ID              string `json:"id"`
+		Authorized      bool   `json:"authorized"`
+		Existing        bool   `json:"existing"`
+		SameSubject     bool   `json:"same_subject"`
+		SameDigest      bool   `json:"same_digest"`
+		RevisionMatches bool   `json:"revision_matches"`
+		Expected        string `json:"expected"`
+	} `json:"admission_cases"`
+	Transitions []struct {
+		ID         string `json:"id"`
+		From       string `json:"from"`
+		To         string `json:"to"`
+		SameResult bool   `json:"same_result"`
+		Expected   string `json:"expected"`
+	} `json:"transition_cases"`
+	GC []struct {
+		ID        string `json:"id"`
+		State     string `json:"state"`
+		Now       int64  `json:"now"`
+		ExpiresAt int64  `json:"expires_at"`
+		Protected bool   `json:"protected_reference"`
+		Expected  bool   `json:"expected_collect"`
+	} `json:"gc_cases"`
+}
+
+func decodePhase19OperationSpecification(input []byte) (phase19OperationSpecificationVector, error) {
+	var v phase19OperationSpecificationVector
+	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	if err := phase19SpecificationCaseCoverage(input, phase19SpecificationCaseGroups()["phase-19-operation-vectors"]); err != nil {
+		return v, err
+	}
+	encoded, err := json.Marshal(v)
+	var before, after any
+	if err != nil || json.Unmarshal(input, &before) != nil || json.Unmarshal(encoded, &after) != nil ||
+		!bytes.Equal(iacSpecificationCanonical(before), iacSpecificationCanonical(after)) {
+		return v, fmt.Errorf("required fields and null boundary")
+	}
+	if v.SchemaVersion != 1 || v.Admission == nil || v.Transitions == nil || v.GC == nil {
+		return v, fmt.Errorf("vector identity")
+	}
+	seen := map[string]bool{}
+	validID := func(id string) bool {
+		if !regexp.MustCompile(`^[a-z][a-z0-9-]*$`).MatchString(id) || seen[id] {
+			return false
+		}
+		seen[id] = true
+		return true
+	}
+	validState := func(state string) bool {
+		return state == "accepted" || state == "succeeded" || state == "failed" || state == "recovery_required"
+	}
+	for _, c := range v.Admission {
+		if !validID(c.ID) || !phase17StringInSlice(c.Expected, []string{"create", "forbidden", "replay", "idempotency", "revision"}) {
+			return v, fmt.Errorf("admission schema")
+		}
+	}
+	for _, c := range v.Transitions {
+		if !validID(c.ID) || !validState(c.From) || !validState(c.To) ||
+			!phase17StringInSlice(c.Expected, []string{"advance", "unchanged", "stale"}) {
+			return v, fmt.Errorf("transition schema")
+		}
+	}
+	for _, c := range v.GC {
+		if !validID(c.ID) || !validState(c.State) || c.Now < 0 || c.ExpiresAt != 2592000 {
+			return v, fmt.Errorf("gc schema")
+		}
+	}
+	return v, nil
+}
+
+func phase19OperationAdmissionOracle(authorized, existing, sameSubject, sameDigest, revisionMatches bool) string {
+	if !authorized {
+		return "forbidden"
+	}
+	if existing {
+		if !sameSubject || !sameDigest {
+			return "idempotency"
+		}
+		return "replay"
+	}
+	if !revisionMatches {
+		return "revision"
+	}
+	return "create"
+}
+
+func phase19OperationTransitionOracle(from, to string, sameResult bool) string {
+	if from == to && sameResult {
+		return "unchanged"
+	}
+	if (from == "accepted" && (to == "succeeded" || to == "failed" || to == "recovery_required")) ||
+		(from == "recovery_required" && (to == "succeeded" || to == "failed")) {
+		return "advance"
+	}
+	return "stale"
+}
+
+func phase19OperationGCOracle(state string, now, expiresAt int64, protected bool) bool {
+	return (state == "succeeded" || state == "failed") && now >= expiresAt && !protected
+}
+
+func TestPhase19OperationSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	match := regexp.MustCompile("(?s)<a id=\"phase-19-operation-vectors\"></a>.*?\x60\x60\x60json\\n(.*?)\\n\x60\x60\x60").FindStringSubmatch(document)
+	if len(match) != 2 {
+		t.Fatal("statefile.operation-spec.presence: missing fixed input")
+	}
+	input := []byte(match[1])
+	v, err := decodePhase19OperationSpecification(input)
+	if err != nil || len(v.Admission) != 8 || len(v.Transitions) != 12 || len(v.GC) != 8 {
+		t.Fatalf("statefile.operation-spec.schema: expected 8/12/8 valid vectors, actual %v", err)
+	}
+	for _, c := range v.Admission {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			got := phase19OperationAdmissionOracle(c.Authorized, c.Existing, c.SameSubject, c.SameDigest, c.RevisionMatches)
+			if got != c.Expected {
+				t.Fatalf("api.operation-spec.%s.result: spec=docs/details/api.md#phase-19-operation-admission expected=%s actual=%s input=%+v", c.ID, c.Expected, got, c)
+			}
+		})
+	}
+	for _, c := range v.Transitions {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			got := phase19OperationTransitionOracle(c.From, c.To, c.SameResult)
+			if got != c.Expected {
+				t.Fatalf("statefile.operation-spec.%s.result: spec=docs/details/statefile.md#phase-19-operation-lifecycle expected=%s actual=%s input=%+v", c.ID, c.Expected, got, c)
+			}
+		})
+	}
+	for _, c := range v.GC {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			got := phase19OperationGCOracle(c.State, c.Now, c.ExpiresAt, c.Protected)
+			if got != c.Expected {
+				t.Fatalf("statefile.operation-spec.%s.result: spec=docs/details/statefile.md#phase-19-operation-lifecycle expected=%t actual=%t input=%+v", c.ID, c.Expected, got, c)
+			}
+		})
+	}
+	for _, bad := range []struct {
+		id    string
+		input []byte
+	}{
+		{"missing", []byte(strings.Replace(string(input), `"schema_version": 1,`, "", 1))},
+		{"unknown", []byte(strings.Replace(string(input), `"schema_version": 1,`, `"schema_version": 1, "unknown": true,`, 1))},
+		{"duplicate", []byte(strings.Replace(string(input), `"schema_version": 1,`, `"schema_version": 1, "schema_version": 1,`, 1))},
+		{"null", []byte(strings.Replace(string(input), `"authorized": true`, `"authorized": null`, 1))},
+		{"trailing", append(append([]byte{}, input...), []byte("{}")...)},
+		{"utf8", append(append([]byte{}, input...), 0xff)},
+	} {
+		t.Run("schema-"+bad.id, func(t *testing.T) {
+			if _, err := decodePhase19OperationSpecification(bad.input); err == nil {
+				t.Fatalf("statefile.operation-spec.schema-%s.reject: expected rejected actual accepted", bad.id)
+			}
+		})
+	}
+	api := phase11MustReadText(t, "docs/details/api.md")
+	if err := phase19OperationHTTPPartition(api); err != nil {
+		t.Fatalf("api.operation-spec.http-partition.result: %v", err)
+	}
+	for _, bad := range []struct{ id, from, to string }{
+		{"wrong-status", "| 202: workerResume/", "| 200: workerResume/"},
+		{"missing-kind", "| 200: passwordChange/projectPut/", "| 200: projectPut/"},
+		{"duplicate-kind", "| 202: workerResume/", "| 202: projectPut/workerResume/"},
+		{"read-kind", "| 202: workerResume/", "| 202: plan/workerResume/"},
+	} {
+		t.Run("http-"+bad.id, func(t *testing.T) {
+			if !strings.Contains(api, bad.from) {
+				t.Fatalf("api.operation-spec.http-%s.fixture: missing control target", bad.id)
+			}
+			if err := phase19OperationHTTPPartition(strings.Replace(api, bad.from, bad.to, 1)); err == nil {
+				t.Fatalf("api.operation-spec.http-%s.reject: expected rejected actual accepted", bad.id)
+			}
+		})
+	}
+}
+
+func phase19OperationHTTPPartition(api string) error {
+	section := strings.Split(api, "<a id=\"phase-19-error-catalog\"></a>")[0]
+	classes := regexp.MustCompile("(?m)^\\| (200|202): ([A-Za-z/]+) \\|").FindAllStringSubmatch(section, -1)
+	classified := map[string]string{}
+	for _, row := range classes {
+		for _, kind := range strings.Split(row[2], "/") {
+			if classified[kind] != "" {
+				return fmt.Errorf("duplicate kind %s", kind)
+			}
+			classified[kind] = row[1]
+		}
+	}
+	catalog := regexp.MustCompile("(?m)^\\| ([A-Za-z][A-Za-z0-9]*) \\| (GET|POST|PUT|DELETE) [^|]+ \\| [^|]+ \\| ([^|]+) \\|").FindAllStringSubmatch(section, -1)
+	mutationCount := 0
+	for _, row := range catalog {
+		kind := row[1]
+		if row[2] == "GET" || phase17StringInSlice(kind, []string{"login", "logout", "plan", "deploymentPlan", "artifactCompare"}) {
+			if classified[kind] != "" {
+				return fmt.Errorf("read/auth kind %s", kind)
+			}
+			continue
+		}
+		want := "200"
+		if strings.TrimSpace(row[3]) == "Operation" {
+			want = "202"
+		}
+		if classified[kind] != want {
+			return fmt.Errorf("kind=%s expected=%s actual=%s", kind, want, classified[kind])
+		}
+		mutationCount++
+	}
+	if mutationCount != 25 || len(classified) != mutationCount {
+		return fmt.Errorf("expected 25 kinds actual catalog=%d classified=%d", mutationCount, len(classified))
+	}
+	return nil
+}
+
+type phase19LogSpecificationVector struct {
+	SchemaVersion int `json:"schema_version"`
+	MaskCases     []struct {
+		ID        string   `json:"id"`
+		Patterns  []string `json:"patterns_hex"`
+		Chunks    []string `json:"chunks_hex"`
+		Committed []string `json:"committed_hex"`
+		Expected  string   `json:"expected_hex"`
+	} `json:"mask_cases"`
+	PageCases []struct {
+		ID               string `json:"id"`
+		Data             string `json:"data_hex"`
+		First            int64  `json:"first_offset"`
+		Cursor           *int64 `json:"cursor_offset"`
+		Limit            int    `json:"limit_bytes"`
+		Terminal         bool   `json:"stored_terminal"`
+		Gap              bool   `json:"stored_gap"`
+		Code             string `json:"expected_code"`
+		Expected         string `json:"expected_hex"`
+		ExpectedFirst    int64  `json:"expected_first"`
+		ExpectedNext     int64  `json:"expected_next"`
+		ExpectedTerminal bool   `json:"expected_terminal"`
+		Unchanged        bool   `json:"expected_cursor_unchanged"`
+	} `json:"page_cases"`
+	BudgetCases []struct {
+		ID       string `json:"id"`
+		OutputMB int64  `json:"output_mb"`
+		Stdout   int64  `json:"stdout_bytes"`
+		Stderr   int64  `json:"stderr_bytes"`
+		Code     string `json:"expected_code"`
+	} `json:"budget_cases"`
+}
+
+func decodePhase19LogSpecification(input []byte) (phase19LogSpecificationVector, error) {
+	var v phase19LogSpecificationVector
+	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	if err := phase19SpecificationCaseCoverage(input, phase19SpecificationCaseGroups()["phase-19-log-boundary-vectors"]); err != nil {
+		return v, err
+	}
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return v, err
+	}
+	var before, after any
+	if json.Unmarshal(input, &before) != nil || json.Unmarshal(encoded, &after) != nil ||
+		!bytes.Equal(iacSpecificationCanonical(before), iacSpecificationCanonical(after)) {
+		return v, fmt.Errorf("required fields and null boundary")
+	}
+	if v.SchemaVersion != 1 || v.MaskCases == nil || v.PageCases == nil || v.BudgetCases == nil {
+		return v, fmt.Errorf("vector identity")
+	}
+	validHex := func(s string) bool {
+		_, err := hex.DecodeString(s)
+		return err == nil && strings.ToLower(s) == s
+	}
+	seen := map[string]bool{}
+	id := func(s string) bool {
+		if !regexp.MustCompile(`^[a-z][a-z0-9-]*$`).MatchString(s) || seen[s] {
+			return false
+		}
+		seen[s] = true
+		return true
+	}
+	for _, c := range v.MaskCases {
+		if !id(c.ID) || c.Patterns == nil || c.Chunks == nil || c.Committed == nil ||
+			len(c.Chunks) != len(c.Committed) || !validHex(c.Expected) {
+			return v, fmt.Errorf("mask schema")
+		}
+		for _, p := range c.Patterns {
+			if p == "" || !validHex(p) {
+				return v, fmt.Errorf("pattern schema")
+			}
+		}
+		for _, s := range append(append([]string{}, c.Chunks...), c.Committed...) {
+			if !validHex(s) {
+				return v, fmt.Errorf("chunk schema")
+			}
+		}
+	}
+	for _, c := range v.PageCases {
+		if !id(c.ID) || !validHex(c.Data) || !validHex(c.Expected) {
+			return v, fmt.Errorf("page schema")
+		}
+	}
+	for _, c := range v.BudgetCases {
+		if !id(c.ID) || c.OutputMB < 1 || c.OutputMB > 16 || c.Stdout < 0 || c.Stderr < 0 {
+			return v, fmt.Errorf("budget schema")
+		}
+	}
+	return v, nil
+}
+
+// Pure published-input oracles; these do not run a product worker or read its logs.
+func phase19LogMaskOracle(patterns, chunks [][]byte) ([]byte, []string) {
+	sorted := append([][]byte(nil), patterns...)
+	sort.Slice(sorted, func(i, j int) bool {
+		if len(sorted[i]) != len(sorted[j]) {
+			return len(sorted[i]) > len(sorted[j])
+		}
+		return bytes.Compare(sorted[i], sorted[j]) < 0
+	})
+	longest := 1
+	for _, p := range sorted {
+		if len(p) > longest {
+			longest = len(p)
+		}
+	}
+	var pending, carry, output []byte
+	commit := func(final bool) {
+		for len(pending) > 0 && (final || len(pending) >= longest) {
+			count := 0
+			for _, p := range sorted {
+				if bytes.HasPrefix(pending, p) {
+					carry = append(carry, []byte("[REDACTED]")...)
+					count = len(p)
+					break
+				}
+			}
+			if count == 0 {
+				carry = append(carry, pending[0])
+				count = 1
+			}
+			pending = pending[count:]
+		}
+		for len(carry) > 0 {
+			if !final && !utf8.FullRune(carry) {
+				break
+			}
+			r, size := utf8.DecodeRune(carry)
+			if r == utf8.RuneError && size == 1 {
+				output = append(output, []byte("\uFFFD")...)
+			} else {
+				output = append(output, carry[:size]...)
+			}
+			carry = carry[size:]
+		}
+	}
+	var committed []string
+	for _, chunk := range chunks {
+		pending = append(pending, chunk...)
+		commit(false)
+		committed = append(committed, hex.EncodeToString(output))
+	}
+	commit(true)
+	return output, committed
+}
+
+func phase19LogPageOracle(data []byte, first int64, cursor *int64, limit int, terminal, gap bool) (string, []byte, int64, int64, bool, bool, bool, bool) {
+	if limit < 1 || limit > 65536 {
+		return "P19_SCHEMA", nil, 0, 0, false, false, false, false
+	}
+	if !utf8.Valid(data) || first < 0 || first > 9007199254740991-int64(len(data)) {
+		return "P19_STATE_CORRUPT", nil, 0, 0, false, false, false, false
+	}
+	start := first
+	if cursor != nil {
+		start = *cursor
+	}
+	last := first + int64(len(data))
+	if start < first || start > last {
+		return "P19_CURSOR", nil, 0, 0, false, false, false, false
+	}
+	index := int(start - first)
+	if index < len(data) && !utf8.RuneStart(data[index]) {
+		return "P19_CURSOR", nil, 0, 0, false, false, false, false
+	}
+	end := index
+	for end < len(data) {
+		_, size := utf8.DecodeRune(data[end:])
+		if end-index+size > limit {
+			break
+		}
+		end += size
+	}
+	if end == index && index < len(data) {
+		return "P19_SCHEMA", nil, 0, 0, false, false, false, false
+	}
+	return "ok", data[index:end], start, first + int64(end), terminal && end == len(data), cursor != nil && end == index, first > 0, gap
+}
+
+func phase19LogBudgetOracle(outputMB, stdout, stderr int64) string {
+	if stdout+stderr > outputMB*1048576 {
+		return "P19_OUTPUT"
+	}
+	return "ok"
+}
+
+func TestPhase19LogSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	match := regexp.MustCompile("(?s)<a id=\"phase-19-log-boundary-vectors\"></a>.*?\x60\x60\x60json\\n(.*?)\\n\x60\x60\x60").FindStringSubmatch(document)
+	if len(match) != 2 {
+		t.Fatal("runner.log-spec.presence: missing fixed input")
+	}
+	v, err := decodePhase19LogSpecification([]byte(match[1]))
+	if err != nil || len(v.MaskCases) != 12 || len(v.PageCases) != 13 || len(v.BudgetCases) != 4 {
+		t.Fatalf("runner.log-spec.schema: expected 12/13/4 valid cases, actual %v", err)
+	}
+	decode := func(s string) []byte {
+		b, err := hex.DecodeString(s)
+		if err != nil {
+			t.Fatal("fixture hex")
+		}
+		return b
+	}
+	for _, c := range v.MaskCases {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			var patterns, chunks [][]byte
+			for _, p := range c.Patterns {
+				patterns = append(patterns, decode(p))
+			}
+			for _, b := range c.Chunks {
+				chunks = append(chunks, decode(b))
+			}
+			got, commits := phase19LogMaskOracle(patterns, chunks)
+			if hex.EncodeToString(got) != c.Expected || !phase11StringSlicesEqual(commits, c.Committed) {
+				t.Fatalf("runner.log-spec.%s.result: expected published committed/final bytes, actual differs; runner.md#phase-19-streaming-log-contract; reproduce: go test . -run '^TestPhase19LogSpecificationVectors$' -count=1", c.ID)
+			}
+			joined := bytes.Join(chunks, nil)
+			for split := 0; split <= len(joined); split++ {
+				got, _ := phase19LogMaskOracle(patterns, [][]byte{joined[:split], joined[split:]})
+				if hex.EncodeToString(got) != c.Expected {
+					t.Fatalf("runner.log-spec.%s.result: split=%d changed final oracle", c.ID, split)
+				}
+			}
+			var singles [][]byte
+			for i := range joined {
+				singles = append(singles, joined[i:i+1])
+			}
+			got, _ = phase19LogMaskOracle(patterns, singles)
+			if hex.EncodeToString(got) != c.Expected {
+				t.Fatalf("runner.log-spec.%s.result: byte chunks changed final oracle", c.ID)
+			}
+		})
+	}
+	for _, c := range v.PageCases {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			code, data, first, next, terminal, unchanged, truncated, gap := phase19LogPageOracle(decode(c.Data), c.First, c.Cursor, c.Limit, c.Terminal, c.Gap)
+			if code != c.Code || hex.EncodeToString(data) != c.Expected || first != c.ExpectedFirst || next != c.ExpectedNext || terminal != c.ExpectedTerminal || unchanged != c.Unchanged || truncated != (code == "ok" && c.First > 0) || gap != (code == "ok" && c.Gap) {
+				t.Fatalf("api.log-spec.%s.result: expected code=%s offsets=%d..%d terminal=%t, actual code=%s offsets=%d..%d terminal=%t; api.md#phase-19-log-page-contract; reproduce: go test . -run '^TestPhase19LogSpecificationVectors$' -count=1", c.ID, c.Code, c.ExpectedFirst, c.ExpectedNext, c.ExpectedTerminal, code, first, next, terminal)
+			}
+		})
+	}
+	for _, c := range v.BudgetCases {
+		if got := phase19LogBudgetOracle(c.OutputMB, c.Stdout, c.Stderr); got != c.Code {
+			t.Fatalf("runner.log-spec.%s.result: expected %s, actual %s; runner.md#phase-19-streaming-log-contract", c.ID, c.Code, got)
+		}
+	}
+	for _, c := range []struct {
+		id          string
+		data        []byte
+		first, next int64
+		size        int
+	}{
+		{"ring-exact", bytes.Repeat([]byte("a"), 1048576), 0, 1048576, 1048576},
+		{"ring-scalar-prefix", append([]byte{0xe3, 0x81, 0x82}, bytes.Repeat([]byte("a"), 1048575)...), 3, 1048578, 1048575},
+		{"ring-unicode", bytes.Repeat([]byte{0xe3, 0x81, 0x82}, 349526), 3, 1048578, 1048575},
+	} {
+		data, first, next := phase19LogRingOracle(c.data, 0)
+		if !utf8.Valid(data) || len(data) != c.size || first != c.first || next != c.next {
+			t.Fatalf("runner.log-spec.%s.result: expected ring bytes=%d offsets=%d..%d, actual bytes=%d offsets=%d..%d; runner.md#phase-19-streaming-log-contract", c.id, c.size, c.first, c.next, len(data), first, next)
+		}
+	}
+	log := map[string]any{"schema_version": 1, "project_id": strings.Repeat("p", 64), "run_id": "r-" + strings.Repeat("a", 32), "attempt": 100, "job_id": strings.Repeat("j", 64), "stream": "stdout", "first_offset": int64(9007199254740991 - 1048576), "next_offset": int64(9007199254740991), "data": strings.Repeat("\x00", 1048576), "truncated": true, "gap": true, "terminal": true}
+	encoded, err := json.Marshal(log)
+	state := phase11MustReadText(t, "docs/details/statefile.md")
+	capacity := regexp.MustCompile("\\| Log / ([0-9]+)").FindStringSubmatch(state)
+	if err != nil || len(capacity) != 2 {
+		t.Fatal("statefile.log-spec.escape-capacity.result: missing serialized bound")
+	}
+	maximum, err := strconv.Atoi(capacity[1])
+	if err != nil || len(encoded) <= 6*1048576 || len(encoded) > maximum {
+		t.Fatalf("statefile.log-spec.escape-capacity.result: expected encoded NUL log above 6MiB and within cap, actual bytes=%d cap=%d; statefile.md#phase-19-log-invariants", len(encoded), maximum)
+	}
+	for _, c := range []struct{ id, input string }{
+		{"missing", strings.Replace(match[1], "\"schema_version\": 1,", "", 1)},
+		{"unknown", strings.Replace(match[1], "{", "{\"unknown\":true,", 1)},
+		{"duplicate", strings.Replace(match[1], "\"schema_version\": 1", "\"schema_version\":1,\"schema_version\":1", 1)},
+		{"null", regexp.MustCompile(`"patterns_hex": \[[^\]]*\]`).ReplaceAllString(match[1], `"patterns_hex": null`)},
+		{"trailing", match[1] + " {}"},
+		{"utf8", string([]byte{0xff}) + match[1]},
+	} {
+		if _, err := decodePhase19LogSpecification([]byte(c.input)); err == nil {
+			t.Fatalf("runner.log-spec.schema-%s.result: expected malformed input rejected, actual accepted", c.id)
+		}
+	}
+}
+
+func specificationPhaseReferenceIntegrity(documents map[string]string) error {
+	rows := regexp.MustCompile(`(?m)^\| Phase ([0-9]+) \|`).FindAllStringSubmatch(documents["docs/ROADMAP.md"], -1)
+	known := make(map[string]bool)
+	for _, row := range rows {
+		phase, err := strconv.Atoi(row[1])
+		if err != nil || phase < 1 || phase > 21 || known[row[1]] || strconv.Itoa(phase) != row[1] {
+			return fmt.Errorf("invalid or duplicate Phase row %s", row[1])
+		}
+		known[row[1]] = true
+	}
+	if len(known) != 21 {
+		return fmt.Errorf("expected 21 registered Phase rows, got %d", len(known))
+	}
+	expressions := regexp.MustCompile(`(?i:phase|フェーズ)[ _\t-]*[0-9]+(?:[ \t]*[/,、〜～~-][ \t]*(?:(?i:phase|フェーズ)[ _\t-]*)?[0-9]+)*`)
+	numbers := regexp.MustCompile(`[0-9]+`)
+	paths := make([]string, 0, len(documents))
+	for path := range documents {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	for _, path := range paths {
+		for number, line := range strings.Split(documents[path], "\n") {
+			for _, expression := range expressions.FindAllString(line, -1) {
+				for _, phase := range numbers.FindAllString(expression, -1) {
+					if !known[phase] {
+						return fmt.Errorf("unregistered Phase %s in %s:%d", phase, path, number+1)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func specificationReferenceIntegrity(documents map[string]string, exists func(string) bool) error {
+	anchors := map[string]map[string]bool{}
+	anchorPattern := regexp.MustCompile(`<a id="([^"]+)"></a>`)
+	for path, content := range documents {
+		anchors[path] = map[string]bool{}
+		for _, match := range anchorPattern.FindAllStringSubmatch(content, -1) {
+			if anchors[path][match[1]] {
+				return fmt.Errorf("duplicate anchor %s#%s", path, match[1])
+			}
+			anchors[path][match[1]] = true
+		}
+	}
+	linkPattern := regexp.MustCompile(`\[[^\]\n]*\]\(([^)\n]+)\)`)
+	inlineCode := regexp.MustCompile("(`+)[^`]*`+")
+	for path, content := range documents {
+		fence := ""
+		for number, line := range strings.Split(content, "\n") {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
+				marker := trimmed[:3]
+				if fence == "" {
+					fence = marker
+				} else if fence == marker {
+					fence = ""
+				}
+				continue
+			}
+			if fence != "" {
+				continue
+			}
+			for _, match := range linkPattern.FindAllStringSubmatch(inlineCode.ReplaceAllString(line, ""), -1) {
+				ref, err := url.Parse(strings.Trim(match[1], "<>"))
+				if err != nil {
+					return fmt.Errorf("invalid reference %s:%d: %s", path, number+1, match[1])
+				}
+				if ref.IsAbs() || ref.Host != "" {
+					continue
+				}
+				target := path
+				if ref.Path != "" {
+					target = filepath.ToSlash(filepath.Clean(filepath.Join(filepath.Dir(path), ref.Path)))
+				}
+				if !exists(target) {
+					return fmt.Errorf("missing path %s:%d: %s", path, number+1, target)
+				}
+				if ref.Fragment != "" && strings.HasSuffix(target, ".md") && !anchors[target][ref.Fragment] {
+					return fmt.Errorf("missing anchor %s:%d: %s#%s", path, number+1, target, ref.Fragment)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+type additionalOIDCVector struct {
+	Challenge string `json:"challenge"`
+	IDToken   string `json:"id_token"`
+	JWK       struct {
+		Algorithm string `json:"alg"`
+		Exponent  string `json:"e"`
+		ID        string `json:"kid"`
+		Type      string `json:"kty"`
+		Modulus   string `json:"n"`
+		Use       string `json:"use"`
+	} `json:"jwk"`
+	Now      string `json:"now"`
+	Verifier string `json:"verifier"`
+}
+
+func TestAdditionalSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	pattern := regexp.MustCompile("(?s)<a id=\"oidc-fixed-vector\"></a>.*?```json\\n(.*?)\\n```")
+	match := pattern.FindStringSubmatch(document)
+	if len(match) != 2 {
+		t.Fatal("security.spec-vector.presence: missing fixed JSON vector")
+	}
+	vector, err := additionalDecodeOIDCVector(match[1])
+	if err != nil {
+		t.Fatalf("security.spec-vector.schema: %v", err)
+	}
+	for _, input := range []string{
+		strings.Replace(match[1], "{", `{"unknown":true,`, 1),
+		strings.Replace(match[1], "{", `{"now":"duplicate",`, 1),
+		strings.Replace(match[1], "dBjft", string([]byte{0xff})+"dBjft", 1),
+		match[1] + " {}",
+	} {
+		if _, err := additionalDecodeOIDCVector(input); err == nil {
+			t.Fatal("security.spec-vector.schema: invalid input accepted")
+		}
+	}
+	if err := additionalVerifyOIDCVector(vector); err != nil {
+		t.Fatalf("security.spec-vector.positive: %v", err)
+	}
+	for _, control := range []struct {
+		name   string
+		change func(*additionalOIDCVector)
+		want   string
+	}{
+		{"pkce", func(v *additionalOIDCVector) { v.Challenge += "x" }, "pkce"},
+		{"key", func(v *additionalOIDCVector) { v.JWK.Exponent = "Aw" }, "key"},
+		{"signature", func(v *additionalOIDCVector) {
+			parts := strings.Split(v.IDToken, ".")
+			signature, err := base64.RawURLEncoding.Strict().DecodeString(parts[2])
+			if err != nil {
+				t.Fatal(err)
+			}
+			signature[0] ^= 1
+			parts[2] = base64.RawURLEncoding.EncodeToString(signature)
+			v.IDToken = strings.Join(parts, ".")
+		}, "signature"},
+		{"algorithm", func(v *additionalOIDCVector) {
+			parts := strings.Split(v.IDToken, ".")
+			parts[0] = base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none","kid":"fixture-key-1","typ":"JWT"}`))
+			v.IDToken = strings.Join(parts, ".")
+		}, "header"},
+		{"expiry", func(v *additionalOIDCVector) { v.Now = "2026-01-02T00:05:30Z" }, "claims"},
+	} {
+		t.Run(control.name, func(t *testing.T) {
+			changed := vector
+			control.change(&changed)
+			if err := additionalVerifyOIDCVector(changed); err == nil || err.Error() != control.want {
+				t.Fatalf("security.spec-vector.negative.%s: expected %s, actual %v", control.name, control.want, err)
+			}
+		})
+	}
+}
+
+func additionalDecodeOIDCVector(input string) (additionalOIDCVector, error) {
+	var vector additionalOIDCVector
+	if !utf8.ValidString(input) {
+		return vector, fmt.Errorf("invalid UTF-8")
+	}
+	if err := phase16CheckJSONValueForDuplicateKeys(json.NewDecoder(strings.NewReader(input))); err != nil {
+		return vector, err
+	}
+	decoder := json.NewDecoder(strings.NewReader(input))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&vector); err != nil {
+		return vector, err
+	}
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		return vector, fmt.Errorf("trailing input")
+	}
+	return vector, nil
+}
+
+// This checks the published oracle, not the future OIDC HTTP implementation.
+func additionalVerifyOIDCVector(v additionalOIDCVector) error {
+	digest := sha256.Sum256([]byte(v.Verifier))
+	if len(v.Verifier) != 43 || base64.RawURLEncoding.EncodeToString(digest[:]) != v.Challenge {
+		return fmt.Errorf("pkce")
+	}
+	decode := base64.RawURLEncoding.Strict().DecodeString
+	n, err := decode(v.JWK.Modulus)
+	if err != nil || len(n) < 256 || len(n) > 512 || v.JWK.Exponent != "AQAB" || v.JWK.Type != "RSA" || v.JWK.Algorithm != "RS256" || v.JWK.Use != "sig" {
+		return fmt.Errorf("key")
+	}
+	key := &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: 65537}
+	parts := strings.Split(v.IDToken, ".")
+	if len(parts) != 3 {
+		return fmt.Errorf("header")
+	}
+	header, err := decode(parts[0])
+	if err != nil {
+		return fmt.Errorf("header")
+	}
+	var h struct {
+		Algorithm string `json:"alg"`
+		ID        string `json:"kid"`
+		Type      string `json:"typ"`
+	}
+	d := json.NewDecoder(bytes.NewReader(header))
+	d.DisallowUnknownFields()
+	if d.Decode(&h) != nil || h.Algorithm != "RS256" || h.ID != v.JWK.ID || h.Type != "JWT" {
+		return fmt.Errorf("header")
+	}
+	signature, err := decode(parts[2])
+	if err != nil {
+		return fmt.Errorf("signature")
+	}
+	signed := sha256.Sum256([]byte(parts[0] + "." + parts[1]))
+	if rsa.VerifyPKCS1v15(key, crypto.SHA256, signed[:], signature) != nil {
+		return fmt.Errorf("signature")
+	}
+	payload, err := decode(parts[1])
+	if err != nil {
+		return fmt.Errorf("claims")
+	}
+	var c struct {
+		Issuer   string `json:"iss"`
+		Audience string `json:"aud"`
+		Subject  string `json:"sub"`
+		Nonce    string `json:"nonce"`
+		Issued   int64  `json:"iat"`
+		Expires  int64  `json:"exp"`
+	}
+	now, err := time.Parse(time.RFC3339, v.Now)
+	if err != nil || json.Unmarshal(payload, &c) != nil || c.Issuer != "https://id.example.test" || c.Audience != "adlaire-ci-test" || c.Subject != "subject-1" || c.Nonce != strings.Repeat("A", 43) || c.Issued != 1767312000 || c.Expires != 1767312300 || now.Unix() >= c.Expires+30 {
+		return fmt.Errorf("claims")
+	}
+	return nil
+}
+
+type additionalOIDCSignedVectors struct {
+	FlowStartedAt string `json:"flow_started_at"`
+	JWK           struct {
+		Algorithm string `json:"alg"`
+		Exponent  string `json:"e"`
+		ID        string `json:"kid"`
+		Type      string `json:"kty"`
+		Modulus   string `json:"n"`
+		Use       string `json:"use"`
+	} `json:"jwk"`
+	Cases []struct {
+		ID           string `json:"id"`
+		Header       string `json:"header"`
+		ClaimsBase64 string `json:"claims_base64"`
+		Now          string `json:"now"`
+		Want         string `json:"want"`
+		IDToken      string `json:"id_token"`
+	} `json:"cases"`
+}
+
+func TestAdditionalOIDCSignedClaimVectors(t *testing.T) {
+	t.Parallel()
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	pattern := regexp.MustCompile("(?s)<a id=\"oidc-signed-claim-vectors\"></a>.*?```json\\n(.*?)\\n```")
+	match := pattern.FindStringSubmatch(document)
+	if len(match) != 2 {
+		t.Fatal("security.signed-vector.presence: missing bundle")
+	}
+	if _, err := additionalOIDCJSONObject([]byte(match[1])); err != nil {
+		t.Fatalf("security.signed-vector.schema: %v", err)
+	}
+	var vectors additionalOIDCSignedVectors
+	decoder := json.NewDecoder(strings.NewReader(match[1]))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&vectors); err != nil {
+		t.Fatalf("security.signed-vector.schema: %v", err)
+	}
+	decode := base64.RawURLEncoding.Strict().DecodeString
+	n, err := decode(vectors.JWK.Modulus)
+	if err != nil || len(n) != 256 || vectors.JWK.Algorithm != "RS256" || vectors.JWK.Exponent != "AQAB" || vectors.JWK.ID != "fixture-signed-1" || vectors.JWK.Type != "RSA" || vectors.JWK.Use != "sig" || vectors.FlowStartedAt != "2026-01-02T00:00:00Z" {
+		t.Fatal("security.signed-vector.schema: unexpected key or clock")
+	}
+	key := &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: 65537}
+	wants := map[string]string{
+		"baseline": "ok", "issuer-slash": "issuer", "issuer-wrong": "issuer", "issuer-missing": "issuer",
+		"audience-wrong": "audience", "audience-empty": "audience", "audience-duplicate": "audience", "audience-non-string": "audience", "audience-missing": "audience",
+		"audience-single-array": "ok", "audience-multi-no-azp": "azp", "audience-multi-wrong-azp": "azp", "audience-multi-valid": "ok", "audience-no-client": "audience", "azp-single-wrong": "azp",
+		"nonce-wrong": "nonce", "nonce-missing": "nonce", "subject-empty": "subject", "subject-cr": "subject", "subject-255": "ok", "subject-256": "subject", "subject-null": "subject",
+		"iat-future-boundary": "ok", "iat-future-outside": "issued", "iat-start-boundary": "ok", "iat-start-outside": "issued", "iat-fraction": "issued", "iat-exponent": "issued", "iat-null": "issued",
+		"exp-missing": "expires", "exp-equals-iat": "expires", "exp-before-iat": "expires", "lifetime-boundary": "ok", "lifetime-outside": "expires", "exp-fraction": "expires", "exp-overflow": "expires",
+		"nbf-boundary": "ok", "nbf-outside": "not-before", "nbf-null": "not-before", "unknown-claim": "ok", "duplicate-claim": "json", "invalid-utf8": "json", "trailing-json": "json", "expiry-before-boundary": "ok", "expiry-boundary": "expires",
+		"algorithm-none": "header", "kid-unknown": "header", "header-jku": "header", "header-crit": "header", "header-duplicate": "header",
+	}
+	if len(vectors.Cases) != len(wants) {
+		t.Fatalf("security.signed-vector.coverage: got %d cases, want %d", len(vectors.Cases), len(wants))
+	}
+	seen := map[string]bool{}
+	for _, c := range vectors.Cases {
+		c := c
+		want, exists := wants[c.ID]
+		if !exists || seen[c.ID] || c.Want != want {
+			t.Fatalf("security.signed-vector.coverage: unknown, duplicate or changed expectation %q", c.ID)
+		}
+		seen[c.ID] = true
+		t.Run(c.ID, func(t *testing.T) {
+			parts := strings.Split(c.IDToken, ".")
+			if len(parts) != 3 || parts[0] != base64.RawURLEncoding.EncodeToString([]byte(c.Header)) || parts[1] != c.ClaimsBase64 || len(c.IDToken) > 16384 {
+				t.Fatal("security.signed-vector.input: fixed input mismatch")
+			}
+			signature, err := decode(parts[2])
+			digest := sha256.Sum256([]byte(parts[0] + "." + parts[1]))
+			if err != nil || rsa.VerifyPKCS1v15(key, crypto.SHA256, digest[:], signature) != nil {
+				t.Fatal("security.signed-vector.signature: negative case must retain a valid RSA signature")
+			}
+			payload, err := decode(parts[1])
+			if err != nil {
+				t.Fatal("security.signed-vector.input: invalid payload encoding")
+			}
+			got := additionalOIDCClaimOracle([]byte(c.Header), payload, c.Now, vectors.FlowStartedAt)
+			if got != want {
+				t.Fatalf("security.signed-vector.claim.%s: got %s, want %s", c.ID, got, want)
+			}
+		})
+	}
+}
+
+func additionalOIDCJSONObject(input []byte) (map[string]json.RawMessage, error) {
+	if !utf8.Valid(input) {
+		return nil, fmt.Errorf("invalid UTF-8")
+	}
+	if err := phase16CheckJSONValueForDuplicateKeys(json.NewDecoder(bytes.NewReader(input))); err != nil {
+		return nil, err
+	}
+	var object map[string]json.RawMessage
+	decoder := json.NewDecoder(bytes.NewReader(input))
+	if err := decoder.Decode(&object); err != nil || object == nil {
+		return nil, fmt.Errorf("object required")
+	}
+	if decoder.Decode(new(any)) != io.EOF {
+		return nil, fmt.Errorf("trailing JSON")
+	}
+	return object, nil
+}
+
+// This evaluates specification inputs only; it is not a product authentication path.
+func additionalOIDCClaimOracle(header, payload []byte, nowText, startText string) string {
+	h, err := additionalOIDCJSONObject(header)
+	text := func(object map[string]json.RawMessage, key string) string {
+		var s string
+		if json.Unmarshal(object[key], &s) != nil {
+			return ""
+		}
+		return s
+	}
+	if err != nil || text(h, "alg") != "RS256" || text(h, "kid") != "fixture-signed-1" {
+		return "header"
+	}
+	for _, forbidden := range []string{"jku", "x5u", "x5c", "crit"} {
+		if _, exists := h[forbidden]; exists {
+			return "header"
+		}
+	}
+	c, err := additionalOIDCJSONObject(payload)
+	if err != nil {
+		return "json"
+	}
+	if text(c, "iss") != "https://id.example.test" {
+		return "issuer"
+	}
+	var audience []string
+	if value := text(c, "aud"); value != "" {
+		audience = []string{value}
+	} else if json.Unmarshal(c["aud"], &audience) != nil {
+		return "audience"
+	}
+	seen := map[string]bool{}
+	for _, value := range audience {
+		if value == "" || seen[value] {
+			return "audience"
+		}
+		seen[value] = true
+	}
+	if !seen["adlaire-ci-test"] {
+		return "audience"
+	}
+	if _, exists := c["azp"]; exists || len(audience) > 1 {
+		if text(c, "azp") != "adlaire-ci-test" {
+			return "azp"
+		}
+	}
+	if text(c, "nonce") != strings.Repeat("A", 43) {
+		return "nonce"
+	}
+	subject := text(c, "sub")
+	if len(subject) < 1 || len(subject) > 255 || strings.ContainsAny(subject, "\x00\r\n") {
+		return "subject"
+	}
+	now, nowErr := time.Parse(time.RFC3339, nowText)
+	start, startErr := time.Parse(time.RFC3339, startText)
+	integer := func(key string) (int64, bool) {
+		raw := string(c[key])
+		if !regexp.MustCompile(`^-?(0|[1-9][0-9]*)$`).MatchString(raw) {
+			return 0, false
+		}
+		var value int64
+		err := json.Unmarshal(c[key], &value)
+		return value, err == nil
+	}
+	iat, valid := integer("iat")
+	if !valid || nowErr != nil || startErr != nil || iat > now.Unix()+30 || iat < start.Unix()-30 {
+		return "issued"
+	}
+	exp, valid := integer("exp")
+	if !valid || exp <= iat || exp-iat > 3600 || exp <= now.Unix()-30 {
+		return "expires"
+	}
+	if _, exists := c["nbf"]; exists {
+		nbf, valid := integer("nbf")
+		if !valid || nbf > now.Unix()+30 {
+			return "not-before"
+		}
+	}
+	return "ok"
+}
+
+func TestAdditionalIaCSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	pattern := regexp.MustCompile("(?s)<a id=\"inhouse-iac-concrete-oracles\"></a>.*?```json\\n(.*?)\\n```")
+	match := pattern.FindStringSubmatch(document)
+	if len(match) != 2 {
+		t.Fatal("setup.spec-vector.presence: missing fixed input")
+	}
+	var input struct {
+		SchemaVersion        int            `json:"schema_version"`
+		Now                  string         `json:"now"`
+		OperationID          string         `json:"operation_id"`
+		Identity             map[string]any `json:"identity"`
+		ConfigPath           string         `json:"config_path"`
+		ConfigMetadata       map[string]any `json:"config_metadata"`
+		BeforeConfig         map[string]any `json:"before_config"`
+		BeforeSHA256         string         `json:"before_canonical_sha256"`
+		AfterSHA256          string         `json:"after_canonical_sha256"`
+		Manifest             map[string]any `json:"manifest"`
+		Plan                 map[string]any `json:"plan"`
+		ApplyConfirmation    map[string]any `json:"apply_confirmation"`
+		RollbackConfirmation map[string]any `json:"rollback_confirmation"`
+	}
+	if _, err := additionalOIDCJSONObject([]byte(match[1])); err != nil {
+		t.Fatalf("setup.spec-vector.schema: %v", err)
+	}
+	decoder := json.NewDecoder(strings.NewReader(match[1]))
+	decoder.DisallowUnknownFields()
+	decoder.UseNumber()
+	if err := decoder.Decode(&input); err != nil {
+		t.Fatalf("setup.spec-vector.schema: %v", err)
+	}
+	canonical := func(v any) []byte {
+		var output bytes.Buffer
+		encoder := json.NewEncoder(&output)
+		encoder.SetEscapeHTML(false)
+		if err := encoder.Encode(v); err != nil {
+			t.Fatal(err)
+		}
+		return bytes.TrimSuffix(output.Bytes(), []byte("\n"))
+	}
+	hash := func(v any) string {
+		digest := sha256.Sum256(canonical(v))
+		return fmt.Sprintf("%x", digest)
+	}
+	if input.SchemaVersion != 1 || input.Now != "2026-01-02T00:00:00Z" || input.OperationID != "iac_00000000000000000000000001" || input.ConfigPath != "/etc/adlaire-ci/cicd/coordinator-main.json" || string(canonical(input.ConfigMetadata)) != `{"gid":991,"mode":"0640","nlink":1,"uid":0}` || string(canonical(input.Identity)) != `{"schema_version":1,"target_id":"fixture-vps-1"}` {
+		t.Fatal("setup.spec-vector.binding: changed identity, path, clock or metadata")
+	}
+	before := "a7dbfd1f06913f8a2bac4b1c7e1031e927a28c861196455617534e563449f0d1"
+	after := "cb4d35943f79df39c14c5f9b2885a7437d6b189b25abf532be8390064d6ee451"
+	manifest := "77591088e3e13b2ccff82c1b77be73cc310b262f9dd17c799a2304aad5886831"
+	plan := "a184604a39947060afba533395847318f9d676385f88cc5cdce9a4f1acbf2eb2"
+	if hash(input.BeforeConfig) != before || input.BeforeSHA256 != before || input.AfterSHA256 != after || hash(input.Manifest) != manifest || input.Plan["manifest_sha256"] != manifest || input.Plan["sha256"] != plan {
+		t.Fatal("setup.spec-vector.digest: fixed config or manifest mismatch")
+	}
+	delete(input.Plan, "sha256")
+	if hash(input.Plan) != plan || input.Plan["created_at"] != input.Now || input.Plan["expires_at"] != "2026-01-02T00:05:00Z" {
+		t.Fatal("setup.spec-vector.plan: self-excluded hash or expiry mismatch")
+	}
+	resources, resourceOK := input.Manifest["resources"].([]any)
+	changes, changesOK := input.Plan["changes"].([]any)
+	observed, observedOK := input.Plan["observed"].([]any)
+	if !resourceOK || !changesOK || !observedOK || len(resources) != 2 || len(changes) != 2 || len(observed) != 2 {
+		t.Fatal("setup.spec-vector.order: missing resources")
+	}
+	if hash(resources[0].(map[string]any)["config"]) != after || hash(changes[0].(map[string]any)["after"]) != after || observed[0].(map[string]any)["id"] != "api" || observed[1].(map[string]any)["id"] != "main" || changes[0].(map[string]any)["id"] != "main" || changes[1].(map[string]any)["id"] != "api" {
+		t.Fatal("setup.spec-vector.order: before/after or config-before-service mismatch")
+	}
+	for action, confirmation := range map[string]map[string]any{"apply": input.ApplyConfirmation, "rollback": input.RollbackConfirmation} {
+		if len(confirmation) != 3 || confirmation["action"] != action || confirmation["target_id"] != "fixture-vps-1" || confirmation["plan_sha256"] != plan {
+			t.Fatal("setup.spec-vector.confirmation: operation binding mismatch")
+		}
+	}
+}
+
+type iacSpecificationAdmissionVector struct {
+	SchemaVersion          int    `json:"schema_version"`
+	Mode                   string `json:"mode"`
+	CreatedAt              string `json:"created_at"`
+	ExpiresAt              string `json:"expires_at"`
+	PreflightAt            string `json:"preflight_at"`
+	LockAcquiredAt         string `json:"lock_acquired_at"`
+	ObservationsFinishedAt string `json:"observations_finished_at"`
+	AdmissionAt            string `json:"admission_at"`
+	ExecutionAt            string `json:"execution_at"`
+}
+
+func decodeIaCSpecificationAdmission(input []byte) (iacSpecificationAdmissionVector, error) {
+	var v iacSpecificationAdmissionVector
+	object, err := additionalOIDCJSONObject(input)
+	if err != nil || len(object) != 9 {
+		return v, fmt.Errorf("closed object required")
+	}
+	for _, key := range []string{"schema_version", "mode", "created_at", "expires_at", "preflight_at", "lock_acquired_at", "observations_finished_at", "admission_at", "execution_at"} {
+		value, exists := object[key]
+		if !exists || bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+			return v, fmt.Errorf("required field %s", key)
+		}
+	}
+	decoder := json.NewDecoder(bytes.NewReader(input))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&v); err != nil {
+		return v, err
+	}
+	return v, nil
+}
+
+// These oracles evaluate published vectors, not the future privileged IaC implementation.
+func iacSpecificationAdmissionOracle(v iacSpecificationAdmissionVector) string {
+	if v.SchemaVersion != 1 || (v.Mode != "apply" && v.Mode != "noop" && v.Mode != "rollback" && v.Mode != "recover") {
+		return "invalid_input"
+	}
+	texts := []string{v.CreatedAt, v.ExpiresAt, v.PreflightAt, v.LockAcquiredAt, v.ObservationsFinishedAt, v.AdmissionAt, v.ExecutionAt}
+	times := make([]time.Time, len(texts))
+	for index, value := range texts {
+		parsed, err := time.Parse(time.RFC3339, value)
+		if err != nil || !regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$`).MatchString(value) || parsed.Year() < 1970 {
+			return "invalid_input"
+		}
+		times[index] = parsed
+	}
+	if !times[1].Equal(times[0].Add(300 * time.Second)) {
+		return "invalid_input"
+	}
+	if v.Mode == "rollback" || v.Mode == "recover" {
+		return "ok"
+	}
+	for _, now := range times[2:6] {
+		if now.Before(times[0]) || !now.Before(times[1]) {
+			return "stale_plan"
+		}
+	}
+	return "ok"
+}
+
+func iacSpecificationCanonical(value any) []byte {
+	var output bytes.Buffer
+	encoder := json.NewEncoder(&output)
+	encoder.SetEscapeHTML(false)
+	if encoder.Encode(value) != nil {
+		return nil
+	}
+	return bytes.TrimSuffix(output.Bytes(), []byte("\n"))
+}
+
+func iacSpecificationHash(value any) string {
+	digest := sha256.Sum256(iacSpecificationCanonical(value))
+	return hex.EncodeToString(digest[:])
+}
+
+func iacSpecificationPlanOracle(manifest, plan map[string]any) string {
+	if len(plan) != 8 || plan["schema_version"] != json.Number("1") || plan["manifest_sha256"] != iacSpecificationHash(manifest) {
+		return "invalid_input"
+	}
+	if plan["target_id"] != manifest["target_id"] {
+		return "target_mismatch"
+	}
+	unsigned := make(map[string]any, len(plan)-1)
+	for key, value := range plan {
+		if key != "sha256" {
+			unsigned[key] = value
+		}
+	}
+	if plan["sha256"] != iacSpecificationHash(unsigned) {
+		return "invalid_input"
+	}
+	resources, resourcesOK := manifest["resources"].([]any)
+	observed, observedOK := plan["observed"].([]any)
+	changes, changesOK := plan["changes"].([]any)
+	if !resourcesOK || !observedOK || !changesOK || len(resources) == 0 || len(resources) > 64 || len(observed) != len(resources) {
+		return "invalid_input"
+	}
+	byID := map[string]map[string]any{}
+	for _, value := range resources {
+		resource, ok := value.(map[string]any)
+		id, idOK := resource["id"].(string)
+		if !ok || !idOK || !regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`).MatchString(id) || byID[id] != nil {
+			return "invalid_input"
+		}
+		byID[id] = resource
+	}
+	expected := []any{}
+	previousID := ""
+	for _, value := range observed {
+		observation, ok := value.(map[string]any)
+		id, idOK := observation["id"].(string)
+		before, beforeOK := observation["before"].(map[string]any)
+		resource := byID[id]
+		if !ok || !idOK || !beforeOK || len(observation) != 3 || resource == nil || id <= previousID || observation["type"] != resource["type"] {
+			return "invalid_input"
+		}
+		previousID = id
+		var after any
+		action := ""
+		different := false
+		switch resource["type"] {
+		case "config":
+			digest, digestOK := before["sha256"].(string)
+			if len(before) != 4 || !digestOK || !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(digest) || before["uid"] != json.Number("0") || before["mode"] != "0640" {
+				return "invalid_input"
+			}
+			gid, gidOK := before["gid"].(json.Number)
+			if group, err := gid.Int64(); !gidOK || err != nil || group < 0 || group > 4294967295 {
+				return "invalid_input"
+			}
+			after, action = resource["config"], "replace_config"
+			different = digest != iacSpecificationHash(after)
+		case "service":
+			_, activeOK := before["active"].(bool)
+			_, enabledOK := before["enabled"].(bool)
+			if len(before) != 2 || !activeOK || !enabledOK {
+				return "invalid_input"
+			}
+			after, action = map[string]any{"active": resource["active"], "enabled": resource["enabled"]}, "set_service"
+			different = !bytes.Equal(iacSpecificationCanonical(before), iacSpecificationCanonical(after))
+		default:
+			return "invalid_input"
+		}
+		if different {
+			expected = append(expected, map[string]any{"id": id, "action": action, "after": after})
+		}
+	}
+	sort.Slice(expected, func(i, j int) bool {
+		left, right := expected[i].(map[string]any), expected[j].(map[string]any)
+		if left["action"] != right["action"] {
+			return left["action"] == "replace_config"
+		}
+		return left["id"].(string) < right["id"].(string)
+	})
+	if !bytes.Equal(iacSpecificationCanonical(changes), iacSpecificationCanonical(expected)) {
+		return "invalid_input"
+	}
+	return "ok"
+}
+
+func TestIaCSpecificationAdmissionVectors(t *testing.T) {
+	t.Parallel()
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	read := func(anchor string) []byte {
+		pattern := regexp.MustCompile("(?s)<a id=\"" + regexp.QuoteMeta(anchor) + "\"></a>.*?```json\\n(.*?)\\n```")
+		match := pattern.FindStringSubmatch(document)
+		if len(match) != 2 {
+			t.Fatalf("setup.iac-admission.vector.present: anchor=%s missing fixed input", anchor)
+		}
+		return []byte(match[1])
+	}
+	baselineBytes := read("inhouse-iac-admission-vectors")
+	baseline, err := decodeIaCSpecificationAdmission(baselineBytes)
+	if err != nil {
+		t.Fatalf("setup.iac-admission.vector.schema: %v", err)
+	}
+	assert := func(t *testing.T, id, got, want string) {
+		t.Helper()
+		if got != want {
+			t.Fatalf("setup.iac-admission.%s.result: anchor=docs/details/setup.md#inhouse-iac-admission expected=%s actual=%s diff=code reason=admission-contract command=go test . -run '^TestIaCSpecificationAdmissionVectors$' -count=1", id, want, got)
+		}
+	}
+	check := func(id string, mutate func(*iacSpecificationAdmissionVector), want string) {
+		t.Run(id, func(t *testing.T) {
+			v := baseline
+			mutate(&v)
+			assert(t, id, iacSpecificationAdmissionOracle(v), want)
+		})
+	}
+	check("apply-baseline", func(*iacSpecificationAdmissionVector) {}, "ok")
+	check("noop-baseline", func(v *iacSpecificationAdmissionVector) { v.Mode = "noop" }, "ok")
+	check("lower-inclusive", func(v *iacSpecificationAdmissionVector) {
+		v.PreflightAt, v.LockAcquiredAt, v.ObservationsFinishedAt, v.AdmissionAt = v.CreatedAt, v.CreatedAt, v.CreatedAt, v.CreatedAt
+	}, "ok")
+	check("last-second", func(v *iacSpecificationAdmissionVector) { v.AdmissionAt = "2026-01-02T00:04:59Z" }, "ok")
+	for _, mode := range []string{"rollback", "recover"} {
+		mode := mode
+		check(mode+"-expired", func(v *iacSpecificationAdmissionVector) {
+			v.Mode = mode
+			v.PreflightAt, v.LockAcquiredAt, v.ObservationsFinishedAt, v.AdmissionAt = v.ExecutionAt, v.ExecutionAt, v.ExecutionAt, v.ExecutionAt
+		}, "ok")
+	}
+	for _, point := range []string{"preflight", "locked", "observed", "admission"} {
+		for _, edge := range []struct{ name, value string }{{"before", "2026-01-01T23:59:59Z"}, {"equal", "2026-01-02T00:05:00Z"}, {"after", "2026-01-02T00:05:01Z"}} {
+			point, edge := point, edge
+			check(point+"-"+edge.name, func(v *iacSpecificationAdmissionVector) {
+				switch point {
+				case "preflight":
+					v.PreflightAt = edge.value
+				case "locked":
+					v.LockAcquiredAt = edge.value
+				case "observed":
+					v.ObservationsFinishedAt = edge.value
+				case "admission":
+					v.AdmissionAt = edge.value
+				}
+			}, "stale_plan")
+		}
+	}
+	for _, c := range []struct{ id, value string }{{"ttl-short", "2026-01-02T00:04:59Z"}, {"ttl-long", "2026-01-02T00:05:01Z"}} {
+		c := c
+		check(c.id, func(v *iacSpecificationAdmissionVector) { v.ExpiresAt = c.value }, "invalid_input")
+	}
+	for _, c := range []struct{ id, value string }{{"invalid-time", "not-time"}, {"offset-time", "2026-01-02T00:00:00+00:00"}, {"fractional-time", "2026-01-02T00:00:00.1Z"}, {"pre-epoch", "1969-01-02T00:00:00Z"}} {
+		c := c
+		check(c.id, func(v *iacSpecificationAdmissionVector) { v.CreatedAt = c.value }, "invalid_input")
+	}
+	check("invalid-mode", func(v *iacSpecificationAdmissionVector) { v.Mode = "resume" }, "invalid_input")
+	for _, c := range []struct{ id, input string }{
+		{"schema-unknown", strings.Replace(string(baselineBytes), `"schema_version": 1`, `"schema_version": 1, "x": true`, 1)},
+		{"schema-missing", strings.Replace(string(baselineBytes), ",\n  \"execution_at\": \"2026-01-02T00:05:01Z\"", "", 1)},
+		{"schema-null", strings.Replace(string(baselineBytes), `"mode": "apply"`, `"mode": null`, 1)},
+		{"schema-duplicate", strings.Replace(string(baselineBytes), `"mode": "apply"`, `"mode": "apply", "mode": "apply"`, 1)},
+		{"schema-utf8", string(baselineBytes) + string([]byte{255})},
+		{"schema-trailing", string(baselineBytes) + `{}`},
+	} {
+		c := c
+		t.Run(c.id, func(t *testing.T) {
+			_, err := decodeIaCSpecificationAdmission([]byte(c.input))
+			got := "accepted"
+			if err != nil {
+				got = "schema"
+			}
+			assert(t, c.id, got, "schema")
+		})
+	}
+	planBytes := read("inhouse-iac-concrete-oracles")
+	planCheck := func(id string, mutate func(map[string]any), rehash bool, want string) {
+		t.Run(id, func(t *testing.T) {
+			var bundle map[string]any
+			decoder := json.NewDecoder(bytes.NewReader(planBytes))
+			decoder.UseNumber()
+			if err := decoder.Decode(&bundle); err != nil {
+				t.Fatal(err)
+			}
+			plan := bundle["plan"].(map[string]any)
+			mutate(plan)
+			if rehash {
+				delete(plan, "sha256")
+				plan["sha256"] = iacSpecificationHash(plan)
+			}
+			assert(t, id, iacSpecificationPlanOracle(bundle["manifest"].(map[string]any), plan), want)
+		})
+	}
+	planCheck("plan-baseline", func(map[string]any) {}, false, "ok")
+	for _, id := range []string{"plan-after", "plan-missing", "plan-duplicate", "plan-order", "plan-unknown", "plan-observed-missing", "plan-observed-order", "plan-observed-type", "plan-before-key", "plan-noop-extra", "plan-noop-valid", "plan-manifest-hash", "plan-target"} {
+		id := id
+		want := "invalid_input"
+		if id == "plan-noop-valid" {
+			want = "ok"
+		} else if id == "plan-target" {
+			want = "target_mismatch"
+		}
+		planCheck(id, func(plan map[string]any) {
+			changes := plan["changes"].([]any)
+			observed := plan["observed"].([]any)
+			switch id {
+			case "plan-after":
+				changes[0].(map[string]any)["after"].(map[string]any)["allow_http"] = false
+			case "plan-missing":
+				plan["changes"] = changes[:1]
+			case "plan-duplicate":
+				plan["changes"] = append(changes, changes[0])
+			case "plan-order":
+				changes[0], changes[1] = changes[1], changes[0]
+			case "plan-unknown":
+				changes[0].(map[string]any)["id"] = "other"
+			case "plan-observed-missing":
+				plan["observed"] = observed[:1]
+			case "plan-observed-order":
+				observed[0], observed[1] = observed[1], observed[0]
+			case "plan-observed-type":
+				observed[0].(map[string]any)["type"] = "config"
+			case "plan-before-key":
+				observed[0].(map[string]any)["before"].(map[string]any)["extra"] = true
+			case "plan-noop-extra", "plan-noop-valid":
+				observed[0].(map[string]any)["before"] = map[string]any{"active": true, "enabled": true}
+				if id == "plan-noop-valid" {
+					plan["changes"] = changes[:1]
+				}
+			case "plan-manifest-hash":
+				plan["manifest_sha256"] = strings.Repeat("0", 64)
+			case "plan-target":
+				plan["target_id"] = "other"
+			}
+		}, true, want)
+	}
+	planCheck("plan-self-hash", func(plan map[string]any) { plan["sha256"] = strings.Repeat("0", 64) }, false, "invalid_input")
+}
+
+func TestAdditionalManagementInputVectors(t *testing.T) {
+	t.Parallel()
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	read := func(anchor string) map[string]any {
+		pattern := regexp.MustCompile("(?s)<a id=\"" + regexp.QuoteMeta(anchor) + "\"></a>.*?```json\\n(.*?)\\n```")
+		match := pattern.FindStringSubmatch(document)
+		if len(match) != 2 {
+			t.Fatalf("fixture.concrete.presence.%s", anchor)
+		}
+		if _, err := additionalOIDCJSONObject([]byte(match[1])); err != nil {
+			t.Fatalf("fixture.concrete.schema.%s: %v", anchor, err)
+		}
+		decoder := json.NewDecoder(strings.NewReader(match[1]))
+		decoder.UseNumber()
+		var result map[string]any
+		if err := decoder.Decode(&result); err != nil {
+			t.Fatalf("fixture.concrete.schema.%s: %v", anchor, err)
+		}
+		return result
+	}
+	canonical := func(value any) []byte {
+		var buffer bytes.Buffer
+		encoder := json.NewEncoder(&buffer)
+		encoder.SetEscapeHTML(false)
+		if err := encoder.Encode(value); err != nil {
+			t.Fatal(err)
+		}
+		return bytes.TrimSuffix(buffer.Bytes(), []byte("\n"))
+	}
+	hash := func(value any) string {
+		digest := sha256.Sum256(canonical(value))
+		return hex.EncodeToString(digest[:])
+	}
+	management := read("additional-management-fixed-inputs")
+	history := management["history"].([]any)
+	if len(history) != 3 || history[0].(map[string]any)["id"] != "b20260101000000" || history[1].(map[string]any)["id"] != "b20260102000000" || history[2].(map[string]any)["id"] != "b20260102000001" {
+		t.Fatal("fixture.concrete.history.binding")
+	}
+	stats := management["stats_response"].(map[string]any)
+	if string(canonical(stats["summary"])) != `{"duration_count":1,"duration_sum_seconds":10,"status_counts":{"failure_build":1,"success":1},"total":2}` {
+		t.Fatal("fixture.concrete.stats.summary")
+	}
+	for _, value := range history {
+		row := value.(map[string]any)
+		if row["status"] == "failure_build" && row["failure_category"] != "pipeline_exit" {
+			t.Fatal("fixture.concrete.history.category")
+		}
+	}
+	state := management["build_state"].(map[string]any)
+	queued := state["queued"].([]any)
+	ids := management["reorder_request"].(map[string]any)["body"].(map[string]any)["queue_ids"].([]any)
+	if len(queued) != 2 || len(ids) != 2 || queued[0].(map[string]any)["id"] != ids[0] || queued[1].(map[string]any)["id"] != ids[1] || ids[0] != "q20260102000000" || ids[1] != "q20260102000000-001" {
+		t.Fatal("fixture.concrete.queue.binding")
+	}
+	inputs := read("additional-management-state-inputs")
+	snapshot := inputs["snapshot"].(map[string]any)
+	if len(snapshot["files"].(map[string]any)) != 13 || hash(snapshot["files"]) != "6d21ac0c8cbd9a2e802717f11ec3a7a1d9fbffb17e91d8042a9f4331a061bcc5" || snapshot["sha256"] != hash(snapshot["files"]) {
+		t.Fatal("fixture.concrete.snapshot.digest")
+	}
+	payload := inputs["notify_payload"].(map[string]any)
+	if hash(payload["payload"]) != "3ab1644e8b1fcc545756baa961ec40b34cdeabd048650c420887fbdbbed7eebb" || payload["payload_sha256"] != hash(payload["payload"]) || inputs["notify_delivery"].(map[string]any)["payload_sha256"] != payload["payload_sha256"] {
+		t.Fatal("fixture.concrete.resend.payload")
+	}
+	public := read("additional-management-public-inputs")
+	key := "76144c2400bc476b3d4081c4f2ae5b76668b33fa9887ab95f86f97680e73638e"
+	entry := public["response_cache"].(map[string]any)["entries"].(map[string]any)[key].(map[string]any)
+	if hash(public["cache_key_input"]) != key || hash(entry["vary"]) != key || entry["key"] != key || hash(entry["body"]) != "1f68af6ca60ce02c628ec72cdf1ff65bb2180aecb73dc2091c3072a1d84a70c9" || entry["body_sha256"] != hash(entry["body"]) {
+		t.Fatal("fixture.concrete.cache.digest")
+	}
+	raw, err := hex.DecodeString(public["share_entropy_hex"].(string))
+	if err != nil || len(raw) != 32 {
+		t.Fatal("fixture.concrete.share.entropy")
+	}
+	digest := sha256.Sum256(raw)
+	link := public["share_links"].(map[string]any)["links"].([]any)[0].(map[string]any)
+	if link["token_hash"] != hex.EncodeToString(digest[:]) {
+		t.Fatal("fixture.concrete.share.hash: expected raw-byte hash")
+	}
+	event := public["event_appends"].([]any)[0].(map[string]any)
+	wantFrame := "id: evt_20260102000000\nevent: admin-event\ndata: " + string(canonical(event)) + "\n\n: keepalive\n\nevent: error\ndata: {\"error\":\"Admin events read failed\"}\n\n"
+	if public["event_stream_expected"] != wantFrame {
+		t.Fatal("fixture.concrete.event.frame")
+	}
+	for status, value := range public["badge_svg"].(map[string]any) {
+		data := value.(string)
+		decoder := xml.NewDecoder(strings.NewReader(data))
+		var names, texts, fills []string
+		for {
+			token, err := decoder.Token()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				t.Fatalf("fixture.concrete.badge.xml.%s", status)
+			}
+			switch element := token.(type) {
+			case xml.StartElement:
+				names = append(names, element.Name.Local)
+				for _, attribute := range element.Attr {
+					if strings.HasPrefix(attribute.Name.Local, "on") || strings.Contains(attribute.Value, "url(") {
+						t.Fatalf("fixture.concrete.badge.security.%s", status)
+					}
+					if element.Name.Local == "rect" && attribute.Name.Local == "fill" {
+						fills = append(fills, attribute.Value)
+					}
+				}
+			case xml.CharData:
+				if strings.TrimSpace(string(element)) != "" {
+					texts = append(texts, string(element))
+				}
+			}
+		}
+		colors := map[string]string{"success": "#2e7d32", "failure": "#c62828", "running": "#1565c0", "skipped": "#6d6d6d", "unknown": "#455a64"}
+		if len(public["badge_svg"].(map[string]any)) != len(colors) || colors[status] == "" || strings.Join(names, ",") != "svg,rect,rect,text,text" || strings.Join(texts, ",") != "Adlaire CI,"+status || strings.Join(fills, ",") != "#555555,"+colors[status] || !strings.HasSuffix(data, "</svg>\n") || !strings.Contains(data, `width="120" height="20" viewBox="0 0 120 20" role="img" aria-label="Adlaire CI: `+status+`"`) {
+			t.Fatalf("fixture.concrete.badge.structure.%s", status)
+		}
+	}
+	permissions := []string{"build:write", "config:read", "config:write", "status:read", "system:admin", "user:admin"}
+	bootstrap := read("additional-management-bootstrap-inputs")
+	for _, name := range []string{"self_admin", "self_oidc", "self_manager"} {
+		self := bootstrap[name].(map[string]any)
+		capabilities := self["capabilities"].(map[string]any)
+		if len(capabilities) != len(permissions) {
+			t.Fatal("fixture.concrete.self.capability-closure")
+		}
+		for _, permission := range permissions {
+			want := name == "self_admin" || name == "self_oidc" && (permission == "status:read" || permission == "build:write" || permission == "config:read") || name == "self_manager" && permission == "user:admin"
+			if capabilities[permission] != want {
+				t.Fatalf("fixture.concrete.self.capability.%s.%s", name, permission)
+			}
+		}
+		user := self["user"].(map[string]any)
+		if len(user) != 10 || user["credential"] != nil || user["totp"] != nil || user["password_set"] != (name != "self_oidc") {
+			t.Fatal("fixture.concrete.self.projection")
+		}
+	}
+	if string(canonical(bootstrap["options_legacy"])) != `{"profile":"legacy-v1","providers":[]}` || string(canonical(bootstrap["options_multi"])) != `{"profile":"multi-user-v1","providers":[{"id":"fixture","issuer_origin":"https://id.example.test"}]}` {
+		t.Fatal("fixture.concrete.bootstrap.options")
+	}
+	authorization := read("additional-management-authorization-inputs")
+	requests := authorization["requests"].([]any)
+	sdk := read("additional-management-sdk-inputs")["rows"].([]any)
+	if len(requests) != 50 || len(sdk) != 50 {
+		t.Fatal("fixture.concrete.transport.count")
+	}
+	seenRoutes, seenMethods := map[string]bool{}, map[string]bool{}
+	protected, publicCount, sessionSelf := 0, 0, 0
+	api := phase11MustReadText(t, "docs/details/api.md")
+	api = strings.Split(strings.Split(api, "<a id=\"additional-management-api-contract\"></a>")[1], "<a id=\"phase-13-api-alignment-contract\"></a>")[0]
+	apiRoutes := regexp.MustCompile("(?m)^\\| `(GET|POST|PATCH|DELETE)` \\| `([^`]+)` \\|").FindAllStringSubmatch(api, -1)
+	if len(apiRoutes) != len(requests) {
+		t.Fatal("fixture.concrete.transport.api-closure")
+	}
+	for index, value := range requests {
+		request := value.(map[string]any)
+		row := sdk[index].(map[string]any)
+		key := request["method"].(string) + " " + request["route_template"].(string)
+		if seenRoutes[key] || seenMethods[row["sdk_method"].(string)] || request["method"] != row["http_method"] || request["path"] != row["http_path"] {
+			t.Fatalf("fixture.concrete.transport.binding.%d", index)
+		}
+		seenRoutes[key], seenMethods[row["sdk_method"].(string)] = true, true
+		if !strings.Contains(api, "| `"+request["method"].(string)+"` | `"+request["route_template"].(string)+"` |") {
+			t.Fatalf("fixture.concrete.transport.route.%s", key)
+		}
+		if request["required_permission"] != nil {
+			protected++
+			if request["denied_actor_id"] == nil {
+				t.Fatal("fixture.concrete.transport.denied-actor")
+			}
+		} else if request["auth_boundary"] == "session-self" {
+			sessionSelf++
+		} else {
+			publicCount++
+		}
+	}
+	if protected != 45 || publicCount != 4 || sessionSelf != 1 || !seenMethods["getCurrentUser"] || !seenMethods["getAuthOptions"] {
+		t.Fatal("fixture.concrete.transport.auth-closure")
+	}
+	migration := read("additional-management-migration-inputs")
+	journal := migration["journal"].(map[string]any)
+	for name, value := range migration["source"].(map[string]any) {
+		digest := sha256.Sum256(append(canonical(value), '\n'))
+		if journal["source_sha256"].(map[string]any)[name] != hex.EncodeToString(digest[:]) {
+			t.Fatalf("fixture.concrete.migration.source.%s", name)
+		}
+	}
+	for name, value := range migration["outputs"].(map[string]any) {
+		if journal["output_sha256"].(map[string]any)[name] != hash(value) {
+			t.Fatalf("fixture.concrete.migration.output.%s", name)
+		}
+	}
+	if journal["output_sha256"].(map[string]any)[".users"] != "ec4dc9f8bd7d0e46ba7a6c9529e7e03386c7740784f93260ae4c615408eea836" {
+		t.Fatal("fixture.concrete.migration.user-golden")
+	}
+	archives := read("additional-management-site-diff-inputs")
+	for _, side := range []string{"left", "right"} {
+		input := archives[side].(map[string]any)
+		data, err := base64.StdEncoding.Strict().DecodeString(input["archive_base64"].(string))
+		if err != nil {
+			t.Fatalf("fixture.concrete.archive.base64.%s", side)
+		}
+		digest := sha256.Sum256(data)
+		wantArchive := map[string]string{"left": "83f678968b2ab601b3865c90db00cf74da13546adb9ae8cb5067909021c52d8e", "right": "d1027eb4c3c0d48f695b713584e91e0d385fef32637e60ca170ac2b15b87faaa"}
+		if input["archive_sha256"] != hex.EncodeToString(digest[:]) || input["archive_sha256"] != wantArchive[side] {
+			t.Fatalf("fixture.concrete.archive.digest.%s", side)
+		}
+		reader, err := gzip.NewReader(bytes.NewReader(data))
+		if err != nil {
+			t.Fatalf("fixture.concrete.archive.gzip.%s", side)
+		}
+		tarReader := tar.NewReader(reader)
+		files := input["files"].(map[string]any)
+		seen := map[string]bool{}
+		var total int64
+		for {
+			header, err := tarReader.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil || header.Typeflag != tar.TypeReg || seen[header.Name] {
+				t.Fatalf("fixture.concrete.archive.header.%s", side)
+			}
+			body, err := io.ReadAll(io.LimitReader(tarReader, 1025))
+			if err != nil || len(body) > 1024 || files[header.Name] != string(body) || header.Size != int64(len(body)) {
+				t.Fatalf("fixture.concrete.archive.file.%s", side)
+			}
+			digest := sha256.Sum256(body)
+			if input["file_sha256"].(map[string]any)[header.Name] != hex.EncodeToString(digest[:]) {
+				t.Fatalf("fixture.concrete.archive.file-digest.%s", side)
+			}
+			seen[header.Name] = true
+			total += header.Size
+		}
+		if _, err := io.Copy(io.Discard, reader); err != nil {
+			t.Fatalf("fixture.concrete.archive.trailer.%s", side)
+		}
+		if err := reader.Close(); err != nil {
+			t.Fatalf("fixture.concrete.archive.close.%s", side)
+		}
+		meta := input["meta"].(map[string]any)
+		if len(seen) != 3 || len(files) != 3 || meta["file_count"] != json.Number("3") || meta["size_bytes"] != json.Number(strconv.FormatInt(total, 10)) {
+			t.Fatalf("fixture.concrete.archive.metadata.%s", side)
+		}
+	}
+}
+
+func plannedPhaseMaturityBoundary(roadmap string) error {
+	if !strings.Contains(roadmap, "現在の active Phase は設定しない。") || regexp.MustCompile("現在の active Phase は Phase (19|20|21)").MatchString(roadmap) {
+		return fmt.Errorf("planned Phase activation boundary violated")
+	}
+	for phase := 19; phase <= 21; phase++ {
+		pattern := fmt.Sprintf("(?m)^\\| Phase %d \\| [^\\n]+ \\| 仕様化済み・未実装 \\| Phase %d \\|$", phase, phase-1)
+		if len(regexp.MustCompile(pattern).FindAllString(roadmap, -1)) != 1 {
+			return fmt.Errorf("planned Phase %d must remain specified and unimplemented", phase)
+		}
+	}
+	return nil
+}
+
+func TestPhase19SpecificationContracts(t *testing.T) {
+	t.Parallel()
+
+	files := []string{
+		"docs/SPEC.md", "docs/ROADMAP.md", "docs/DETAIL_INDEX.md",
+		"docs/DOCUMENT_INDEX.md", "docs/DESIGN.md",
+		"docs/details/statefile.md", "docs/details/runner.md",
+		"docs/details/archive.md", "docs/details/security.md",
+		"docs/details/api.md", "docs/details/sdk.md", "docs/details/ui.md",
+		"docs/details/admin.md", "docs/details/release.md",
+		"docs/details/setup.md", "docs/details/commitstatus.md",
+		"docs/details/fixture.md", "docs/details/production-validation.md",
+	}
+	documents := make(map[string]string, len(files))
+	for _, path := range files {
+		documents[path] = phase11MustReadText(t, path)
+	}
+	if err := phase19ValidateSpecification(documents); err != nil {
+		t.Fatalf("runner.phase19-spec.positive.accept: expected valid specification, actual %v", err)
+	}
+	for _, mutation := range []struct {
+		name string
+		path string
+		from string
+		to   string
+	}{
+		{"invalid-arity", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "int(1)"`},
+		{"reversed-range", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "int(16,1)"`},
+		{"unknown-function", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "execute(1,16)"`},
+		{"duplicate-json-key", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "int(1,16)", "parallel": "int(1,16)"`},
+		{"duplicate-enum", "docs/details/statefile.md", `enum(builder)`, `enum(builder,builder)`},
+		{"recursive-type", "docs/details/statefile.md", `"Id": "id"`, `"Id": "Id"`},
+		{"environment-key-type", "docs/details/statefile.md", `"env": "envmap(EnvValue,0,64)"`, `"env": "map(EnvValue,0,64)"`},
+		{"site-atomic-state", "docs/details/statefile.md", `"counters": "SiteCounters"`, `"wrong_counters": "SiteCounters"`},
+		{"site-retention-clock", "docs/details/statefile.md", `"committed_at": "Time"`, `"committed_at": "Id"`},
+		{"planned-selection", "docs/details/statefile.md", `"selected": "bool"`, `"wrong_selected": "bool"`},
+		{"planned-task", "docs/details/statefile.md", `"task": "PlannedTask"`, `"task": "Task"`},
+		{"planned-artifact-id", "docs/details/statefile.md", "\"PlannedDeployTask\": {\n      \"kind\": \"enum(deploy)\",\n      \"environment_id\": \"Id\",\n      \"artifact_from\": \"Id\"", "\"PlannedDeployTask\": {\n      \"kind\": \"enum(deploy)\",\n      \"environment_id\": \"Id\",\n      \"artifact_from\": \"JobId\""},
+		{"cursor-revision", "docs/details/statefile.md", "\"TriggerCursor\": {\n      \"project_id\": \"Id\",\n      \"definition_id\": \"Id\",\n      \"definition_revision\": \"int(1,2147483647)\"", "\"TriggerCursor\": {\n      \"project_id\": \"Id\",\n      \"definition_id\": \"Id\",\n      \"definition_revision\": \"Id\""},
+		{"operation-attempt", "docs/details/statefile.md", `"target_attempt": "nullable(int(1,100))"`, `"target_attempt": "nullable(Id)"`},
+		{"operation-digest-target", "docs/details/statefile.md", `"target_id": "nullable(text(1,64))"`, `"target_id": "nullable(Id)"`},
+		{"audit-digest-target", "docs/details/statefile.md", "\"at\": \"Time\",\n      \"target_id\": \"nullable(text(1,64))\"", "\"at\": \"Time\",\n      \"target_id\": \"nullable(Id)\""},
+		{"deployment-observation", "docs/details/statefile.md", `"observations": "list(StageObservation,0,512)"`, `"observations": "list(StageObservation,0,32)"`},
+		{"notification-attempt", "docs/details/statefile.md", `"target_attempt": "int(1,100)"`, `"target_attempt": "int(1,3)"`},
+		{"worker-lease-project", "docs/details/statefile.md", "\"Lease\": {\n      \"project_id\": \"Id\"", "\"Lease\": {\n      \"project_id\": \"JobId\""},
+		{"worker-assignment-digest", "docs/details/statefile.md", `"assignment_digest": "Digest"`, `"assignment_digest": "Id"`},
+		{"worker-execution-id", "docs/details/statefile.md", `"execution_id": "nullable(Id)"`, `"execution_id": "nullable(Digest)"`},
+		{"worker-assignment-size", "docs/details/statefile.md", `"assignment_bytes": "int(1,2097152)"`, `"assignment_bytes": "int(0,2097152)"`},
+		{"worker-toolchain-digest", "docs/details/statefile.md", "\"assignment_digest\": \"Digest\",\n      \"toolchain_digest\": \"Digest\"", "\"assignment_digest\": \"Digest\",\n      \"toolchain_digest\": \"Id\""},
+		{"roadmap-inventory-state", "docs/ROADMAP.md", "| 仕様化済み・未実装 | CI / CD | Phase 19", "| 改訂予定 | CI / CD | Phase 19"},
+		{"roadmap-phase20-implemented", "docs/ROADMAP.md", "| 仕様化済み・未実装 | Phase 19 |", "| 実装済み | Phase 19 |"},
+		{"roadmap-phase21-active", "docs/ROADMAP.md", "現在の active Phase は設定しない。", "現在の active Phase は Phase 21。"},
+		{"roadmap-phase21-missing", "docs/ROADMAP.md", "| Phase 21 |", "| Phase 99 |"},
+		{"unknown-type", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "MissingType"`},
+		{"missing-sdk", "docs/details/sdk.md", "| `runStart(params,body,options)` |", "| `missing(params,body,options)` |"},
+		{"missing-ui", "docs/details/ui.md", "| runStart |", "| missing |"},
+		{"missing-cli", "docs/details/admin.md", "| `run-start` | runStart |", "| `missing` | missing |"},
+		{"duplicate-route", "docs/details/api.md", "| runStart | POST", "| plan | POST"},
+		{"duplicate-anchor", "docs/details/security.md", "<a id=\"phase-19-permission-matrix\"></a>", "<a id=\"phase-19-permission-matrix\"></a><a id=\"phase-19-permission-matrix\"></a>"},
+	} {
+		t.Run(mutation.name, func(t *testing.T) {
+			changed := make(map[string]string, len(documents))
+			for path, content := range documents {
+				changed[path] = content
+			}
+			if !strings.Contains(changed[mutation.path], mutation.from) {
+				t.Fatalf("runner.phase19-spec.%s.fixture: expected mutation target, actual missing", mutation.name)
+			}
+			changed[mutation.path] = strings.Replace(changed[mutation.path], mutation.from, mutation.to, 1)
+			if err := phase19ValidateSpecification(changed); err == nil {
+				t.Fatalf("runner.phase19-spec.%s.reject: expected rejected, actual accepted; specification mutation survived: %s", mutation.name, mutation.name)
+			}
+		})
+	}
+}
+
+func phase19SchemaReferences(expression string, types map[string]json.RawMessage) ([]string, error) {
+	tokens := regexp.MustCompile("[A-Za-z][A-Za-z0-9_.-]*|-?[0-9]+|[(),]").FindAllString(expression, -1)
+	if strings.Join(tokens, "") != expression || len(tokens) == 0 {
+		return nil, fmt.Errorf("invalid schema syntax %q", expression)
+	}
+	position := 0
+	take := func() string {
+		if position >= len(tokens) {
+			return ""
+		}
+		value := tokens[position]
+		position++
+		return value
+	}
+	require := func(want string) error {
+		if got := take(); got != want {
+			return fmt.Errorf("expected %q, got %q in %s", want, got, expression)
+		}
+		return nil
+	}
+	number := func() (int64, error) {
+		token := take()
+		value, err := strconv.ParseInt(token, 10, 64)
+		if err != nil || value < -9007199254740991 || value > 9007199254740991 || strconv.FormatInt(value, 10) != token {
+			return 0, fmt.Errorf("invalid schema integer %q", token)
+		}
+		return value, nil
+	}
+	atoms := map[string]bool{"id": true, "jobid": true, "digest": true, "sha": true, "utc": true,
+		"relpath": true, "abspath": true, "glob": true, "ref": true, "url": true,
+		"scalar": true, "base64": true, "bool": true}
+	references := []string{}
+	var parse func(int) error
+	parse = func(depth int) error {
+		if depth > 32 {
+			return fmt.Errorf("schema nesting too deep")
+		}
+		name := take()
+		if atoms[name] {
+			return nil
+		}
+		if types[name] != nil {
+			references = append(references, name)
+			return nil
+		}
+		if err := require("("); err != nil {
+			return fmt.Errorf("unknown schema type/function %q: %w", name, err)
+		}
+		switch name {
+		case "nullable", "list", "map", "envmap":
+			if err := parse(depth + 1); err != nil {
+				return err
+			}
+			if name != "nullable" {
+				if err := require(","); err != nil {
+					return err
+				}
+				minimum, err := number()
+				if err != nil {
+					return err
+				}
+				if err := require(","); err != nil {
+					return err
+				}
+				maximum, err := number()
+				if err != nil || minimum < 0 || maximum < minimum {
+					return fmt.Errorf("invalid schema collection range")
+				}
+			}
+		case "int", "text":
+			minimum, err := number()
+			if err != nil {
+				return err
+			}
+			if err := require(","); err != nil {
+				return err
+			}
+			maximum, err := number()
+			if err != nil || maximum < minimum || (name == "text" && minimum < 0) {
+				return fmt.Errorf("invalid schema scalar range")
+			}
+		case "oneof", "enum":
+			seen := map[string]bool{}
+			for {
+				start := position
+				if name == "oneof" {
+					if err := parse(depth + 1); err != nil {
+						return err
+					}
+				} else if !regexp.MustCompile("^[A-Za-z][A-Za-z0-9_.-]*$").MatchString(take()) {
+					return fmt.Errorf("invalid enum value")
+				}
+				value := strings.Join(tokens[start:position], "")
+				if seen[value] {
+					return fmt.Errorf("duplicate schema alternative %s", value)
+				}
+				seen[value] = true
+				if position >= len(tokens) || tokens[position] != "," {
+					break
+				}
+				position++
+			}
+			if name == "oneof" && len(seen) < 2 {
+				return fmt.Errorf("oneof requires two alternatives")
+			}
+		case "legacy":
+			if name := take(); name != "AdminCredentials" && name != "TOTPSecret" {
+				return fmt.Errorf("unknown legacy type")
+			}
+		case "const":
+			if value := take(); value != "1" && value != "false" {
+				return fmt.Errorf("unsupported schema constant")
+			}
+		default:
+			return fmt.Errorf("unknown schema function %s", name)
+		}
+		return require(")")
+	}
+	if err := parse(0); err != nil {
+		return nil, err
+	}
+	if position != len(tokens) {
+		return nil, fmt.Errorf("trailing schema tokens in %s", expression)
+	}
+	return references, nil
+}
+
+func phase19ValidateSpecification(documents map[string]string) error {
+	for path, content := range documents {
+		anchors := regexp.MustCompile("<a id=\"(phase-19-[^\"]+)\"></a>").FindAllStringSubmatch(content, -1)
+		seen := make(map[string]bool)
+		for _, anchor := range anchors {
+			if seen[anchor[1]] {
+				return fmt.Errorf("duplicate Phase 19 anchor in %s: %s", path, anchor[1])
+			}
+			seen[anchor[1]] = true
+		}
+	}
+	state := documents["docs/details/statefile.md"]
+	block := regexp.MustCompile("(?s)```json\\n(.*?)\\n```").FindStringSubmatch(state)
+	if len(block) != 2 {
+		return fmt.Errorf("Phase 19 schema registry missing")
+	}
+	var registry struct {
+		SchemaVersion int                        `json:"schema_version"`
+		Profile       string                     `json:"profile"`
+		Types         map[string]json.RawMessage `json:"types"`
+	}
+	if err := developmentActionsDecodeJSON([]byte(block[1]), &registry, 1048576, true); err != nil {
+		return fmt.Errorf("Phase 19 schema registry: %w", err)
+	}
+	if registry.SchemaVersion != 1 || registry.Profile != "cicd-v1" || len(registry.Types) != 85 {
+		return fmt.Errorf("Phase 19 registry identity or coverage invalid")
+	}
+	dependencies := make(map[string][]string)
+	for name, raw := range registry.Types {
+		if !regexp.MustCompile("^[A-Za-z][A-Za-z0-9]*$").MatchString(name) {
+			return fmt.Errorf("invalid Phase 19 type name %s", name)
+		}
+		expressions := map[string]string{}
+		var alias string
+		if json.Unmarshal(raw, &alias) == nil {
+			expressions[name] = alias
+		} else if err := json.Unmarshal(raw, &expressions); err != nil || len(expressions) == 0 {
+			return fmt.Errorf("invalid Phase 19 object schema %s", name)
+		}
+		for field, expression := range expressions {
+			refs, err := phase19SchemaReferences(expression, registry.Types)
+			if err != nil {
+				return fmt.Errorf("%s.%s: %w", name, field, err)
+			}
+			dependencies[name] = append(dependencies[name], refs...)
+		}
+	}
+	visiting, complete := map[string]bool{}, map[string]bool{}
+	var visit func(string) error
+	visit = func(name string) error {
+		if visiting[name] {
+			return fmt.Errorf("recursive Phase 19 schema %s", name)
+		}
+		if complete[name] {
+			return nil
+		}
+		visiting[name] = true
+		for _, dependency := range dependencies[name] {
+			if err := visit(dependency); err != nil {
+				return err
+			}
+		}
+		visiting[name], complete[name] = false, true
+		return nil
+	}
+	for name := range registry.Types {
+		if err := visit(name); err != nil {
+			return err
+		}
+	}
+	for name, fields := range map[string]map[string]string{
+		"Job":               {"env": "envmap(EnvValue,0,64)", "secrets": "envmap(SecretRef,0,16)"},
+		"PlannedJob":        {"env": "envmap(EnvValue,0,64)", "secrets": "envmap(SecretRef,0,16)", "selected": "bool", "task": "PlannedTask"},
+		"PlannedDeployTask": {"artifact_from": "Id"},
+		"TriggerCursor":     {"definition_revision": "int(1,2147483647)"},
+		"SiteState":         {"route": "Route", "operations": "list(SiteOperation,0,1024)", "counters": "SiteCounters"},
+		"Root":              {"secrets": "list(SecretMeta,0,10000)"},
+		"Lease":             {"project_id": "Id"},
+		"JobResult":         {"execution_id": "nullable(Id)"},
+		"WorkerExecution":   {"job": "JobResult", "lease_generation": "int(1,9007199254740991)", "assignment_bytes": "int(1,2097152)", "assignment_digest": "Digest", "toolchain_digest": "Digest"},
+		"SiteOperation":     {"committed_at": "Time"},
+		"Operation":         {"target_id": "nullable(text(1,64))", "target_attempt": "nullable(int(1,100))"},
+		"Audit":             {"target_id": "nullable(text(1,64))"},
+		"Deployment":        {"observations": "list(StageObservation,0,512)"},
+		"Notification":      {"target_attempt": "int(1,100)", "source_revision": "int(1,2147483647)"},
+	} {
+		var actual map[string]string
+		if err := json.Unmarshal(registry.Types[name], &actual); err != nil {
+			return fmt.Errorf("required Phase 19 schema %s: %w", name, err)
+		}
+		for field, want := range fields {
+			if actual[field] != want {
+				return fmt.Errorf("Phase 19 %s.%s: want %s, got %s", name, field, want, actual[field])
+			}
+		}
+	}
+	if strings.Contains(documents["docs/ROADMAP.md"], "| 改訂予定 | CI / CD | Phase 19") {
+		return fmt.Errorf("Phase 19 inventory maturity contradicts phase plan")
+	}
+	api := documents["docs/details/api.md"]
+	section := strings.Split(api, "<a id=\"phase-19-error-catalog\"></a>")[0]
+	routes := regexp.MustCompile("(?m)^\\| ([A-Za-z][A-Za-z0-9]*) \\| (GET|POST|PUT|DELETE) `([^\x60]+)` \\|").FindAllStringSubmatch(section, -1)
+	if len(routes) != 53 {
+		return fmt.Errorf("Phase 19 operation catalog incomplete")
+	}
+	seenIDs := make(map[string]bool)
+	seenRoutes := make(map[string]bool)
+	for _, route := range routes {
+		id, wire := route[1], route[2]+" "+route[3]
+		if seenIDs[id] || seenRoutes[wire] {
+			return fmt.Errorf("duplicate Phase 19 operation %s", id)
+		}
+		seenIDs[id], seenRoutes[wire] = true, true
+		if !strings.Contains(documents["docs/details/sdk.md"], "| `"+id+"(params,body,options)` | "+id+" |") {
+			return fmt.Errorf("Phase 19 SDK method missing: %s", id)
+		}
+		if !regexp.MustCompile("(?m)^\\| " + id + " \\| [a-z]+ \\| `cicd-[a-z-]+` \\|$").MatchString(documents["docs/details/ui.md"]) {
+			return fmt.Errorf("Phase 19 UI action missing: %s", id)
+		}
+		if !regexp.MustCompile("(?m)^\\| `[a-z-]+` \\| " + id + " \\|$").MatchString(documents["docs/details/admin.md"]) {
+			return fmt.Errorf("Phase 19 CLI command missing: %s", id)
+		}
+	}
+	if err := plannedPhaseMaturityBoundary(documents["docs/ROADMAP.md"]); err != nil {
+		return err
+	}
+	fixture := documents["docs/details/fixture.md"]
+	for _, id := range []string{
+		"PLAN", "EVENT", "DAG", "RETRY", "CANCEL", "WORKER", "ISOLATION", "CACHE",
+		"ARTIFACT", "APPROVAL", "DEPLOY", "DURABILITY", "ACCESS", "LOG-UI", "RELEASE", "STATUS",
+	} {
+		if !strings.Contains(fixture, "| P19-"+id+" |") {
+			return fmt.Errorf("Phase 19 fixture contract missing: %s", id)
+		}
+	}
+	return nil
+}
 
 func TestDispatchMainExactBasename(t *testing.T) {
 	t.Parallel()
@@ -1647,7 +5583,7 @@ func TestPhase13ImplementationAlignmentQualityEvidence(t *testing.T) {
 	if strings.Count(workflow, "timeout-minutes:") < len(phase13RequiredChecks) {
 		t.Fatalf("Phase 13 workflow must set timeout-minutes on every required check")
 	}
-	phase13RequirePinnedActions(t, workflow)
+	phase13RequireNodeFreeWorkflow(t, workflow)
 }
 
 func TestPhase15ObsidianLocalSyncEvidence(t *testing.T) {
@@ -1727,7 +5663,7 @@ func TestPhase15ObsidianLocalSyncEvidence(t *testing.T) {
 			t.Fatalf("Phase 15 workflow must define required check job %s", requiredCheck)
 		}
 	}
-	phase13RequirePinnedActions(t, workflow)
+	phase13RequireNodeFreeWorkflow(t, workflow)
 }
 
 type phase11Manifest struct {
@@ -2751,7 +6687,7 @@ func phase16RequireWorkflow(t *testing.T, path string) {
 	if strings.Count(workflow, "timeout-minutes:") < len(phase16RequiredChecks) {
 		t.Fatalf("%s must set timeout-minutes on every required check", path)
 	}
-	phase13RequirePinnedActions(t, workflow)
+	phase13RequireNodeFreeWorkflow(t, workflow)
 }
 
 func phase16RequireDocumentDriftClosed(t *testing.T) {
@@ -4180,7 +8116,7 @@ func phase17RequireWorkflow(t *testing.T, path string) {
 	if strings.Count(workflow, "timeout-minutes:") < len(phase17RequiredChecks) {
 		t.Fatalf("%s must set timeout-minutes on every Phase 17 job", path)
 	}
-	phase13RequirePinnedActions(t, workflow)
+	phase13RequireNodeFreeWorkflow(t, workflow)
 }
 
 func phase17RequireDocumentState(t *testing.T) {
@@ -5638,7 +9574,7 @@ func phase18RequireWorkflow(t *testing.T, path string) {
 	if !strings.Contains(workflow, "go test ./... -run TestPhase18VPSPullBootstrapEvidence -count=1") {
 		t.Fatalf("%s must run the Phase 18 evidence checker directly", path)
 	}
-	phase13RequirePinnedActions(t, workflow)
+	phase13RequireNodeFreeWorkflow(t, workflow)
 }
 
 func phase18RequireBootstrapScriptArtifact(t *testing.T, path string, scope phase18OperationScopeFile) {
@@ -5759,13 +9695,13 @@ func phase18RequireDocumentState(t *testing.T) {
 		t.Fatalf("docs/ROADMAP.md must mark Phase 18 implemented after repository and live VPS completion evidence close the state-transition gate")
 	}
 	if !strings.Contains(roadmap, "現在の active Phase は設定しない。") {
-		t.Fatalf("docs/ROADMAP.md must leave active Phase unset after Phase 18 completion while Phase 19 remains 改訂予定")
+		t.Fatalf("docs/ROADMAP.md must leave active Phase unset after Phase 18 completion while Phase 19 awaits implementation approval")
 	}
 	if strings.Contains(roadmap, phase18InProgressStatus) || strings.Contains(roadmap, "現在の active Phase は Phase 18") || strings.Contains(roadmap, "Phase 18 は `仕様化済み・未実装`") {
 		t.Fatalf("docs/ROADMAP.md must not retain a stale Phase 18 active or incomplete state after the state-transition gate closes")
 	}
-	if !strings.Contains(roadmap, "Phase 19 と Phase 20 は `改訂予定` の後続 Phase") || strings.Contains(roadmap, "現在の active Phase は Phase 19") || strings.Contains(roadmap, "現在の active Phase は Phase 20") {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 19 and Phase 20 non-active until their specification gates are complete")
+	if err := plannedPhaseMaturityBoundary(roadmap); err != nil {
+		t.Fatal(err)
 	}
 	for _, token := range []string{
 		"Phase 11 から Phase 18 の完了証跡条件、closure counter、record schema、required check は ROADMAP 本文で再掲せず",
@@ -6572,28 +10508,17 @@ func phase13ReadJSONLines(t *testing.T, path string) []map[string]any {
 	return records
 }
 
-func phase13RequirePinnedActions(t *testing.T, workflow string) {
+func phase13RequireNodeFreeWorkflow(t *testing.T, workflow string) {
 	t.Helper()
-
-	for _, line := range strings.Split(workflow, "\n") {
-		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "- uses: ") {
-			continue
-		}
-		parts := strings.Split(line, "@")
-		if len(parts) != 2 {
-			t.Fatalf("workflow action must include one @ ref: %s", line)
-		}
-		ref := strings.TrimSpace(parts[1])
-		if len(ref) != 40 {
-			t.Fatalf("workflow action ref must be a 40 character commit SHA, got %q in %s", ref, line)
-		}
-		for _, char := range ref {
-			if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f')) {
-				t.Fatalf("workflow action ref must be lowercase hex commit SHA, got %q in %s", ref, line)
+	for _, definition := range developmentActionsDefinitions(t) {
+		if strings.HasPrefix(workflow, "name: "+definition.Name+"\n") {
+			if err := developmentActionsCheckWorkflow(definition, workflow); err != nil {
+				t.Fatal(err)
 			}
+			return
 		}
 	}
+	t.Fatal("actions-workflow-contract: unknown workflow")
 }
 
 func phase11RequireNoUnexpectedFixtureDirectories(t *testing.T) {
@@ -6900,15 +10825,56 @@ type developmentActionsJob struct {
 }
 
 type developmentActionsWorkflow struct {
-	Phase int                     `json:"phase"`
-	Name  string                  `json:"name"`
-	Jobs  []developmentActionsJob `json:"jobs"`
+	Phase int                      `json:"phase"`
+	Name  string                   `json:"name"`
+	Jobs  []developmentActionsJob  `json:"jobs"`
+	Setup *developmentActionsSetup `json:"-"`
+}
+
+type developmentActionsSetup struct {
+	GoVersion    string `json:"go_version"`
+	GoSHA256     string `json:"go_sha256"`
+	DenoVersion  string `json:"deno_version"`
+	DenoSHA256   string `json:"deno_sha256"`
+	HelperSHA256 string `json:"helper_sha256"`
+	Checkout     string `json:"checkout"`
+}
+
+func developmentActionsSetupDefinition(t *testing.T) *developmentActionsSetup {
+	t.Helper()
+	text := phase11MustReadText(t, "docs/details/fixture.md")
+	_, section, ok := strings.Cut(text, `<a id="development-actions-node-free-contract"></a>`)
+	if !ok {
+		t.Fatal("actions-setup: missing canonical anchor")
+	}
+	_, section, ok = strings.Cut(section, "```json\n")
+	if !ok {
+		t.Fatal("actions-setup: missing definition")
+	}
+	data, _, ok := strings.Cut(section, "\n```")
+	if !ok {
+		t.Fatal("actions-setup: missing definition end")
+	}
+	var setup developmentActionsSetup
+	if err := developmentActionsDecodeJSON([]byte(data), &setup, 2<<20, true); err != nil {
+		t.Fatal(err)
+	}
+	for _, digest := range []string{setup.GoSHA256, setup.DenoSHA256, setup.HelperSHA256} {
+		decoded, err := hex.DecodeString(digest)
+		if err != nil || len(decoded) != 32 || strings.ToLower(digest) != digest {
+			t.Fatal("actions-setup: invalid digest")
+		}
+	}
+	if !regexp.MustCompile(`^1\.22\.[0-9]+$`).MatchString(setup.GoVersion) || !regexp.MustCompile(`^2\.[0-9]+\.[0-9]+$`).MatchString(setup.DenoVersion) || setup.Checkout == "" {
+		t.Fatal("actions-setup: invalid definition")
+	}
+	return &setup
 }
 
 const developmentActionsGateCommand = `test "$ADLAIRE_ACTIONS_GATE" = required
 test -n "$ADLAIRE_ACTIONS_NEEDS"
-go test . -run '^TestDevelopmentActions(RequiredGate|WorkflowContract|GateControls)$' -count=1 -v | tee "$RUNNER_TEMP/development-actions-gate.log"
-for required_test in TestDevelopmentActionsRequiredGate TestDevelopmentActionsWorkflowContract TestDevelopmentActionsGateControls; do
+go test . -run '^TestDevelopmentActions(RequiredGate|WorkflowContract|GateControls|NodeFreeControls|BootstrapControls)$' -count=1 -v | tee "$RUNNER_TEMP/development-actions-gate.log"
+for required_test in TestDevelopmentActionsRequiredGate TestDevelopmentActionsWorkflowContract TestDevelopmentActionsGateControls TestDevelopmentActionsNodeFreeControls TestDevelopmentActionsBootstrapControls; do
   grep -Fq -- "--- PASS: $required_test (" "$RUNNER_TEMP/development-actions-gate.log"
 done
 grep -Fq '"record_type":"development-actions-gate"' "$RUNNER_TEMP/development-actions-gate.log"`
@@ -6938,6 +10904,7 @@ func developmentActionsDefinitions(t *testing.T) []developmentActionsWorkflow {
 		t.Fatal("actions-definition: workflow set mismatch")
 	}
 	for i, definition := range definitions {
+		definitions[i].Setup = developmentActionsSetupDefinition(t)
 		if definition.Phase != i+12 || definition.Name != names[i] || len(definition.Jobs) != counts[i] {
 			t.Fatal("actions-definition: workflow identity or required job count mismatch")
 		}
@@ -6970,26 +10937,24 @@ func developmentActionsIdentifier(value string) bool {
 
 // This is a fixed workflow serialization oracle, not a general YAML parser.
 func developmentActionsWorkflowText(w developmentActionsWorkflow) string {
+	if w.Setup == nil {
+		return "missing setup definition\n"
+	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "name: %s\n\non:\n  pull_request:\n    types: [opened, synchronize, reopened, ready_for_review]\n", w.Name)
 	if w.Phase == 18 {
 		b.WriteString("  workflow_dispatch:\n")
 	}
 	b.WriteString("  push:\n    branches:\n      - main\n\npermissions:\n  contents: read\n\nconcurrency:\n  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}\n  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n\ndefaults:\n  run:\n    shell: bash\n\njobs:\n")
-	checkout := "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n        with:\n          ref: ${{ github.sha }}\n          persist-credentials: false\n"
-	setupGo := "      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff\n        with:\n          go-version: \"1.22\"\n"
-	setupDeno := "      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed\n        with:\n          deno-version: v2.x\n"
+	checkout := "      - name: Checkout exact source without external actions\n        run: |\n          " + strings.ReplaceAll(w.Setup.Checkout, "\n", "\n          ") + "\n"
+	cleanup := "      - name: Clean temporary toolchain\n        if: ${{ always() }}\n        run: |\n          if test -f .github/scripts/development-ci.sh; then\n            bash .github/scripts/development-ci.sh cleanup\n          else\n            test -z \"${ADLAIRE_CI_TOOLS:-}\"\n          fi\n"
 	for i, job := range w.Jobs {
 		if i != 0 {
 			b.WriteByte('\n')
 		}
 		fmt.Fprintf(&b, "  %s:\n    runs-on: ubuntu-24.04\n    timeout-minutes: %d\n    steps:\n", job.ID, job.Timeout)
 		b.WriteString(checkout)
-		if job.Runtime == "go" {
-			b.WriteString(setupGo)
-		} else {
-			b.WriteString(setupDeno)
-		}
+		fmt.Fprintf(&b, "      - name: Prepare verified %s runtime\n        run: bash .github/scripts/development-ci.sh %s\n", job.Runtime, job.Runtime)
 		if strings.Contains(job.Command, "\n") {
 			b.WriteString("      - run: |\n          ")
 			b.WriteString(strings.ReplaceAll(job.Command, "\n", "\n          "))
@@ -6997,6 +10962,7 @@ func developmentActionsWorkflowText(w developmentActionsWorkflow) string {
 		} else {
 			fmt.Fprintf(&b, "      - run: %s\n", job.Command)
 		}
+		b.WriteString(cleanup)
 	}
 	fmt.Fprintf(&b, "\n  %s:\n    if: ${{ always() }}\n    needs:\n", w.gateID())
 	for _, job := range w.Jobs {
@@ -7004,10 +10970,11 @@ func developmentActionsWorkflowText(w developmentActionsWorkflow) string {
 	}
 	b.WriteString("    runs-on: ubuntu-24.04\n    timeout-minutes: 10\n    steps:\n")
 	b.WriteString(checkout)
-	b.WriteString(setupGo)
+	b.WriteString("      - name: Prepare verified go runtime\n        run: bash .github/scripts/development-ci.sh go\n")
 	b.WriteString("      - name: Verify required checks and checkout identity\n        env:\n          ADLAIRE_ACTIONS_GATE: required\n          ADLAIRE_ACTIONS_NEEDS: ${{ toJSON(needs) }}\n        run: |\n          ")
 	b.WriteString(strings.ReplaceAll(developmentActionsGateCommand, "\n", "\n          "))
 	b.WriteByte('\n')
+	b.WriteString(cleanup)
 	return b.String()
 }
 
@@ -7022,6 +10989,13 @@ func developmentActionsCheckWorkflow(w developmentActionsWorkflow, actual string
 
 func TestDevelopmentActionsWorkflowContract(t *testing.T) {
 	t.Parallel()
+	setup := developmentActionsSetupDefinition(t)
+	if err := developmentActionsCheckHelper(setup, []byte(phase11MustReadText(t, ".github/scripts/development-ci.sh"))); err != nil {
+		t.Fatal(err)
+	}
+	if err := developmentActionsCheckNodeFreeRepository("."); err != nil {
+		t.Fatal(err)
+	}
 	for _, definition := range developmentActionsDefinitions(t) {
 		t.Run("release.development-actions."+definition.Name+".workflow-contract.exact", func(t *testing.T) {
 			path := ".github/workflows/" + definition.Name + ".yml"
@@ -7208,6 +11182,13 @@ func TestDevelopmentActionsRequiredGate(t *testing.T) {
 		}
 		return
 	}
+	setup := developmentActionsSetupDefinition(t)
+	if err := developmentActionsCheckHelper(setup, []byte(phase11MustReadText(t, ".github/scripts/development-ci.sh"))); err != nil {
+		t.Fatal(err)
+	}
+	if err := developmentActionsCheckNodeFreeRepository("."); err != nil {
+		t.Fatal(err)
+	}
 	var definition developmentActionsWorkflow
 	for _, candidate := range developmentActionsDefinitions(t) {
 		if err := developmentActionsCheckWorkflow(candidate, phase11MustReadText(t, ".github/workflows/"+candidate.Name+".yml")); err != nil {
@@ -7228,7 +11209,7 @@ func TestDevelopmentActionsRequiredGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" || !strings.HasPrefix(runtime.Version(), "go1.22.") {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" || runtime.Version() != "go"+definition.Setup.GoVersion {
 		t.Fatal("actions-gate:runtime")
 	}
 	record, err := developmentActionsValidateGate(definition, input)
@@ -7236,6 +11217,14 @@ func TestDevelopmentActionsRequiredGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	record["runtime"] = runtime.Version()
+	setupJSON, err := json.Marshal(definition.Setup)
+	if err != nil {
+		t.Fatal("actions-setup: encoding")
+	}
+	setupSum := sha256.Sum256(setupJSON)
+	record["setup_definition_sha256"] = hex.EncodeToString(setupSum[:])
+	record["helper_sha256"] = definition.Setup.HelperSHA256
+	record["external_action_count"] = 0
 	record["log_retention_days"] = os.Getenv("GITHUB_RETENTION_DAYS")
 	encoded, err := json.Marshal(record)
 	if err != nil {
@@ -7287,7 +11276,7 @@ func TestDevelopmentActionsGateControls(t *testing.T) {
 					Needs: encoded, Event: []byte(`{"number":99,"pull_request":{"head":{"sha":"` + source + `"},"base":{"sha":"` + base + `"}}}`), TestedSHA: target, Parents: []string{base, source}, OSRelease: "ID=ubuntu\nVERSION_ID=\"24.04\"\n",
 				}
 			}
-			passLines := "--- PASS: TestDevelopmentActionsRequiredGate (0.01s)\n--- PASS: TestDevelopmentActionsWorkflowContract (0.01s)\n--- PASS: TestDevelopmentActionsGateControls (0.01s)\n"
+			passLines := "--- PASS: TestDevelopmentActionsRequiredGate (0.01s)\n--- PASS: TestDevelopmentActionsWorkflowContract (0.01s)\n--- PASS: TestDevelopmentActionsGateControls (0.01s)\n--- PASS: TestDevelopmentActionsNodeFreeControls (0.01s)\n--- PASS: TestDevelopmentActionsBootstrapControls (0.01s)\n"
 			marker := `{"record_type":"development-actions-gate"}` + "\n"
 			for _, fixture := range []struct {
 				name, output string
@@ -7505,8 +11494,8 @@ func TestDevelopmentActionsGateControls(t *testing.T) {
 			}
 			for _, change := range [][2]string{
 				{"contents: read", "contents: write"}, {"timeout-minutes: 10", "timeout-minutes: 0"},
-				{"${{ always() }}", "${{ success() }}"}, {"ref: ${{ github.sha }}", "ref: main"},
-				{"persist-credentials: false", "persist-credentials: true"}, {"11d5960a326750d5838078e36cf38b85af677262", "v4"},
+				{"${{ always() }}", "${{ success() }}"}, {"test \"$tested_sha\" = \"$GITHUB_SHA\"", "true"},
+				{"GIT_TERMINAL_PROMPT=0", "GIT_TERMINAL_PROMPT=1"}, {"--no-tags --depth=1", "--tags --depth=5"},
 				{"runs-on: ubuntu-24.04", "runs-on: self-hosted"}, {"cancel-in-progress:", "cancel-disabled:"},
 				{"ADLAIRE_ACTIONS_GATE: required", "ADLAIRE_ACTIONS_GATE: optional"},
 				{"      - " + first + "\n", ""}, {strings.ReplaceAll(developmentActionsGateCommand, "\n", "\n          "), "true"},
@@ -7517,6 +11506,633 @@ func TestDevelopmentActionsGateControls(t *testing.T) {
 				if mutated == canonical || developmentActionsCheckWorkflow(w, mutated) == nil {
 					t.Fatalf("actions-control: canonical workflow mutation not rejected: %s", change[0])
 				}
+			}
+		})
+	}
+}
+
+var developmentActionsNodeCommand = regexp.MustCompile("(?i)(^|[\\s;&|(\"'\\x60])(?:[^\\s;&|(\"'\\x60]*/)?(?:node(?:js)?|npm|npx|pnpm|yarn|corepack)(?:\\.exe)?($|[\\s;&|)\"'\\x60])")
+var developmentActionsNodeAPI = regexp.MustCompile("(?m)[\"'\\x60](?:node:|npm:)|\\brequire\\s*\\(|\\bmodule\\s*\\.\\s*exports\\b|\\bexports\\s*[.\\[]|\\bprocess\\s*[.\\[]|\\bBuffer\\s*\\.|\\b__dirname\\b|\\b__filename\\b")
+
+func developmentActionsStaticString(expr ast.Expr) (string, bool) {
+	switch expr := expr.(type) {
+	case *ast.BasicLit:
+		if expr.Kind == token.STRING {
+			value, err := strconv.Unquote(expr.Value)
+			return value, err == nil
+		}
+	case *ast.ParenExpr:
+		return developmentActionsStaticString(expr.X)
+	case *ast.BinaryExpr:
+		if expr.Op == token.ADD {
+			left, okLeft := developmentActionsStaticString(expr.X)
+			right, okRight := developmentActionsStaticString(expr.Y)
+			return left + right, okLeft && okRight
+		}
+	}
+	return "", false
+}
+
+func developmentActionsCheckNodeContent(path string, data []byte) error {
+	ext := filepath.Ext(path)
+	if ext == ".go" {
+		tree, err := parser.ParseFile(token.NewFileSet(), path, data, parser.SkipObjectResolution)
+		if err != nil {
+			return fmt.Errorf("node-ban:go-syntax")
+		}
+		execNames := map[string]bool{}
+		processNames := map[string]bool{}
+		for _, imp := range tree.Imports {
+			name, err := strconv.Unquote(imp.Path.Value)
+			if err != nil {
+				return fmt.Errorf("node-ban:go-syntax")
+			}
+			if name == "os/exec" || name == "os" || name == "syscall" {
+				alias := "exec"
+				if name == "os" || name == "syscall" {
+					alias = name
+				}
+				if imp.Name != nil {
+					alias = imp.Name.Name
+				}
+				if alias == "." {
+					return fmt.Errorf("node-ban:command")
+				}
+				if name == "os/exec" {
+					execNames[alias] = true
+				} else {
+					processNames[alias] = true
+				}
+			}
+		}
+		var violation error
+		ast.Inspect(tree, func(n ast.Node) bool {
+			if violation != nil {
+				return false
+			}
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			pkg, ok := sel.X.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			spawn := execNames[pkg.Name] && (sel.Sel.Name == "Command" || sel.Sel.Name == "CommandContext" || sel.Sel.Name == "LookPath")
+			spawn = spawn || processNames[pkg.Name] && (sel.Sel.Name == "StartProcess" || sel.Sel.Name == "Exec" || sel.Sel.Name == "ForkExec")
+			if !spawn {
+				return true
+			}
+			start := 0
+			if sel.Sel.Name == "CommandContext" {
+				start = 1
+			}
+			if len(call.Args) <= start {
+				violation = fmt.Errorf("node-ban:go-syntax")
+				return false
+			}
+			for _, argument := range call.Args[start:] {
+				if value, ok := developmentActionsStaticString(argument); ok && developmentActionsNodeCommand.MatchString(value) {
+					violation = fmt.Errorf("node-ban:command")
+				}
+			}
+			return true
+		})
+		if violation != nil {
+			return violation
+		}
+		if !strings.HasSuffix(path, "_test.go") {
+			var found bool
+			ast.Inspect(tree, func(n ast.Node) bool {
+				if value, ok := n.(*ast.BasicLit); ok && value.Kind == token.STRING {
+					text, err := strconv.Unquote(value.Value)
+					if err == nil && developmentActionsNodeAPI.MatchString(text) {
+						found = true
+					}
+				}
+				return true
+			})
+			if found {
+				return fmt.Errorf("node-ban:api")
+			}
+		}
+		return nil
+	}
+	if ext == ".js" || ext == ".mjs" || ext == ".html" || ext == ".sh" {
+		if developmentActionsNodeAPI.Match(data) {
+			return fmt.Errorf("node-ban:api")
+		}
+		if ext == ".sh" && developmentActionsNodeCommand.Match(data) {
+			return fmt.Errorf("node-ban:command")
+		}
+		if regexp.MustCompile("(?m)^#![^\\n]*\\bnode(?:js)?\\b").Match(data) {
+			return fmt.Errorf("node-ban:command")
+		}
+		if ext != ".sh" {
+			imports := regexp.MustCompile("(?:\\bfrom\\s+|\\bimport\\s*(?:\\(\\s*)?)[\"']([^\"']+)[\"']").FindAllSubmatch(data, -1)
+			for _, match := range imports {
+				name := string(match[1])
+				if !strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "/") && !strings.HasPrefix(name, "https://") {
+					return fmt.Errorf("node-ban:api")
+				}
+			}
+			spawns := regexp.MustCompile("\\bDeno\\s*\\.\\s*(?:Command|run)\\s*\\(\\s*(?:\\{\\s*cmd\\s*:\\s*\\[\\s*)?[\"']([^\"']+)[\"']").FindAllSubmatch(data, -1)
+			for _, match := range spawns {
+				if developmentActionsNodeCommand.Match(match[1]) {
+					return fmt.Errorf("node-ban:command")
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func developmentActionsCheckNodeFreeRepository(root string) error {
+	return filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return fmt.Errorf("node-ban:read")
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return fmt.Errorf("node-ban:read")
+		}
+		rel = filepath.ToSlash(rel)
+		if rel == ".git" {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.Type()&os.ModeSymlink != 0 {
+			return fmt.Errorf("node-ban:symlink")
+		}
+		name := strings.ToLower(d.Name())
+		switch name {
+		case "node", "node.exe", "nodejs", "nodejs.exe", "node_modules", "package.json", "package-lock.json", "npm-shrinkwrap.json", ".npmrc", ".nvmrc", ".node-version", ".yarnrc", ".yarnrc.yml", "yarn.lock", "pnpm-lock.yaml", "pnpm-workspace.yaml", "bun.lock", "bun.lockb":
+			return fmt.Errorf("node-ban:artifact")
+		}
+		if strings.HasSuffix(name, ".cjs") || strings.HasSuffix(name, ".cts") {
+			return fmt.Errorf("node-ban:artifact")
+		}
+		if rel == ".github/actions" {
+			return fmt.Errorf("node-ban:action")
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if strings.HasPrefix(rel, ".github/workflows/") {
+			valid := false
+			for _, name := range []string{"phase12-quality-gate", "phase13-implementation-alignment-quality", "phase14-obsidian-vault-integration", "phase15-obsidian-local-sync", "phase16-quality-evidence-closure", "phase17-production-validation", "phase18-vps-pull-bootstrap"} {
+				if rel == ".github/workflows/"+name+".yml" {
+					valid = true
+				}
+			}
+			if !valid {
+				return fmt.Errorf("node-ban:workflow")
+			}
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("node-ban:read")
+		}
+		if strings.HasPrefix(rel, ".github/") && (filepath.Ext(rel) == ".yml" || filepath.Ext(rel) == ".yaml") {
+			if regexp.MustCompile("(?m)(^|[\\s{,])uses\\s*:").Match(data) {
+				return fmt.Errorf("node-ban:action")
+			}
+			if regexp.MustCompile("(?m)^\\s*(?:container|services)\\s*:").Match(data) {
+				return fmt.Errorf("node-ban:action")
+			}
+			if developmentActionsNodeCommand.Match(data) {
+				return fmt.Errorf("node-ban:command")
+			}
+		}
+		return developmentActionsCheckNodeContent(rel, data)
+	})
+}
+
+func TestDevelopmentActionsNodeFreeControls(t *testing.T) {
+	t.Parallel()
+	spec := phase11MustReadText(t, "docs/SPEC.md")
+	_, policy, ok := strings.Cut(spec, `<a id="policy-node-runtime-ban"></a>`)
+	if !ok || strings.Count(spec, `<a id="policy-node-runtime-ban"></a>`) != 1 {
+		t.Fatal("Node policy canonical anchor missing or duplicated")
+	}
+	policy, _, _ = strings.Cut(policy, `<a id="policy-runner-secrets"></a>`)
+	if !strings.Contains(policy, "いかなる条件下でも禁止する。例外はない。") {
+		t.Fatal("unconditional Node prohibition missing")
+	}
+	for _, path := range []string{"AGENTS.md", "docs/DETAIL_INDEX.md", "docs/DOCUMENT_INDEX.md"} {
+		if !strings.Contains(phase11MustReadText(t, path), "#policy-node-runtime-ban") {
+			t.Fatal("Node policy route missing: " + path)
+		}
+	}
+	setup := developmentActionsSetupDefinition(t)
+	helper := []byte(phase11MustReadText(t, ".github/scripts/development-ci.sh"))
+	if err := developmentActionsCheckHelper(setup, helper); err != nil {
+		t.Fatal(err)
+	}
+	if err := developmentActionsCheckHelper(setup, append(append([]byte{}, helper...), '\n')); err == nil {
+		t.Fatal("helper drift not rejected")
+	}
+	wrongDefinition := *setup
+	wrongDefinition.DenoVersion = "2.0.0"
+	if err := developmentActionsCheckHelper(&wrongDefinition, helper); err == nil {
+		t.Fatal("helper runtime definition drift not rejected")
+	}
+	if err := developmentActionsCheckNodeFreeRepository("."); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"node", "node.exe", "nodejs", "node_modules", "package.json", "package-lock.json", "npm-shrinkwrap.json", ".npmrc", ".nvmrc", ".node-version", ".yarnrc", ".yarnrc.yml", "yarn.lock", "pnpm-lock.yaml", "pnpm-workspace.yaml", "bun.lock", "bun.lockb", "adapter.cjs", "adapter.cts"} {
+		label := strings.NewReplacer(".", "-", "_", "-").Replace(strings.ToLower(name))
+		t.Run("release.node-ban.artifact-"+label+".reject", func(t *testing.T) {
+			root := t.TempDir()
+			dir := filepath.Join(root, ".hidden", "nested")
+			if err := os.MkdirAll(dir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, name), nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := developmentActionsCheckNodeFreeRepository(root); err == nil || err.Error() != "node-ban:artifact" {
+				t.Fatalf("expected artifact rejection, got %v", err)
+			}
+		})
+	}
+	for _, command := range []string{"node --version", "nodejs script.js", "/usr/bin/node script.js", "exec /opt/runtime/node script.js", "npm install", "npx tool", "pnpm install", "yarn install", "corepack enable", "echo ok; node script.js", "NODE.EXE app.js"} {
+		label := regexp.MustCompile("[^a-z0-9-]").ReplaceAllString(strings.ToLower(strings.Fields(command)[0]), "-")
+		t.Run("release.node-ban.command-"+label+".reject", func(t *testing.T) {
+			if err := developmentActionsCheckNodeContent("script.sh", []byte("#!/bin/sh\n"+command+"\n")); err == nil || err.Error() != "node-ban:command" {
+				t.Fatalf("expected command rejection, got %v", err)
+			}
+			source := "package fixture\nimport e \"os/exec\"\nfunc f(){ e.Command(\"sh\", \"-c\", " + strconv.Quote(command) + ") }\n"
+			if err := developmentActionsCheckNodeContent("tool.go", []byte(source)); err == nil || err.Error() != "node-ban:command" {
+				t.Fatalf("expected Go command rejection, got %v", err)
+			}
+		})
+	}
+	for _, source := range []string{"import fs from 'node:fs';", "import('npm:tool');", "require('fs');", "module.exports = {};", "exports.value = 1;", "process.env.TOKEN", "process.exit(0)", "Buffer.from('x')", "Buffer.byteLength('x')", "__dirname", "__filename"} {
+		if err := developmentActionsCheckNodeContent("client.js", []byte(source)); err == nil || err.Error() != "node-ban:api" {
+			t.Fatalf("expected API rejection, got %v", err)
+		}
+	}
+	for _, source := range []string{"import fs from 'fs';", "import('child_process');", "import 'buffer';"} {
+		if err := developmentActionsCheckNodeContent("client.js", []byte(source)); err == nil || err.Error() != "node-ban:api" {
+			t.Fatal("bare Node module not rejected")
+		}
+	}
+	for _, source := range []string{"new Deno.Command('node');", "Deno.run({cmd: ['npm', 'install']});", "#!/usr/bin/env node\n"} {
+		if err := developmentActionsCheckNodeContent("tool.js", []byte(source)); err == nil || err.Error() != "node-ban:command" {
+			t.Fatal("JavaScript process runtime not rejected")
+		}
+	}
+	for _, source := range []string{"package p\nimport \"os/exec\"\nfunc f(){ exec.Command(\"no\"+\"de\", \"--version\") }", "package p\nimport \"os/exec\"\nfunc f(){ exec.CommandContext(nil,\"npm\",\"install\") }"} {
+		if err := developmentActionsCheckNodeContent("tool.go", []byte(source)); err == nil {
+			t.Fatal("Go command alias/constant not rejected")
+		}
+	}
+	for _, source := range []string{"package p\nimport \"os\"\nfunc f(){ os.StartProcess(\"/usr/bin/node\",nil,nil) }", "package p\nimport \"syscall\"\nfunc f(){ syscall.Exec(\"node\",nil,nil) }", "package p\nimport . \"os/exec\"\nfunc f(){ Command(\"node\") }"} {
+		if err := developmentActionsCheckNodeContent("tool.go", []byte(source)); err == nil || err.Error() != "node-ban:command" {
+			t.Fatal("alternate process API not rejected")
+		}
+	}
+	if err := developmentActionsCheckNodeContent("tool.go", []byte("package p\nimport \"os/exec\"\nfunc f(){ exec.CommandContext() }")); err == nil || err.Error() != "node-ban:go-syntax" {
+		t.Fatal("incomplete process call not rejected")
+	}
+	for _, fixture := range []struct{ path, text string }{
+		{"client.js", "const node = document.createTextNode('ok'); fetch('/api');"},
+		{"script.sh", "#!/bin/sh\ngo version\ndeno check client.js\nprintf '%s' single-node\n"},
+		{"sample_test.go", "package p\nconst negative = \"import x from 'node:fs';\"\n"},
+	} {
+		if err := developmentActionsCheckNodeContent(fixture.path, []byte(fixture.text)); err != nil {
+			t.Fatalf("positive input rejected: %v", err)
+		}
+	}
+	root := t.TempDir()
+	if err := developmentActionsCheckNodeFreeRepository(root); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("missing", filepath.Join(root, "adapter")); err != nil {
+		t.Fatal(err)
+	}
+	if err := developmentActionsCheckNodeFreeRepository(root); err == nil || err.Error() != "node-ban:symlink" {
+		t.Fatalf("expected symlink rejection, got %v", err)
+	}
+	for _, fixture := range []struct{ path, text, code string }{
+		{".github/workflows/extra.yml", "jobs: {}", "workflow"},
+		{".github/workflows/phase12-quality-gate.yml", "jobs:\n  bad:\n    uses: org/repo/.github/workflows/ci.yml@main\n", "action"},
+		{".github/workflows/phase12-quality-gate.yml", "jobs:\n  bad:\n    steps: [{uses: './local'}]\n", "action"},
+		{".github/workflows/phase12-quality-gate.yml", "jobs:\n  bad:\n    steps:\n      - run: node --version\n", "command"},
+		{".github/workflows/phase12-quality-gate.yml", "jobs:\n  bad:\n    container: node:24\n", "action"},
+		{".github/actions/local/action.yml", "runs:\n  using: node24\n", "action"},
+	} {
+		root := t.TempDir()
+		path := filepath.Join(root, filepath.FromSlash(fixture.path))
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(fixture.text), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := developmentActionsCheckNodeFreeRepository(root); err == nil || err.Error() != "node-ban:"+fixture.code {
+			t.Fatalf("expected %s, got %v", fixture.code, err)
+		}
+	}
+	if err := developmentActionsCheckNodeFreeRepository(filepath.Join(t.TempDir(), "missing")); err == nil || err.Error() != "node-ban:read" {
+		t.Fatalf("expected read rejection, got %v", err)
+	}
+	worktree := t.TempDir()
+	if err := os.WriteFile(filepath.Join(worktree, ".git"), []byte("gitdir: unused"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(worktree, "package.json"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := developmentActionsCheckNodeFreeRepository(worktree); err == nil || err.Error() != "node-ban:artifact" {
+		t.Fatal("git metadata file hid later artifact")
+	}
+}
+
+func developmentActionsCheckHelper(setup *developmentActionsSetup, data []byte) error {
+	digest := sha256.Sum256(data)
+	if hex.EncodeToString(digest[:]) != setup.HelperSHA256 {
+		return fmt.Errorf("actions-setup:helper-digest")
+	}
+	for _, line := range []string{
+		"  version=" + setup.GoVersion, "  expected=" + setup.GoSHA256,
+		"  url=https://go.dev/dl/go" + setup.GoVersion + ".linux-amd64.tar.gz",
+		"  version=" + setup.DenoVersion, "  expected=" + setup.DenoSHA256,
+		"  url=https://github.com/denoland/deno/releases/download/v" + setup.DenoVersion + "/deno-x86_64-unknown-linux-gnu.zip",
+	} {
+		if !bytes.Contains(data, []byte("\n"+line+"\n")) {
+			return fmt.Errorf("actions-setup:helper-definition")
+		}
+	}
+	return nil
+}
+
+func TestDevelopmentActionsBootstrapControls(t *testing.T) {
+	t.Parallel()
+	setup := developmentActionsSetupDefinition(t)
+	helper, err := filepath.Abs(".github/scripts/development-ci.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range []string{"go", "deno"} {
+		for _, failure := range []string{"", "download-timeout-recover", "download-http-recover", "download-last-recover", "download-certificate", "download-not-found", "download-invalid-status", "download-unknown-exit", "output-boundary", "staging", "download", "digest-read", "digest", "archive-list", "archive-entry", "archive-type", "extract", "executable", "version", "version-exit", "publish", "platform"} {
+			if kind == "deno" && failure == "archive-type" {
+				continue
+			}
+			label := failure
+			if label == "" {
+				label = "success"
+			}
+			t.Run("release.bootstrap."+kind+"."+label+".outcome", func(t *testing.T) {
+				base := t.TempDir()
+				temp, fake := filepath.Join(base, "temp"), filepath.Join(base, "bin")
+				for _, path := range []string{temp, fake} {
+					if err := os.Mkdir(path, 0700); err != nil {
+						t.Fatal(err)
+					}
+				}
+				pathFile, envFile := filepath.Join(base, "path"), filepath.Join(base, "env")
+				for _, path := range []string{pathFile, envFile} {
+					if err := os.WriteFile(path, nil, 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if failure == "output-boundary" {
+					if err := os.Remove(envFile); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.Mkdir(envFile, 0700); err != nil {
+						t.Fatal(err)
+					}
+				}
+				trace := filepath.Join(base, "trace")
+				runtimeFile := filepath.Join(base, "runtime")
+				phase18WriteExecutable(t, runtimeFile, "#!/bin/sh\n"+
+					"printf 'version\\n' >> \"$FAKE_TRACE\"\n"+
+					"if [ \"$FAKE_FAILURE\" = version-exit ]; then if [ \"$FAKE_KIND\" = go ]; then echo 'go version go1.22.12 linux/amd64'; else echo 'deno 2.9.7 (stable, release, x86_64-unknown-linux-gnu)'; fi; echo fixture-secret-canary >&2; exit 7; fi\n"+
+					"if [ \"$FAKE_FAILURE\" = publish ]; then /bin/rm \"$GITHUB_PATH\"; mkdir \"$GITHUB_PATH\"; fi\n"+
+					"if [ \"$FAKE_FAILURE\" = version ]; then echo invalid; elif [ \"$FAKE_KIND\" = go ]; then echo 'go version go1.22.12 linux/amd64'; else echo 'deno 2.9.7 (stable, release, x86_64-unknown-linux-gnu)'; fi\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "uname"), "#!/bin/sh\nif [ \"$FAKE_FAILURE\" = platform ] && [ \"$1\" = -s ]; then echo Linux; exit 7; fi\nif [ \"$1\" = -s ]; then echo Linux; else echo x86_64; fi\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "mktemp"), "#!/bin/sh\nif [ \"$FAKE_FAILURE\" = staging ]; then exit 7; fi\nexec /usr/bin/mktemp \"$@\"\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "rm"), "#!/bin/sh\nif [ \"$FAKE_FAILURE\" = cleanup-failure ]; then exit 7; fi\nexec /bin/rm \"$@\"\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "sleep"), "#!/bin/sh\n[ \"$#\" = 1 ] && [ \"$1\" = 1 ]\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "curl"), `#!/bin/sh
+printf 'download\n' >> "$FAKE_TRACE"
+case "$*" in
+  "--disable --fail --silent --location --proto =https --proto-redir =https --tlsv1.2 --connect-timeout 15 --max-time 50 --retry 0 --max-filesize 200000000 --write-out %{http_code} --output "*) ;;
+  *) exit 88 ;;
+esac
+while [ "$#" -gt 0 ]; do if [ "$1" = --output ]; then shift; output=$1; fi; shift; done
+[ ! -e "$output" ] || exit 89
+count=0
+if [ -f "$FAKE_TRACE.count" ]; then read -r count < "$FAKE_TRACE.count"; fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$FAKE_TRACE.count"
+printf partial > "$output"
+case "$FAKE_FAILURE" in
+ download) echo fixture-secret-canary >&2; printf 000; exit 7 ;;
+ download-timeout-recover) if [ "$count" = 1 ]; then printf 000; exit 28; fi ;;
+ download-last-recover) if [ "$count" -lt 3 ]; then printf 000; exit 28; fi ;;
+ download-http-recover) if [ "$count" = 1 ]; then printf 503; exit 22; fi ;;
+ download-certificate) printf 000; exit 60 ;;
+ download-not-found) printf 404; exit 22 ;;
+ download-invalid-status) printf fixture-secret-canary; exit 0 ;;
+ download-unknown-exit) printf 000; exit 88 ;;
+esac
+printf archive > "$output"
+printf 200
+`)
+				phase18WriteExecutable(t, filepath.Join(fake, "sha256sum"), "#!/bin/sh\nprintf 'digest\\n' >> \"$FAKE_TRACE\"\nif [ \"$FAKE_FAILURE\" = digest-read ]; then echo fixture-secret-canary >&2; exit 7; fi\nif [ \"$FAKE_FAILURE\" = digest ]; then echo invalid; else printf '%s  %s\\n' \"$FAKE_DIGEST\" \"$2\"; fi\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "tar"), "#!/bin/sh\n"+
+					"case \"$1\" in\n"+
+					" -tzf) printf 'list\\n' >> \"$FAKE_TRACE\"; [ \"${3:-}\" = --quoting-style=literal ] || exit 8; if [ \"$FAKE_FAILURE\" = archive-list ]; then exit 7; fi; if [ \"$FAKE_FAILURE\" = archive-entry ]; then printf 'go/bin/go\\ngo/../escape\\n'; else printf 'go/\\ngo/bin/\\ngo/bin/go\\ngo/test/\\303\\236foo.go\\n'; fi;;\n"+
+					" -tvzf) printf 'types\\n' >> \"$FAKE_TRACE\"; if [ \"$FAKE_FAILURE\" = archive-type ]; then echo 'lrwx go/bin/go'; else echo '-rwx go/bin/go'; fi;;\n"+
+					" --extract) printf 'extract\\n' >> \"$FAKE_TRACE\"; if [ \"$FAKE_FAILURE\" = extract ]; then exit 7; fi; while [ \"$#\" -gt 0 ]; do if [ \"$1\" = --directory ]; then shift; dest=$1; fi; shift; done; mkdir -p \"$dest/go/bin\"; if [ \"$FAKE_FAILURE\" = executable ]; then ln -s \"$FAKE_RUNTIME\" \"$dest/go/bin/go\"; else cp \"$FAKE_RUNTIME\" \"$dest/go/bin/go\"; fi;;\n"+
+					" *) exit 8;;\nesac\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "unzip"), "#!/bin/sh\n"+
+					"if [ \"$1\" = -Z1 ]; then printf 'list\\n' >> \"$FAKE_TRACE\"; if [ \"$FAKE_FAILURE\" = archive-list ]; then exit 7; elif [ \"$FAKE_FAILURE\" = archive-entry ]; then printf 'deno\\n../escape\\n'; else echo deno; fi\n"+
+					"elif [ \"$1\" = -q ]; then printf 'extract\\n' >> \"$FAKE_TRACE\"; if [ \"$FAKE_FAILURE\" = extract ]; then exit 7; elif [ \"$FAKE_FAILURE\" = executable ]; then ln -s \"$FAKE_RUNTIME\" \"$4/deno\"; else cp \"$FAKE_RUNTIME\" \"$4/deno\"; fi\nelse exit 8; fi\n")
+				digest := setup.GoSHA256
+				if kind == "deno" {
+					digest = setup.DenoSHA256
+				}
+				env := append(os.Environ(), "PATH="+fake+":"+os.Getenv("PATH"), "RUNNER_TEMP="+temp, "GITHUB_PATH="+pathFile, "GITHUB_ENV="+envFile, "ADLAIRE_CI_TOOLS=", "FAKE_KIND="+kind, "FAKE_FAILURE="+failure, "FAKE_TRACE="+trace, "FAKE_RUNTIME="+runtimeFile, "FAKE_DIGEST="+digest)
+				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+				defer cancel()
+				cmd := exec.CommandContext(ctx, "bash", "--noprofile", "--norc", helper, kind)
+				cmd.Env = env
+				output, err := cmd.CombinedOutput()
+				pathData, pathErr := os.ReadFile(pathFile)
+				envData, envErr := os.ReadFile(envFile)
+				stages, globErr := filepath.Glob(filepath.Join(temp, "adlaire-tools.*"))
+				if globErr != nil {
+					t.Fatal(globErr)
+				}
+				if bytes.Contains(output, []byte("fixture-secret-canary")) {
+					t.Fatal("bootstrap secret canary leaked")
+				}
+				traceData, traceErr := os.ReadFile(trace)
+				positive := failure == "" || failure == "download-timeout-recover" || failure == "download-http-recover" || failure == "download-last-recover"
+				attempts := 1
+				if failure == "download" || failure == "download-last-recover" {
+					attempts = 3
+				} else if failure == "download-timeout-recover" || failure == "download-http-recover" {
+					attempts = 2
+				}
+				if strings.Count(string(traceData), "download\n") != attempts && failure != "output-boundary" && failure != "staging" && failure != "platform" {
+					t.Fatalf("download attempt bound: expected=%d trace=%q", attempts, traceData)
+				}
+				if positive {
+					if err != nil || pathErr != nil || envErr != nil || len(stages) != 1 || !bytes.Contains(output, []byte(`"record_type":"development-actions-bootstrap"`)) {
+						t.Fatalf("bootstrap positive: err=%v output=%q stages=%v", err, output, stages)
+					}
+					root := stages[0]
+					if strings.Count(string(output), "ci-download:runtime=") != attempts || !bytes.Contains(output, []byte(fmt.Sprintf("attempt=%d curl_exit=0 http_status=200\n", attempts))) {
+						t.Fatalf("safe download diagnostic missing: %q", output)
+					}
+					expectedBin := root + "/go/bin\n"
+					expectedTrace := "download\ndigest\nlist\ntypes\nextract\nversion\n"
+					if kind == "deno" {
+						expectedBin = root + "/deno\n"
+						expectedTrace = "download\ndigest\nlist\nextract\nversion\n"
+					}
+					expectedTrace = strings.Repeat("download\n", attempts-1) + expectedTrace
+					if string(pathData) != expectedBin || traceErr != nil || string(traceData) != expectedTrace {
+						t.Fatalf("bootstrap order/path expected %q/%q got %q/%q", expectedTrace, expectedBin, traceData, pathData)
+					}
+					if !strings.Contains(string(envData), "ADLAIRE_CI_TOOLS="+root+"\n") || !strings.Contains(string(envData), "GOTOOLCHAIN=local\n") || !strings.Contains(string(envData), "DENO_NO_PACKAGE_JSON=1\n") {
+						t.Fatal("bootstrap environment missing")
+					}
+					cleanup := exec.CommandContext(ctx, "bash", "--noprofile", "--norc", helper, "cleanup")
+					cleanup.Env = append(env, "ADLAIRE_CI_TOOLS="+root, "FAKE_FAILURE=cleanup-failure")
+					if out, err := cleanup.CombinedOutput(); err == nil || !bytes.Contains(out, []byte("ci-setup:cleanup\n")) {
+						t.Fatal("cleanup failure not propagated")
+					}
+					if _, err := os.Stat(root); err != nil {
+						t.Fatal("failed cleanup must leave identifiable stage")
+					}
+					cleanup = exec.CommandContext(ctx, "bash", "--noprofile", "--norc", helper, "cleanup")
+					cleanup.Env = append(env, "ADLAIRE_CI_TOOLS="+root)
+					if out, err := cleanup.CombinedOutput(); err != nil || len(out) != 0 {
+						t.Fatalf("cleanup err=%v output=%q", err, out)
+					}
+					if _, err := os.Lstat(root); !os.IsNotExist(err) {
+						t.Fatal("bootstrap stage survived cleanup")
+					}
+				} else {
+					reason := failure
+					if strings.HasPrefix(reason, "download-") {
+						reason = "download"
+					}
+					if reason == "version-exit" {
+						reason = "version"
+					}
+					if err == nil || !bytes.Contains(output, []byte("ci-setup:"+reason+"\n")) || bytes.Contains(output, []byte("record_type")) || len(stages) != 0 || len(envData) != 0 || len(pathData) != 0 {
+						t.Fatalf("bootstrap expected=%s err=%v output=%q stages=%v env=%q path=%q", reason, err, output, stages, envData, pathData)
+					}
+					if reason == "download" && (strings.Contains(string(traceData), "digest\n") || strings.Count(string(output), "ci-download:runtime=") != attempts) {
+						t.Fatal("download failure continued or lost attempt diagnostic")
+					}
+					for boundary, forbidden := range map[string]string{"download": "digest", "digest-read": "list", "digest": "list", "archive-list": "extract", "archive-entry": "extract", "archive-type": "extract", "extract": "version", "executable": "version"} {
+						if failure == boundary && strings.Contains(string(traceData), forbidden+"\n") {
+							t.Fatalf("bootstrap continued after %s: %s", boundary, traceData)
+						}
+					}
+				}
+			})
+		}
+	}
+	t.Run("release.bootstrap.cleanup-symlink.reject", func(t *testing.T) {
+		temp, target := t.TempDir(), t.TempDir()
+		link := filepath.Join(temp, "adlaire-tools.ABCDEFGH")
+		if err := os.Symlink(target, link); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command("bash", "--noprofile", "--norc", helper, "cleanup")
+		cmd.Env = append(os.Environ(), "RUNNER_TEMP="+temp, "ADLAIRE_CI_TOOLS="+link)
+		output, err := cmd.CombinedOutput()
+		if err == nil || !bytes.Contains(output, []byte("ci-setup:cleanup-boundary\n")) {
+			t.Fatal("cleanup symlink not rejected")
+		}
+		if info, err := os.Stat(target); err != nil || !info.IsDir() {
+			t.Fatal("cleanup touched symlink target")
+		}
+	})
+	t.Run("release.bootstrap.arguments.reject", func(t *testing.T) {
+		cmd := exec.Command("bash", "--noprofile", "--norc", helper)
+		if output, err := cmd.CombinedOutput(); err == nil || !bytes.Contains(output, []byte("ci-setup:arguments\n")) {
+			t.Fatal("missing argument not rejected")
+		}
+	})
+	for _, fixture := range []struct{ name, argument, temp, root, reason string }{
+		{"runtime", "other", "", "", "runtime"},
+		{"relative-temp", "go", "relative", "", "temp-boundary"},
+		{"missing-temp", "go", "/missing-node-free-fixture", "", "temp-boundary"},
+		{"cleanup-outside", "cleanup", "", "/outside", "cleanup-boundary"},
+	} {
+		t.Run("release.bootstrap."+fixture.name+".reject", func(t *testing.T) {
+			temp := fixture.temp
+			if temp == "" {
+				temp = t.TempDir()
+			}
+			cmd := exec.Command("bash", "--noprofile", "--norc", helper, fixture.argument)
+			cmd.Env = append(os.Environ(), "RUNNER_TEMP="+temp, "ADLAIRE_CI_TOOLS="+fixture.root)
+			output, err := cmd.CombinedOutput()
+			if err == nil || !bytes.Contains(output, []byte("ci-setup:"+fixture.reason+"\n")) {
+				t.Fatalf("boundary expected=%s err=%v output=%q", fixture.reason, err, output)
+			}
+		})
+	}
+	for _, failure := range []string{"", "init", "remote", "fetch", "checkout", "sha", "dirty", "bad-sha", "repository"} {
+		label := failure
+		if label == "" {
+			label = "success"
+		}
+		t.Run("release.checkout."+label+".outcome", func(t *testing.T) {
+			base := t.TempDir()
+			workspace, fake := filepath.Join(base, "workspace"), filepath.Join(base, "bin")
+			for _, path := range []string{workspace, fake} {
+				if err := os.Mkdir(path, 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			trace := filepath.Join(base, "trace")
+			target := strings.Repeat("a", 40)
+			if failure == "dirty" {
+				if err := os.WriteFile(filepath.Join(workspace, "existing"), nil, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			phase18WriteExecutable(t, filepath.Join(fake, "git"), "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$FAKE_TRACE\"\ncase \"$*\" in\n*' init '*) stage=init;; *' remote '*) stage=remote;; *' fetch '*) stage=fetch;; *' checkout '*) stage=checkout;; 'rev-parse HEAD') if [ \"$FAKE_FAILURE\" = sha ]; then echo invalid; else echo \"$GITHUB_SHA\"; fi; exit 0;; *) exit 8;; esac\n[ \"$FAKE_FAILURE\" != \"$stage\" ] || exit 7\n")
+			repository := "fqwink/Build-Scripts"
+			if failure == "repository" {
+				repository = "unknown/repo"
+			}
+			if failure == "bad-sha" {
+				target = strings.Repeat("A", 40)
+			}
+			cmd := exec.Command("bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", setup.Checkout)
+			cmd.Dir = workspace
+			cmd.Env = append(os.Environ(), "PATH="+fake+":"+os.Getenv("PATH"), "GITHUB_REPOSITORY="+repository, "GITHUB_SERVER_URL=https://github.com", "GITHUB_SHA="+target, "GITHUB_WORKSPACE="+workspace, "FAKE_TRACE="+trace, "FAKE_FAILURE="+failure)
+			output, err := cmd.CombinedOutput()
+			if (err == nil) != (failure == "") {
+				t.Fatalf("checkout expected success=%t err=%v output=%q", failure == "", err, output)
+			}
+			traceData, _ := os.ReadFile(trace)
+			count := len(strings.Split(strings.TrimSpace(string(traceData)), "\n"))
+			if len(traceData) == 0 {
+				count = 0
+			}
+			expected := map[string]int{"": 5, "init": 1, "remote": 2, "fetch": 3, "checkout": 4, "sha": 5, "dirty": 0, "bad-sha": 0, "repository": 0}[failure]
+			if count != expected {
+				t.Fatalf("checkout stopped at wrong boundary: want %d got %d trace=%q", expected, count, traceData)
 			}
 		})
 	}

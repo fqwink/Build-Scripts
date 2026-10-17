@@ -1,10 +1,178 @@
 # Adlaire CI — API 詳細仕様
 
+<a id="phase-19-api-contract"></a>
+
+**Phase 19 管理API契約：**
+ownerは `api`、実装主体は [components/api/](../../components/api/)。共有保存型の正本は [`docs/details/statefile.md` 詳細本文責務 statefile schema registry](statefile.md#phase-19-schema-registry)、認可は [`docs/details/security.md` 詳細本文責務 security権限行列](security.md#phase-19-permission-matrix)。既存endpointの動作を変更せず、cicd-v1有効時だけ下記namespaceを登録する。
+
+<a id="phase-19-api-cli"></a>
+**管理profile起動interface：** exact形は `adlaire-ci-api --cicd-management --config ABS --state-dir S`。config.role=coordinator、state-dir=config.state_dir一致、listenはconfig.listenを使用し、既存--addrと併用しない。site専用mode、init-credentials、legacy optionとの混在、未知/重複option、位置引数はexit2/P19_INPUTでlistener/状態I/O前拒否する。ただしhelp/versionは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI共通固定契約](../DETAIL_INDEX.md#common-cli-contract) の優先順位を先に適用する。config/状態検証失敗はexit3、listener/必須I/O失敗はexit4、正常shutdownはexit0。cicd namespaceと既存管理namespaceを別認証middlewareで登録し、TOTP管理を含むlegacy経路へcicd tokenを流用しない。adminのlegacy資格情報管理には別途legacy loginを使用する。管理listenerはloopback限定で、siteの公開listen設定を流用しない。configの型/permissionは [`docs/details/setup.md` 詳細本文責務 config入力](setup.md#phase-19-setup-input)。
+
+**共通wire契約：** 管理APIは既存loopback/TLS tunnel境界。全bodyはUTF-8 JSON、Content-Type application/json必須、Content-Encoding拒否、最大1048576 bytes（超過413）、decode depth32、duplicate/unknown key拒否、末尾token拒否。GET/DELETE queryは列挙keyだけ、同名重複禁止、pathは一度だけpercent decodeしslash/backslash/dotdot/制御文字拒否。attemptは1〜100、ID/digestはschemaで検査する。method不一致405/Allow、未知route404。認証前のparseでscope情報を返さない。
+
+成功envelopeは `{data:T,request_id:Id,authorization:Authorization}`、errorは `{error:string,code:string,request_id:Id,details:[],authorization:null|Authorization}`（detailsは常に空）。Authorization=`{subject_kind:enum(user,service),subject_id:Id,generation:int(1,9007199254740991),grants:Grant[],expires_at:Time}`。認証済subject自身の有効grantだけをRoot.generationと同じsnapshotから返す。unauthenticated errorはnull、authenticated 403も自分のgrant以外を含めない。loginは発行sessionに対応し、logoutは失効直前の認証snapshotを返す。正規化Authorization長は65536 bytes以下（grant保存時にsubjectごと検査）とし、他subject/grant/credentialを列挙しない。全応答no-store、JSON nosniff。request_idはserver発行o-IDで、clientの要求IDとは別。mutationのdataは一律OperationResult=`{operation:Operation,result:T|null,one_time:null|string}` とし、下表data列はresultの論理型を示す（Operation行はresult=null）。受付・再送・照会は [docs/details/api.md 詳細本文責務 operation受付境界](#phase-19-operation-admission) を適用する。login/logoutはmemory-only認証操作でOperationResult対象外、loginだけ認証前body decodeを許可する。認証・rate-limit拒否はidempotency保存せず、監査の機密境界に従う。
+
+全JSON response（envelope込み）は1048576 bytes以下。公開entityのcanonical read projectionは921600 bytes以下を保存前に検査し、超過入力は422 P19_SCHEMA。PageEnvelopeは件数limitとbyte上限の小さい方で分割し、返却した最後のkeyからcursorを作る。0件で次cursorを作ることは禁止。単一entityや既存保存値が上限を超える場合はP19_STATE_CORRUPTであり、黙ってfield/配列を省略して成功にしない。
+
+Write<T>は `{expected_revision:int(0,2147483647),value:T}`。新規はexpected=0/value.revision=1、更新はexpected=current/value.revision=current+1。server管理fieldはread-only値と一致を要求し、変更を拒否する。Job/Plan/Operationなどをclientが直接書くrouteはない。Definition/Templateはrevisionごとimmutable、既存revision上書き禁止、新revision=max+1。この2型だけはexpected_revisionが既存最大revision（初回0）、value.revisionがその+1であり、作成済revisionの更新という意味ではない。project.definitionは存在revisionだけを参照する。Project新規作成時はdefinition_id=null/definition_revision=0/enabled=false（Project.revision=1）とし、Definition作成後に存在revisionを関連付けて有効化する。enabled=trueでnull指定は禁止。
+
+<a id="phase-19-operation-catalog"></a>
+**operation catalog：** IDはSDK・UI・CLI対応の結合key。[]応答はPageEnvelopeで返す。role名の意味はsecurity正本。project-readerは認証済みuser/serviceで有効project grantを持つもの、またはplatform-admin。返却対象は自分の有効scopeだけ（platform-adminは全project管理設定）。grant-ownerは読取時は自分が管理するscopeだけ、変更時は自分が付与可能なscope/roleだけ、deployment-readerはviewerまたは対象approver、operation-readerはrequesterまたは同scope project-admin（globalはplatform-admin）。
+
+| operation ID | method / path | request | data | role |
+|---|---|---|---|---|
+| login | POST `/api/cicd/login` | Login | Session | public |
+| logout | POST `/api/cicd/logout` | Empty | Empty | authenticated |
+| passwordChange | POST `/api/cicd/password` | PasswordChange | Empty | authenticated-user |
+| projectsList | GET `/api/cicd/projects` | Page | ProjectView[] | project-reader |
+| projectPut | PUT `/api/cicd/projects/{id}` | Write<Project> | ProjectView | platform-admin |
+| workersList | GET `/api/cicd/workers` | Page | WorkerView[] | platform-admin |
+| workerPut | PUT `/api/cicd/workers/{id}` | Write<Worker> | WorkerView | platform-admin |
+| targetsList | GET `/api/cicd/targets` | Page | TargetView[] | platform-admin |
+| targetPut | PUT `/api/cicd/targets/{id}` | Write<Target> | TargetView | platform-admin |
+| usersList | GET `/api/cicd/users` | Page | UserView[] | platform-admin |
+| userPut | PUT `/api/cicd/users/{id}` | Write<UserInput> | UserView | platform-admin |
+| servicesList | GET `/api/cicd/services` | Page | ServiceView[] | platform-admin |
+| servicePut | PUT `/api/cicd/services/{id}` | Write<ServiceInput> | ServiceView | platform-admin |
+| definitionsList | GET `/api/cicd/projects/{project}/definitions` | Page | Definition[] | viewer |
+| definitionPut | PUT `/api/cicd/projects/{project}/definitions/{id}` | Write<Definition> | Definition | project-admin |
+| templatesList | GET `/api/cicd/projects/{project}/templates` | Page | Template[] | viewer |
+| templatePut | PUT `/api/cicd/projects/{project}/templates/{id}` | Write<Template> | Template | project-admin |
+| environmentsList | GET `/api/cicd/projects/{project}/environments` | Page | Environment[] | viewer |
+| environmentPut | PUT `/api/cicd/projects/{project}/environments/{id}` | Write<Environment> | Environment | project-admin |
+| grantsList | GET `/api/cicd/grants` | Page | Grant[] | grant-owner |
+| grantPut | PUT `/api/cicd/grants` | GrantWrite | Grant | grant-owner |
+| secretPut | PUT `/api/cicd/projects/{project}/secrets/{id}` | SecretWrite | SecretView | project-admin |
+| secretsList | GET `/api/cicd/projects/{project}/secrets` | Page | SecretView[] | project-admin |
+| workerDrain | POST `/api/cicd/workers/{id}/drain` | Revision | WorkerView | platform-admin |
+| workerResume | POST `/api/cicd/workers/{id}/resume` | Revision | Operation | platform-admin |
+| plan | POST `/api/cicd/projects/{project}/plans` | PlanRequest | Plan | viewer |
+| runStart | POST `/api/cicd/projects/{project}/runs` | RunStart | Operation | operator |
+| runsList | GET `/api/cicd/projects/{project}/runs` | Page | Run[] | viewer |
+| runGet | GET `/api/cicd/projects/{project}/runs/{run}/attempts/{attempt}` | Empty | Run | viewer |
+| runRetry | POST `/api/cicd/projects/{project}/runs/{run}/attempts/{attempt}/retry` | Revision | Operation | operator |
+| runResume | POST `/api/cicd/projects/{project}/runs/{run}/attempts/{attempt}/resume` | Revision | Operation | operator |
+| runCancel | POST `/api/cicd/projects/{project}/runs/{run}/attempts/{attempt}/cancel` | Revision | Operation | operator |
+| logsGet | GET `/api/cicd/projects/{project}/runs/{run}/attempts/{attempt}/jobs/{job}/logs` | LogQuery | LogPage | viewer |
+| artifactsList | GET `/api/cicd/projects/{project}/artifacts` | Page | Artifact[] | viewer |
+| artifactGet | GET `/api/cicd/projects/{project}/artifacts/{digest}` | Empty | ArtifactManifest | viewer |
+| artifactDownload | GET `/api/cicd/projects/{project}/artifacts/{digest}/download` | ChunkQuery | Chunk | viewer |
+| artifactCompare | POST `/api/cicd/projects/{project}/artifact-compare` | Compare | FileDiff[] | viewer |
+| artifactPin | POST `/api/cicd/projects/{project}/artifacts/{digest}/pins` | Pin | Artifact | operator |
+| cachesList | GET `/api/cicd/projects/{project}/caches` | Page | CacheEntry[] | viewer |
+| cacheDelete | DELETE `/api/cicd/projects/{project}/caches/{digest}` | GenerationRevision | Operation | project-admin |
+| environmentStatus | GET `/api/cicd/projects/{project}/environments/{id}/status` | Empty | EnvironmentState | viewer |
+| deploymentPlan | POST `/api/cicd/projects/{project}/deploy-plans` | DeployRequest | DeployPreview | operator |
+| deploymentStart | POST `/api/cicd/projects/{project}/deployments` | DeployStart | Operation | operator |
+| deploymentsList | GET `/api/cicd/projects/{project}/deployments` | Page | Deployment[] | viewer |
+| deploymentGet | GET `/api/cicd/projects/{project}/deployments/{id}` | Empty | Deployment | deployment-reader |
+| deploymentApprove | POST `/api/cicd/projects/{project}/deployments/{id}/approve` | Revision | Operation | approver |
+| deploymentReject | POST `/api/cicd/projects/{project}/deployments/{id}/reject` | Revision | Operation | approver |
+| deploymentCancel | POST `/api/cicd/projects/{project}/deployments/{id}/cancel` | Revision | Operation | operator |
+| deploymentRollback | POST `/api/cicd/projects/{project}/deployments/{id}/rollback` | Revision | Operation | operator |
+| deploymentReconcile | POST `/api/cicd/projects/{project}/deployments/{id}/reconcile` | Reconcile | Operation | platform-admin |
+| operationGet | GET `/api/cicd/operations/{id}` | Empty | Operation | operation-reader |
+| metricsGet | GET `/api/cicd/projects/{project}/metrics` | Empty | Metrics | viewer |
+| auditsList | GET `/api/cicd/projects/{project}/audits` | Page | Audit[] | project-admin |
+
+**request型（本節所有のwire schema）：**
+
+wire略記のId/Digest/Time/RelPathはstatefile registryを参照し、同名fieldはそのoperationが参照する保存型の制約を継承する。PlanRequest.ref_kind/ref/definition_id/definition_revision、RunStart追加plan_digestはそれぞれSource/Definition/Planの同名field型、DeployRequestとReconcileのfieldはDeployPlan/TargetResultの同名field型とする。省略型を任意string/intとして拡張しない。略記stringはUTF-8 0〜4096 bytes、単独intは0〜9007199254740991の安全整数、boolはJSON boolean。objectは記載key全必須、unknown/duplicate拒否。型引数T/[]/PageEnvelope以外の暗黙拡張はない。
+
+PasswordChange=`{current_password:text(1,4096),new_password:text(1,4096),totp:null|string}`。session user本人だけ、service不可。既存password policy/KDF/同値拒否に従い、成功時そのuserの全sessionを失効する。admin aliasは既存credential正本を更新する。named userのTOTP設定/解除は本profile非対応でtotp=nullを要求し、admin TOTPは既存認証endpointでのみ管理する。
+
+`Empty={}`、`Revision={expected_revision:int(1,2147483647)}`。GET Emptyはquery/bodyなし。DELETE RevisionはJSON body。Pageはquery `limit=1..100`（省略50）、`cursor`（省略null）だけ。GenerationRevision=`{expected_revision:int(1,9007199254740991)}`。PageEnvelopeは `{items:T[],next_cursor:null|string,snapshot_generation:int(1,9007199254740991)}`、id、複合keyがあればproject,id,revision,attemptのbyte昇順、artifact/cacheはdigest/key順、auditはat,operation_id,phase順。一覧は認可後にscope filterし、secret projectionしてから返す。snapshot_generationはそのpageを読んだRoot.generationであり、grantPut/cacheDeleteは対応する一覧から得た値を送る。別page/変更後の値を推測しない。409時は再取得し、新しいユーザー確認を経て再送する。cursorはsecurity cursor_keyのHMAC-SHA256、payloadはcanonical `{version:1,subject,scope,operation,last_key,filter_digest,expires_at}`、base64url(payload)+"."+64hexMAC、期限3600秒、decoded<=1024 bytes、定時間MAC比較。更新中一覧はsnapshot isolationを保証せずlast_keyより後だけを返す。期限切れ/形式不正/署名不正は410 P19_CURSOR。stateless cursorなのでserver側の存在台帳は設けない。payload.last_keyは並び順tupleのJSON配列（各要素は元fieldのstringまたはinteger）であり、stringはUTF-8 byte順、整数は数値順のlexicographic比較をする。tupleの区切り文字連結は禁止。filter_digestはlimit/cursorを除いた正規化queryとpath scopeのcanonical SHA256（artifactCompareだけはCompare bodyも含める）。フィルタ変更/別subject再利用は403。
+
+- Login=`{user_id:Id,password:text(1,4096),totp:null|6digit}`。Session=`{token:text(64,64),user_id:Id,expires_at:Time,must_change:enum(none,prompt,forced)}`、既存session TTLを適用。logoutは現在tokenだけを失効。
+- GrantWrite=`{grant:Grant,expected_generation:int(1,9007199254740991)}`、Root generation一致を要求し、expiry/権限をtransaction内再評価する。Grant列挙をproject-adminで行う場合はqueryにproject_id必須（Pageの固定追加key）。
+- SecretWrite=`{expected_version:int(0,2147483647),value:text(1,4096)}`、SecretView=`{id,version,created_at}`。created_atはcommit済SecretMeta.created_atとSecretCipher.created_atの一致値であり、mtimeや保持期間付き監査から推定しない。secret削除routeはなく、参照しない版のGCはsecurity契約。
+- PlanRequest=`{definition_id,definition_revision,ref_kind,ref,values:ScalarMap}`。RunStartは同field+`plan_digest:Digest`。計画をserver再計算し一致時だけ受付。source取得中の失敗は503。
+- LogQuery / LogPageは [docs/details/api.md 詳細本文責務 log page固定契約](#phase-19-log-page-contract) を参照する。
+- ChunkQuery / Chunkは [docs/details/api.md 詳細本文責務 artifact download](#phase-19-artifact-download) を参照する。ArtifactManifestはarchive正本manifestでありcache manifestを返さない。
+- Compare=`{from:Digest,to:Digest}`。FileDiff=`{path,kind:added|removed|changed|same,old:null|{size,sha256,mode},new:null|{size,sha256,mode}}`。最大10000行、応答はPageEnvelope、Pageのqueryを追加許可。
+- Pin=`{pin_id:Id,enabled:bool}`、自分のo-IDだけを手動pinに利用可能。cacheDeleteのexpected_revisionはRoot.generation（cache単体revisionなし）。
+- DeployRequest=`{environment_id,artifact,expected_generation,rollback_of:null|Id}`。DeployPreview=`{plan:DeployPlan,digest:Digest}`。DeployStartはDeployRequest+`plan_digest`、開始時再計算。deploymentRollbackは対象成功/失敗deploymentのprevious_artifactを選んだ新DeployPlanを作り、approvalを再取得する。旧approvalを流用しない。
+- Reconcile=`{expected_revision,targets:list({target_id,generation,artifact:null|Digest},1,32)}`。入力を信用せずsite-agent queryと全件一致した場合だけblocked解除。照合不能ならrecovery_requiredを維持。
+- Metrics=`{window_from,window_until,success,failed,cancelled,recovery_required,skipped_jobs,retried_jobs,success_rate_basis_points:null|int(0,10000),queue_count,active_jobs,wait_avg_ms:null|int,wait_p95_ms:null|int,run_avg_ms:null|int,run_p95_ms:null|int,workers_online,workers_draining,environments_blocked}`。計算法はrunner正本。
+
+ProjectViewは全Project keyを持ち、platform-adminまたは当該viewer以上ならProject値を返す。approverだけのsubjectにはid/name/revision/enabledのみ実値、source_owner/source_repo/definition_id/quota/toolchain_digestはnull、definition_revisionは0とする。このprojectionをWrite<Project>の入力へ流用しない。WorkerView/TargetViewは保存型からSSH user/host/pathを除きhost_registered=trueだけを追加する（platform-admin自身には保存型を返せる）。UserViewはcredential/totpを含めず `{id,name,revision,enabled,created_at,totp_enabled}`。ServiceViewはtoken_sha256を含めず `{id,revision,enabled,expires_at}`。tokenはOperationResult.one_timeだけへ返す。UserInput=`{id:Id,name:text(1,128),revision:int(1,2147483647),enabled:bool}`、ServiceInput=`{id:Id,revision:int(1,2147483647),enabled:bool,expires_at:Time}` をWrite.valueの完全key集合とする。credential/totp/created_at/token_sha256は入力へ含めず、送信した場合はP19_SCHEMA。資格情報は作成時だけserver生成し、更新で再発行しない。User.created_atは作成commit時刻。User.enabled変更では当該sessionを全失効する。Serviceの初回expiryは発行時から30日以内、更新では元の期限延長を拒否し、再発行が必要なら別IDを作る。Workerのtoolchain_digest/total_memory_mb/leases/last_seenはprobe/runner所有、新規要求はprobe確認値と一致を要求する。Targetを含めserver所有fieldの変更を拒否する。Worker/Targetのleases/last_seenはserver所有で新規は空/null、変更拒否。Root全体・master・暗号文はroute非公開。
+
+<a id="phase-19-plan-request-boundary"></a>
+**plan/run受付のsnapshot境界：** PlanRequestは明示definition_id/revisionを同project内のimmutable版へ解決する。planはmanual=falseでも読取可能だがrunStartはfalseなら403/P19_FORBIDDENでsource取得前に拒否する。認可とRootの関連設定snapshot取得→Root lock外のsource取得/計画→受付lock下の最新認可・Project revision/source設定/toolchain・参照Definition/Template・quota/secret/artifact再検査の順とし、networkをRoot lockへ持ち込まない。planはOperation/cursor/pin/Root writeを作らない。runStartはserverが算出したPlan.digestと要求plan_digestの一致時だけ受付け、不一致は409/P19_STALE、最新digestへの自動差替えなし。remote refの解決時点のSHAを固定する契約であり、外部GitHubとRootの分散transactionや受付後のbranch不変は保証しない。
+
+保存する選択・展開ID・taskは [docs/details/runner.md 詳細本文責務 条件選択](runner.md#phase-19-plan-selection) と [docs/details/statefile.md 詳細本文責務 registry](statefile.md#phase-19-schema-registry) を参照する。runGet/planはselected=falseのjobも省略せず返す。retry/resumeはpathのattempt/期待revisionを [docs/details/runner.md 詳細本文責務 固定Plan](runner.md#phase-19-attempt-plan) へ渡し、PlanRequestを内部合成して現在refを取得しない。共通のidempotency照合が先であり、旧要求の再送に新attempt受付検査を再適用しない。受付前エラーは新Run/Operation/approval/pin/cursorを作らず、one-time情報も生成しない。
+
+<a id="phase-19-artifact-download"></a>
+**artifact downloadのwire境界：** ChunkQueryはqueryのoffsetだけを1個必須とし、body/未知query/重複queryを400/P19_INPUTで拒否する。offsetはASCIIの `0|[1-9][0-9]*` だけ（符号/空白/指数/小数/先頭0を拒否）、構文不正は400/P19_INPUT、数値が1073741824超なら422/P19_SCHEMA。JSONへの文字列数値の持込みや暗黙丸めをしない。認証・project認可後だけ [docs/details/archive.md 詳細本文責務 artifact read](archive.md#phase-19-artifact-read-gc) へ渡す。
+
+Chunkは全key必須の `{offset:int(0,1073741824),data:base64,next_offset:int(0,1073741824),total_bytes:int(1,1073741824),digest:Digest,final:bool}`。digestはpathで要求したpayload全体のSHA256でありchunk hashやmanifest_digestではない。total_bytesはそのArtifact.size_bytes、dataはoffsetから連続する `min(12288,total_bytes-offset)` bytesのstrict standard padded base64。offset>total_bytesは422/P19_SCHEMA、offset=total_bytesはdata空/next_offset=total_bytes/final=trueの200を返す。offset<total_bytesで空data成功は禁止し、next_offset=offset+decoded byte数、final=(next_offset=total_bytes)とする。alignment制約はなく、任意の有効offsetから取得可能。GETはOperation・pin・Root writeを作らず、lockはresponse送信前に解放する。
+
+保存metadata不正、regular file以外、size不一致、短いReadAtは503/P19_STATE_CORRUPT、正規のGCによる不在/deletingは404/P19_NOT_FOUND、その他read I/Oは507/P19_STORAGE、read guard競合は409/P19_BUSY。成功JSONを先に送らず、失敗時は部分base64や一部envelopeを返さない。別request間の保持予約は行わないため、途中GCで次requestが404になる場合がある。clientは別digestへ切替えたりoffset0へ自動巻戻ししたりせず未完了として止める。cacheのpayloadをこのendpointで取得できると推測しない。
+
+<a id="phase-19-operation-admission"></a>
+**operation受付・再送・照会：** login/logout以外のmutationは、単一の `Idempotency-Key: o-32lowercasehex` を必須とする。欠落・重複header・不正形式は400/P19_INPUT。GET、login/logout、およびread-only POSTのplan/deploymentPlan/artifactCompareに同headerを付けた場合も400/P19_INPUTとし、黙って無視しない。副作用routeのqueryは空を要求する。digestはcanonical `{subject:{kind:"user"|"service",id:Id},method,path,body}` のSHA256。methodはcatalogの大文字、pathはroute placeholderを検証済IDで置換したpercent-encoding不要の正規形、bodyはstrict decode後の型付きJSON値（object順序・空白は同一視、配列順・文字列・整数・nullは区別）とする。秘密本文・canonical bytesを保存せずdigestだけをOperationへ渡す。
+
+認証・scope認可・resource lookup・body検証の後、statefile受付lock内で最新のidentity/grant/expiryを再評価する。既存key照合はentity revision・plan再計算・quota予約・secret生成・外部callより先。同一subject/kind/digestの再送は現在の保存済Operationを返し、初回処理を繰り返さない。他subjectまたは異digestのkey衝突は409/P19_IDEMPOTENCY、他subjectのOperationを含めない。認証・権限失効時は既存keyでも401/403で、結果を返さない。新規keyだけ最新revision/plan/容量を検査して受付する。受付前拒否はOperationを作らず、拒否監査の扱いは [docs/details/security.md 詳細本文責務](security.md#phase-19-secret-crypto) に従う。lock外でsource/SSH取得が必要なら一旦lockを解放し、再取得後に上記照合を最初からやり直す。保持中のnetworkは禁止。
+
+| 受付HTTP / Operation.kindの閉集合 | 初回成功body / 再送 |
+|---|---|
+| 200: passwordChange/projectPut/workerPut/targetPut/userPut/servicePut/definitionPut/templatePut/environmentPut/grantPut/secretPut/workerDrain/artifactPin | durable commit済みsucceeded Operationとresult。userPut/servicePutの新規作成時だけone_timeを1回返す。再送は200、result=null/one_time=null。 |
+| 202: workerResume/runStart/runRetry/runResume/runCancel/cacheDelete/deploymentStart/deploymentApprove/deploymentReject/deploymentCancel/deploymentRollback/deploymentReconcile | result=null/one_time=null。処理が応答前に終端化しても202。再送も202で、Operation.stateをHTTP statusから推測しない。 |
+
+Operation.idはclient key、kindは上表のoperation ID。返却Authorization/request_idは当該HTTP requestの最新値であり初回応答の再掲ではない。replayは最新Operationだけを返し、秘密応答・result・旧Authorizationを再生しない。Operationのtarget_id/target_attempt、内部進行、保持・回収は [docs/details/statefile.md 詳細本文責務 operation lifecycle](statefile.md#phase-19-operation-lifecycle) を参照する。GET operationGetは権限行列のoperation-readerを最新状態で確認し、存在しないkeyは404、保存中ならexpires_at経過だけで隠さない。404・通信断・timeout・abortは未受付または副作用なしの証明ではない。clientは新keyでの自動再送をせず、同key照会と対象実体の再取得で確認する。一度消えたone_timeは再表示できず、結果照会のために資格情報を再発行しない。
+
+<a id="phase-19-log-page-contract"></a>
+**log page固定契約：**
+
+LogQueryはqueryのstream=stdout|stderr必須、cursor省略null、limit_bytes=1..65536（省略65536）だけ。LogPageは全key必須の `{data:string,first_offset:int,next_offset:int,next_cursor:string,truncated:bool,gap:bool,terminal:bool}`。dataはmask済みUTF-8、整数は非負安全整数。保存型と検証は [docs/details/statefile.md 詳細本文責務 Log整合](statefile.md#phase-19-log-invariants)、生成過程は [docs/details/runner.md 詳細本文責務 streaming log](runner.md#phase-19-streaming-log-contract) に接続する。
+
+認証/認可後に対象Logのimmutable snapshotを1回取得する。cursorなしは保存first_offsetから開始する。cursorありは上記共通署名payloadのoperation=logsGet、scope=`{project_id,run_id,attempt,job_id,stream,offset}`、last_key=[offset]、期限86400秒に固定し、scope.offsetとlast_key[0]も一致させる。filter_digestはcursor/limit_bytesを除いた正規化queryとpath scopeから計算し、page sizeの変更だけでは拒否しない。別subject/scope/stream再利用は403、期限/署名/形式不正は410 P19_CURSOR。認可後のcursor失敗でstate/logを書き換えない。
+
+startが保存first_offset未満・next_offset超・scalar途中なら410 P19_CURSOR。dataはstartからlimit_bytes以下の最大完全scalar prefixとし、first_offset=start、next_offset=start+dataのUTF-8 byte長。未読scalarがあるのに1scalarも収まらない場合は422 P19_SCHEMA（固定message validation failed）とし、空の成功pageを返さない。truncated/gapは保存値をそのまま投影し、terminalは保存terminalかつ応答next_offset=保存next_offsetの場合だけtrue。未読pageが残る間は保存終端済みでもterminal=false。JSON escape後の長さをbyte offsetへ使用しない。
+
+次cursorは応答next_offsetを指す。現在末尾でdata空なら入力cursorをbyte同一で返し、有効期限も延長しない。cursorなしの空logだけはoffsetを指すcursorを初回発行する。Log不在は404、保存invariant破損は503 P19_STATE_CORRUPTであり、空pageの成功や先頭への自動巻戻しへ変換しない。
+
+<a id="phase-19-error-catalog"></a>
+**閉じたerror catalog：**
+
+wire errorは下表のmessageだけ、stderr/path/secretを足さない。codeはstate/JobResultにも共用し、nullは成功または未終端だけ。OS詳細はmask済み診断へ別保存。未知internal errorはP19_INTERNALへ集約する。
+
+| HTTP | codes | error message |
+|---|---|---|
+| 400 | P19_JSON, P19_INPUT | invalid request |
+| 401 | P19_AUTH | authentication required |
+| 403 | P19_FORBIDDEN | permission denied |
+| 404 | P19_NOT_FOUND | not found |
+| 405 | P19_METHOD | method not allowed |
+| 409 | P19_REVISION, P19_STALE, P19_IDEMPOTENCY, P19_BUSY, P19_APPROVAL, P19_FREEZE | state conflict |
+| 410 | P19_CURSOR | cursor expired |
+| 413 | P19_BODY | request too large |
+| 415 | P19_MEDIA | unsupported media type |
+| 422 | P19_SCHEMA, P19_DAG, P19_MATRIX, P19_EMPTY, P19_CAPABILITY, P19_SOURCE, P19_DIGEST, P19_ARCHIVE, P19_SIGNATURE, P19_TRUST | validation failed |
+| 429 | P19_QUOTA, P19_RATE | limit exceeded |
+| 500 | P19_INTERNAL, P19_ENTROPY, P19_SECRET, P19_EXIT, P19_OUTPUT, P19_TIMEOUT, P19_CLEANUP, P19_HEALTH, P19_CANCELLED | operation failed |
+| 503 | P19_TRANSPORT, P19_LEASE, P19_STATE_CORRUPT, P19_STATE_UNCERTAIN, P19_SHUTDOWN | unavailable |
+| 507 | P19_STORAGE | storage unavailable |
+
+P19_CANCELLEDはcancel終端のJobResultまたは取消されたRun/Deploymentを追跡するfailed Operationのcodeであり、受付HTTP成功を500へ変えない。P19_CLEANUPは実体状態に応じfailed/recovery_requiredであってcleanup warningがbusiness成功を遡及変更しない。時刻/entropy/leaseなど環境failureも成功に丸めない。429/503はRetry-After:1を返すがclient自動再実行を許可する意味ではない。
+
+<a id="phase-19-site-serving"></a>
+**site専用配信mode：**
+
+`adlaire-ci-api --cicd-site --config CONFIG --state-dir S` はmanagement modeと排他的。setupが指定したlisten/TLS証明書でGET/HEADだけを受け、管理・login・状態export endpointを一切登録しない。static directoryはarchive verified contentのみ。request.Hostをnet.SplitHostPort相当で分離し、port省略時はTLS=443/allow_http=80、DNSはlowercase/末尾dot拒否、IPはnet.ParseIPでcanonical化する。setup configのallowed_environmentsのhost/port完全一致1件からproject/environmentを決める。未知/重複/不正Hostは404、既定siteへfallbackしない。Forwarded/X-Forwarded-Host/query/pathの値でbindingを上書きしない。healthも同じbindingで対象を特定する。TLS名と証明書の適合はsetup probeで登録時検査する。URL pathを一度decodeしdot/backslash/NUL/隠しsegment/manifest未登録を404、directoryはindex.htmlだけ、listing/redirect/template実行なし。symlink拒否、open後fstatとmanifest size/hash照合。Range/圧縮動的変換なし。MIMEは既存static MIME表、未知はapplication/octet-stream、nosniff、cache-control no-store。本文はfile byteそのもの、HEADは同headerでbodyなし。最大request header16384、ReadHeaderTimeout5s、IdleTimeout30s、WriteTimeout30s、最大同時128。
+
+Route readは各request開始時のimmutable snapshot、stable=nullかつcandidateなしは503。canary bucketはcrypto/rand16bytesのhex cookie `adlaire_bucket` の最初の8hexをuint32としてmod100。cookieは32hex以外再発行、Max-Age86400/Path=/;HttpOnly;SameSite=Lax;Secure（TLS必須）。cookieは認証ではないため署名しない。bucket<percentならcandidate、他はstable、candidate=nullならstable。health reserved routeはRouteのcandidate（なければstable）とgenerationをJSONで返し、file検証済みでない場合503。通常trafficはTLS必須、検証loopbackだけ明示allow_http=true。site-agent queryで同generationの各観測窓request/5xx counterを返す。health/HEADは母数から除外、response完了時刻が属するUTC10秒窓へcountする。request開始時のgeneration/stepと完了時が違うresponseは新窓へ算入しない。途中切断は5xxとして数え、counterはmemory上で最大128同時request分を集約、250msまたはobserve/query前に同じSiteStateへflushする。flush失敗時は観測を失敗させ、成功値へ推測補完しない。observeはfrom/untilが10秒境界、全窓完了、generation/step一致、欠落0の場合だけ合計を返す。switch時に同一atomic SiteStateでcounterのgeneration/stepを合わせwindowsを空へ戻す。現generation/stepだけ最大24h保持し、過去段階の観測結果はDeployment側へ接続する。再起動では現在未完了窓を破棄し、process開始以前を含むobserveはP19_HEALTHで拒否する。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) へ接続する。
+
 api 連動機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.3](../DETAIL_INDEX.md#0i3-api--sdk--ui) を入口とする。endpoint、成功時・失敗時動作、状態副作用は [`docs/details/api.md`](api.md)、SDK method は [`docs/details/sdk.md`](sdk.md)、UI 操作は [`docs/details/ui.md`](ui.md)、状態 schema は [`docs/details/statefile.md`](statefile.md)、検証証跡は [`docs/details/fixture.md`](fixture.md) を正本とする。
 
 [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) は security 領域の詳細本文責務である。api が security 機能に関わる場合、[`docs/details/api.md`](api.md) 詳細本文責務は endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は [`docs/details/security.md`](security.md) 詳細本文責務を参照する。
 
 ---
+
+<a id="phase-19-api-implementation-classification"></a>
+**実装分類：** catalog dispatch・wire検証・cursor projection・site routing/counterは `INHOUSE`、使用primitiveはnet/http、encoding/json、crypto/hmac、crypto/rand（`STD`）。入力/状態/異常系は[`docs/details/api.md` 詳細本文責務](#phase-19-operation-catalog)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `api`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="0-責務境界"></a>
 
@@ -160,7 +328,7 @@ listener、signal source、shutdown clock / timer は [`docs/details/fixture.md`
 | 設定変更ログ | 設定変更 API は、変更前後の値を `.config_log` に追記する。ただし秘密情報の値は変更前後とも `"***"` にマスクする。監査 event は [`docs/details/security.md` 詳細本文責務 §27.44](security.md#sec-27-44) を参照する。 |
 | CORS | 既定では CORS ヘッダーを付与しない。標準管理ツールは同一 origin から配信する。`OPTIONS` preflight は定義しない。CORS を有効化する拡張は [`docs/details/api.md`](api.md) 詳細本文責務で未定義とし、実装してはならない。 |
 | セキュリティヘッダー | すべての API レスポンスに `Cache-Control: no-store`、`X-Content-Type-Options: nosniff` を付与する。SSE は `Cache-Control: no-store` と `X-Accel-Buffering: no` を付与する。 |
-| 判定順 | request ID 生成 → path 解決 → method 検証 → access control → [`docs/details/security.md` 詳細本文責務 §27.42〜§27.47](security.md#sec-27-42-2) の認証・scope・rate limit → body / query / path 入力検証 → endpoint 固有 gate → 状態競合 → 処理実行の順に判定する。`GET /api/health` だけは access control と maintenance を読まない。`POST /api/webhook` の body size 判定と署名検証、login endpoint の pre-auth rate limit と credential body parse は security 横断順序と各個別契約に従う。 |
+| 判定順 | request ID 生成 → path 解決 → method 検証 → access control → [`docs/details/security.md` 詳細本文責務 §27.42〜§27.47](security.md#sec-27-42-2) の認証・scope・rate limit → body / query / path 入力検証 → endpoint 固有 gate → 状態競合 → 処理実行の順に判定する。`GET /api/health` だけはaccess controlとmaintenanceを読まない。追加管理routeの順序例外は [security横断順序適用表](security.md#additional-management-security-order) で対象を限定する。`POST /api/webhook` の body size 判定と署名検証、login endpoint の pre-auth rate limit と credential body parse は security 横断順序と各個別契約に従う。 |
 
 エンドポイント例に記載されたフィールド名、型、有効値、HTTP ステータスは規範とする。API、SDK、標準管理ツールのいずれかを変更する場合は、[`docs/details/api.md` 詳細本文責務 §22](api.md#22-バックエンド-api-仕様)、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) の対応関係を参照する。
 
@@ -314,7 +482,7 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 | `GET /api/history` | `readBuildHistory()` | schema-valid かつ id 重複除外済みの行を `finished_at` 降順、同時刻は `id` 降順に sort し、`trigger`、`tag`、`flagged`、`failure_category` filter 後に paging する。 | `total:0`、検証済み query の `page` と `per_page`、`pages:0`、`history:[]`。 | 行単位破損は除外し、`BUILD_HISTORY_SKIP_CORRUPT`、id 重複は `BUILD_HISTORY_DUPLICATE_ID` を server log へ記録する。ファイル読込不能は `500 {"error":"State file read failed"}`。 |
 | `GET /api/history/{id}/log` | `readBuildLog(id)` | 対象 ID の log object を返す。 | 通常ログと archive の両方が不在なら `404 {"error":"Not found"}`。 | 対象 ID の log 破損は `500 {"error":"State file is corrupted"}`。 |
 | `GET /api/logs` | `readLatestBuildLogs(n,q)` | 最新 log line を時系列順へ正規化し、`q` 指定時は部分一致で絞り込む。 | `{"lines":[]}`。 | 個別 log 破損は除外する。ディレクトリ読込不能は `500 {"error":"State file read failed"}`。 |
-| `GET /api/queue` | `readBuildState()`、queue 上限算出時に `.server_config` | `active=.build_state.active_queue_entry`、priority 順の `queued`、`max_size=queue_max_size` を返す。 | `.build_state` 不在は `active:null`、`queued:[]`。`.server_config` 不在は既定 queue 上限。 | `.build_state` 破損は `500 {"error":"State file is corrupted"}`。 |
+| `GET /api/queue` | `readBuildState()`、queue 上限算出時に `.server_config` | `active=.build_state.active_queue_entry`、[runner詳細本文責務](runner.md#sec-27-35) が返す実行順の `queued`、`max_size=queue_max_size` を返す。 | `.build_state` 不在は `active:null`、`queued:[]`。`.server_config` 不在は既定 queue 上限。 | `.build_state` 破損は `500 {"error":"State file is corrupted"}`。 |
 | `GET /api/repo-info`、`POST /api/repo-config` | request 中 1 回の `readRepoConfig()` | GET は `RepoInfoObject`、POST は正規化済み現在値へ `RepoConfigPatch` の指定 key だけを適用する。 | `{owner:"fqwink",repo:"Build-Scripts",updated_at:null}` を memory 上で使用し、GET は file を作成しない。POST は差分がある場合だけ非 `null` の `updated_at` を付与した 3 key object を保存する。 | 破損は `500 {"error":"State file is corrupted"}`、読込不能は `500 {"error":"State file read failed"}`。既定値で補完せず、既存 file、`.config_log`、`.audit_log` を変更しない。 |
 | API 選択出力 target を使う endpoint | `readBranchConfig()` →不在時は default 正規化→ `readBuildStatus()` → endpoint 固有読取 | [`docs/details/api.md` 詳細本文責務 §22.0e.1](api.md#sec-22-0e-1) で target を 1 件に固定してから endpoint 固有値を算出する。 | `.branch_config` 不在は default。`.build_status.json` 不在または target 不一致は正規化済み先頭 target。 | `.branch_config` 破損 / 読取不能は `500`。`.build_status.json` 破損 / 読取不能は target 選択では先頭 target へ fallback し、status 自体を応答する endpoint は個別契約に従う。 |
 | `POST /api/build` / `POST /api/build/force` | `readMaintenance()` → `readCircuitState()` → `readBuildLock()` → `readBuildState()` | maintenance disabled、circuit closed、queue 容量内なら manual queue entry を保存し、systemd へ非同期起動を要求する。API は `running`、`current_build_id`、`last_started_at` を変更しない。 | `.maintenance` / `.build_state` / `.build_circuit_state` 不在は各初期値。 | maintenance 破損 / 読取不能は `503`、circuit / state 破損は `500`。circuit open は `409 {"error":"circuit_open"}`。`.build_lock` が形式不正または PID 判定不能の場合は `409 {"error":"Conflict"}`。queue 上限超過は `429`。 |
@@ -655,7 +823,7 @@ restore の `.config_log` は対象 file ごとの差分を 1 record にまと�
 | 診断 | `GET /api/diagnostics` | PAT、GitHub API、API 選択出力 target の出力サイト、systemd、Webhook 設定を個別 item として返す。診断結果は保存しない。 | 出力 directory 不在は `output_file` item を `error` とする。各項目は `ok`、`warn`、`error` のいずれかを返す。 |
 | ディスク使用量 | `GET /api/disk-usage` | 通常 build log、archive build log、API 選択出力 target の `out` 配下の通常 file を分類ごとに集計する。 | 出力 directory 不在は `output_file_bytes:0`。log directory 不在は対応 bytes / count を `0`。 |
 | 出力検証 | `POST /api/verify-output` | 選択 target の直近成功履歴 `output_sha256` と、同 target の現在の出力サイト manifest SHA-256 を比較する。 | 同 target の成功履歴なし、`output_sha256:null`、または出力 directory 不在は `404 {"error":"Not found"}`。 |
-| キュー | `GET /api/queue` | `.build_state.active_queue_entry` を `active`、`.build_state.queued` を priority 順の `queued`、`.server_config.queue_max_size` を `max_size` として返す。 | `.build_state` 不在は `active:null`, `queued:[]`。 |
+| キュー | `GET /api/queue` | `.build_state.active_queue_entry` を `active`、`.build_state.queued` を [runner詳細本文責務](runner.md#sec-27-35) が返す実行順の `queued`、`.server_config.queue_max_size` を `max_size` として返す。 | `.build_state` 不在は `active:null`, `queued:[]`。 |
 | バックアップ | `GET /api/backup` | 設定状態だけを export し、secret 値は返さず `webhook_secret_set` / `smtp_password_set` boolean に変換する。履歴、ログ、snapshot、session は含めない。 | 不在の任意設定ファイルは初期値で返す。 |
 | リストア | `POST /api/restore` | 対象 state schema をすべて検証してから [`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) の write 順に保存する。secret が `"***"` の場合は既存 secret を保持する。 | 検証失敗は書き込み前に `422`。途中失敗は未処理ファイルを書かない。 |
 
@@ -1034,7 +1202,8 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 | `{{duration_seconds}}` | ビルド所要時間（秒） |
 | `{{build_at}}` | ビルド実行日時（ISO 8601） |
 
-Webhook channel の `config.secret` は HMAC-SHA256 署名用シークレット文字列とする。設定時はリクエストヘッダーに `X-Adlaire-Signature: sha256=<hmac>` を付与し、`null` は署名なしとする。`GET /api/notify-config` は設定済み値を `"***"` でマスクし、未設定は `null` を返す。更新は `POST /api/notify-config` の対象 Webhook channel に対して行う。
+<a id="webhook-notify-signature-contract"></a>
+Webhook channel の `config.secret` は [security署名計算責務](security.md#notify-hmac-signature-contract) のkeyとする。APIのnotify-test送信は既存互換のX-Adlaire-Signatureをheader名に使う。通常build通知/手動再送のheader名は [runner送信責務](runner.md#notify-webhook-wire-signature) へ接続し、API testと同じものへ暗黙変更しない。`GET /api/notify-config` は設定済み値を `"***"` でマスクし、未設定は `null` を返す。更新は `POST /api/notify-config` の対象 Webhook channel に対して行う。
 
 **`GET /api/config` レスポンス例：**
 ```json
@@ -1549,6 +1718,8 @@ record schema は [`docs/details/statefile.md` 詳細本文責務 §22.0c](state
 { "id": "tok000001", "token": "act_...", "label": "監視用", "scopes": ["read"], "created_at": "2026-09-15T10:00:00Z", "expires_at": null }
 ```
 
+multi-user-v1のtoken管理認可は [user token結合責務](security.md#multi-user-token-totp-contract) を適用する。同profileのlist itemは上記7keyにuser_idを追加した閉じた8key、create responseは上記6keyにuser_idを追加した閉じた7keyとする。legacy応答へ追加しない。capacity409以外の形式/statusは従来契約を維持する。
+
 `token` はレスポンス時のみ返却し、以後は取得不可。`scopes` の有効値と API token の許可範囲は [`docs/details/security.md` 詳細本文責務 API token scope 固定契約](security.md#api-token-scope-contract)、保存する配列の型と件数は [`docs/details/statefile.md` 詳細本文責務 `.api_tokens` schema](statefile.md#api-token-schema) を参照する。管理 session の認証後許可範囲は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) の強制変更 gate に従う。トークンは `Authorization: Bearer <token>` ヘッダーで送信する。
 
 **`DELETE /api/tokens/{id}` レスポンス例：**
@@ -2052,7 +2223,7 @@ active entry と実行中のビルドは停止または削除しない（`POST /
 
 **queue 処理固定契約：**
 
-queue 追加は `.build_state` の atomic write で行い、id は [`docs/details/api.md` 詳細本文責務 §22.0e.2](api.md#sec-22-0e-2) の queue id とする。queue entry の保存値と表示順は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の Queue entry schema、および [`docs/details/runner.md` 詳細本文責務 §27.35](runner.md#sec-27-35) の priority、created_seq、id 順を使用する。`DELETE /api/queue` は `.build_state.queued` だけを空配列にし、`active_queue_entry`、実行中 build、lock、history、log を変更しない。
+queue 追加は `.build_state` の atomic write で行い、id は [`docs/details/api.md` 詳細本文責務 §22.0e.2](api.md#sec-22-0e-2) の queue id とする。queue entry の保存値と表示順は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の Queue entry schema、および [`docs/details/runner.md` 詳細本文責務 §27.35](runner.md#sec-27-35) の priority、created_seq、id 順を使用する。追加queue制御を実装した経路の表示順/clearは [runner詳細本文責務](runner.md#additional-queue-control) を使用する。既存経路の `DELETE /api/queue` は `.build_state.queued` だけを空配列にし、`active_queue_entry`、実行中 build、lock、history、log を変更しない。
 
 valid running lock、`.build_state.running=true`、または `.build_state.active_queue_entry != null` の場合、waiting queue の保存上限は `queue_max_size` 件とし、`queue_max_size=0` では queue 対応 API を `429 {"error":"queue_full"}` とする。すべて成立しない idle 状態の保存上限は `max(1, queue_max_size)` 件とする。上限判定と append は同じ `.build_state` lock 内で行い、判定後に lock を解放してから append してはならない。
 
@@ -2241,12 +2412,12 @@ record の key、型、必須性は [`docs/details/statefile.md` 詳細本文責
 | `at` | response status 確定後、`.api_access_log` 追記直前の UTC 秒精度時刻。 |
 | `request_id` | [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) の生成値。response header `X-Request-Id` と一致させる。 |
 | `method` | request の HTTP method を大文字化した値。 |
-| `path` | URL decode や path 正規化で別名化せず、query を除いた request path。 |
+| `path` | 原則queryを除いたrequest pathをそのまま使う。ただしshare token routeは `/api/share/{token}/status` の固定templateだけ、未知の `/api/share/` prefix pathは `/api/share/{redacted}` の固定値だけとする。tokenを含むraw path、長さ、prefixを別field/logへ退避しない。 |
 | `query` | route の query 契約で許可され、[`docs/details/api.md` 詳細本文責務 §22.0b](api.md#sec-22-0b) の検証に成功した明示指定 key だけを保存する。number、boolean、固定 enum、`YYYY-MM-DD` は正規化後の値を保存し、それ以外の string 値は常に `"***"` へ置換する。既定値、未指定 key、未知 key、検証失敗値、raw query string は保存しない。path / method / query 検証完了前の response は `{}` とする。 |
 | `status` | 送信対象として確定した HTTP status。access log 追記失敗で変更しない。 |
 | `duration_ms` | handler 受付開始直後の monotonic clock から response status 確定までの経過をミリ秒で切り捨て、0 未満は 0 とする。 |
 | `auth_type` | 終了時の認証経路を `"none"`、`"session"`、`"api_token"`、`"webhook"` のいずれかで記録する。認証前失敗と認証失敗は `"none"` とする。 |
-| `actor` | session 認証成功は `"admin"`、API token 認証成功は token id、Webhook 署名検証成功は `"webhook"`、それ以外は `null` とする。 |
+| `actor` | session認証成功はlegacyで `admin`、multi-user-v1では認証済UserRecord.id。API tokenはtoken id、Webhook署名成功は `webhook`、それ以外はnull。 |
 | `remote_addr` | `http.Request.RemoteAddr` を `net.SplitHostPort` で分解した host を IP 文字列として保存する。分解または IP parse に失敗した場合は `null`。`X-Forwarded-For`、`Forwarded`、`X-Real-IP` は参照しない。 |
 | `user_agent` | `User-Agent` を `strings.TrimSpace` し、改行と C0 / DEL 制御文字を除去した先頭 512 Unicode scalar values。空文字は `null`。 |
 
@@ -2965,12 +3136,14 @@ response 算出時点で `reset_at` が現在時刻以下の window は `state_s
 
 | 型名 | API 側で固定する key | 値の扱い |
 |------|----------------------|----------|
-| `UserListResponse` | `users`, `total`, `limit`, `offset` | `users` は [`docs/details/statefile.md` 詳細本文責務 UserRecord](statefile.md#sec-22-0d) の配列、`total` は filter 後 paging 前件数。 |
+| `UserListResponse` | `users`, `total`, `limit`, `offset` | `users` は本節の `AdditionalUserView` の配列、`total` は filter 後 paging 前件数。 |
 | `UserCreateInput` | `username`, `display_name`, `role_ids`, `password`, `external_subjects` | `username`、`display_name`、`role_ids` は必須、`password` と `external_subjects` は任意。未知 key は `422`。 |
 | `UserPatchInput` | `display_name`, `role_ids`, `password`, `external_subjects`, `status` | 1 key 以上必須。未指定 key は既存値維持。`status` は `active`、`disabled`、`locked`。 |
 | `RoleListResponse` | `roles` | [`docs/details/statefile.md` 詳細本文責務 RoleRecord](statefile.md#sec-22-0d) の配列。 |
 | `RoleInput` | `id`, `name`, `permissions` | `POST` は全 key 必須、`PATCH` は `name` または `permissions` の 1 key 以上必須。system role の `id` と `system` は変更不可。 |
 | `ExternalAuthConfigResponse` | `enabled`, `providers` | secret 本体を含めず、provider ごとに `client_secret_set` boolean を返す。 |
+| `AuthOptionsResponse` | `profile`, `providers` | [認証起動情報](#auth-options-http-contract) の閉じた公開型。 |
+| `AuthSelfResponse` | `user`, `capabilities`, `auth_source` | [本人認証情報](#auth-self-http-contract) の閉じた公開型。 |
 | `ExternalAuthConfigInput` | `enabled`, `providers` | provider secret は `client_secret` 入力時だけ受け取り、保存 response では返さない。`client_secret:"***"` は既存 secret 維持。 |
 | `ExternalAuthTestInput` | `provider_id`, `discovery_url` | `provider_id` または `discovery_url` のどちらか 1 つだけ許可する。 |
 | `ExternalAuthTestResponse` | `ok`, `issuer`, `authorization_endpoint`, `token_endpoint`, `jwks_uri` | `ok:false` は返さず、検証失敗は `422` または `502`。 |
@@ -2978,38 +3151,53 @@ response 算出時点で `reset_at` が現在時刻以下の window は `state_s
 | `DatastoreSwitchInput` | `target_store`, `dry_run`, `confirmation` | `dry_run:true` は `confirmation` 不要。`dry_run:false` は `confirmation:"SWITCH_DATASTORE"` 必須。 |
 | `DatastoreSwitchResponse` | `accepted`, `dry_run`, `target_store`, `checks` | `checks[]` は `name`, `status`, `message` を持ち、`status` は `ok`、`warn`、`error`。 |
 | `StatsExportResponse` | `generated_at`, `range`, `summary`, `items` | `range` は request の `from`, `to`, `granularity`, `target` を正規化して返す。 |
-| `QueueCancelResponse` | `message`, `queue_id`, `status` | `status` は `cancelled` 固定。 |
+| `QueueCancelResponse` | `message`, `queue_id`, `status` | message=`Queue entry cancelled`、status=`cancelled`。 |
 | `ConfigSnapshotListResponse` | `snapshots`, `total`, `limit`, `offset` | `snapshots` は id、label、created_at、created_by、sha256、corrupted を返す。破損 snapshot の nullable field は §27.55 に従う。 |
 | `ConfigSnapshotCreateInput` | `label` | `label` は 1〜128 Unicode scalar values の string または `null`。省略時は `null`、空文字は `422`。 |
 | `ConfigSnapshotRecord` | `id`, `label`, `created_at`, `created_by`, `sha256` | `files` 本体は list / create response へ含めない。 |
-| `ConfigSnapshotObject` | `id`, `label`, `created_at`, `created_by`, `files`, `sha256`, `corrupted` | `files` は schema-valid JSON value または secret file marker だけを含める。 |
+| `ConfigSnapshotObject` | `id`, `label`, `created_at`, `created_by`, `files`, `sha256` | 保存型と同じ。corruptedはlistの診断用だけで、正常objectに追加しない。 |
 | `ConfigSnapshotRestoreInput` | `confirmation` | `confirmation:"RESTORE_CONFIG"` 必須。 |
-| `ConfigSnapshotRestoreResponse` | `message`, `snapshot_id`, `restored_paths` | `restored_paths` は書込成功 path の ASCII 昇順。 |
-| `HistoryRetentionPolicyInput` | `enabled`, `max_count`, `max_age_days` | `max_count` と `max_age_days` は少なくとも一方を指定する。 |
+| `ConfigSnapshotRestoreResponse` | `message`, `snapshot_id`, `restored_paths` | message=`Config snapshot restored`、restored_pathsは書込成功pathのASCII昇順。 |
+| `HistoryRetentionPolicyInput` | `enabled`, `max_count`, `max_age_days` | 省略/nullとmerge後条件は [入力値契約](#additional-management-input-values)。 |
 | `HistoryRetentionPolicy` | `enabled`, `max_count`, `max_age_days`, `updated_at` | 保存済み policy または既定値を返す。 |
 | `HistoryRetentionRunResponse` | `deleted_count`, `matched_ids` | `matched_ids` は削除した build id。 |
 | `ProjectListResponse` | `projects`, `total` | `projects` は [`docs/details/statefile.md` 詳細本文責務 ProjectRecord](statefile.md#sec-22-0d) の配列。 |
 | `ProjectInput` | `id`, `name`, `root`, `branch` | 全 key 必須。`status` と `default` は request で受け付けない。 |
 | `ProjectPatchInput` | `name`, `root`, `branch`, `status` | 1 key 以上必須。`status` は `active` または `archived`。 |
 | `QueueReorderInput` | `queue_ids` | queued entry id の全件 exact 配列。重複、欠落、余剰は `422`。 |
-| `QueueReorderResponse` | `message`, `queue_ids` | 保存後の queue id 順を返す。 |
+| `QueueReorderResponse` | `message`, `queue_ids` | message=`Queue reordered`、保存後のqueue id順を返す。 |
 | `ConfigTemplateListResponse` | `templates`, `total` | `templates` は [`docs/details/statefile.md` 詳細本文責務 ConfigTemplateRecord](statefile.md#sec-22-0d) の配列。 |
 | `ConfigTemplateInput` | `name`, `description`, `values` | `values` は config restore 対象と同じ schema-valid partial object。secret 平文は禁止。 |
 | `ConfigTemplateApplyInput` | `confirmation` | `confirmation:"APPLY_CONFIG_TEMPLATE"` 必須。 |
-| `ConfigTemplateApplyResponse` | `message`, `template_id`, `updated_paths` | `updated_paths` は ASCII 昇順。 |
+| `ConfigTemplateApplyResponse` | `message`, `template_id`, `updated_paths` | message=`Config template applied`、updated_pathsはASCII昇順。 |
 | `AdminEventListResponse` | `events`, `total`, `limit`, `offset` | `events` は [`docs/details/statefile.md` 詳細本文責務 AdminEventRecord](statefile.md#sec-22-0d) の配列。 |
 | `ShareLinkListResponse` | `links` | token 本体と `token_hash` を含めない。 |
 | `ShareLinkCreateInput` | `scope`, `expires_at` | `scope` は [`docs/details/security.md` 詳細本文責務 §27.67](security.md#sec-27-67) の値。 |
 | `ShareLinkCreateResponse` | `id`, `token`, `scope`, `expires_at`, `created_at` | `token` は作成 response で 1 回だけ返す。 |
 | `SharedStatusResponse` | `status`, `history`, `snapshot_diff` | link scope に含まれない key は返さない。 |
 | `CachePolicyInput` | `enabled`, `ttl_seconds`, `endpoints` | `endpoints` は read-only `GET` endpoint path だけ。 |
-| `CachePolicyResponse` | `enabled`, `ttl_seconds`, `endpoints`, `entry_count` | `entry_count` は schema-valid cache entry 件数。 |
-| `CachePurgeResponse` | `message`, `purged_count` | 削除件数を返す。 |
+| `CachePolicyResponse` | `enabled`, `ttl_seconds`, `endpoints`, `entry_count` | entry_countの有効性条件は [cache世代・上限](#additional-response-cache-concurrency)。 |
+| `CachePurgeResponse` | `message`, `purged_count` | message=`Response cache purged`、削除件数を返す。 |
 | `SnapshotSiteDiffResponse` | `left_id`, `right_id`, `added`, `removed`, `modified`, `unchanged_count` | file content は含めない。 |
 | `WebhookResendInput` | `confirmation` | `confirmation:"RESEND_WEBHOOK"` 必須。 |
 | `WebhookResendResponse` | `accepted`, `delivery_id`, `queued_at` | `accepted:true` 固定。 |
 
 追加管理 API の request body は JSON object だけを許可し、array、scalar、`null`、空 body が許可されていない endpoint は `400` とする。body 禁止 endpoint は `Content-Length` が 0 または body 未送信だけを許可し、body がある場合は endpoint 固有状態を読まず `400` とする。未知 key、型不一致、範囲外、列挙値不一致、path parameter 不正、query parameter 不正は `422` とし、状態を変更しない。
+
+<a id="additional-management-input-values"></a>
+**追加管理入力値の補完契約：** JSONの同一object内duplicate key、trailing JSON、invalid UTF-8はparse不正として400。JSON numberの整数fieldは指数/小数を許可せず、値域は保存型を参照する。queryはpercent decodeを1回だけ行い、同一key複数指定、未知key、invalid UTF-8を422とする。省略時だけ既定値を適用し、nullを省略に読み替えない。
+
+| 入力 | 固定型・省略/null境界 |
+|---|---|
+| UserCreate/Patch | display_name/role_ids/status/external_subjectsは [statefile詳細本文責務の保存型](statefile.md#sec-22-0d) と同じ値域。passwordは [security詳細本文責務のpassword制約](security.md#認証共通詳細) を満たすstring。createの省略はlocal資格情報なし、patchの省略は保持、patchのnullだけは資格情報削除要求とする。role_idsとexternal_subjectsの重複は禁止。role_idsはASCII昇順、external_subjectsはprovider_id/subjectのbyte昇順へ正規化して保存する。 |
+| RoleInput | POSTのidは保存型、PATCHのid指定は禁止。name/permissionsは保存型と同じ、permissions空配列と重複は禁止し、ASCII昇順へ正規化する。 |
+| DatastoreSwitchInput | target_storeはstring必須、dry_runはbool必須、confirmationはstring任意。dry_run=trueでconfirmation指定は422。 |
+| ConfigTemplateInput | name/description/valuesは保存型と同じ。name/values必須、description省略はnull。values={}は422。partialとはtop-level設定file選択のsubsetであり、選択したfileの内部は完全なschema-valid値を渡す。 |
+| HistoryRetentionPolicyInput | enabled必須。max_count/max_age_days省略は既存値維持、明示nullはそのthreshold無効化。merge後少なくとも片方が非null。 |
+| ShareLinkCreateInput | scopeはstring必須。expires_at省略はnull、明示nullも無期限。 |
+| CachePolicyInput | [statefile詳細本文責務](statefile.md#additional-response-cache-policy) と同じ型の全key必須入力とする。endpointの許可集合は [response cache契約](#sec-27-68) を参照する。 |
+
+規定済みのendpoint固有errorを優先し、未指定の共通失敗本文は、400=`Invalid request`、422=`Validation failed`、401=`Unauthorized`、403=`Forbidden`、404=`Not found`、405=`Method not allowed`、409=`Conflict`、500=`Operation failed`、502=`Upstream unavailable` のerror文字列に固定する。Go error、入力値、secretを連結しない。detailsの有無/形式/固定文言は [validation契約](#additional-management-validation-order) だけを使う。
 
 <a id="additional-management-validation-order"></a>
 **追加管理 API validation / error 優先順位固定契約：**
@@ -3027,7 +3215,9 @@ response 算出時点で `reset_at` が現在時刻以下の window は `state_s
 | 7 | endpoint 固有状態を read し、存在確認、競合確認、業務 validation を行う。 | `404`、`409`、`422`、`500` | write は開始しない。 |
 | 8 | [追加管理 API 状態更新順固定契約](#additional-management-state-order) に従って write する。 | write 失敗は `500` | 成功済み write の巻き戻しは同表に明示した場合だけ許可する。 |
 
-追加管理 API の error body は `{"error": string}` を必須とし、validation 詳細を返す場合だけ `details` object を追加できる。`details` の key は request field 名、path parameter 名、または query parameter 名だけを許可し、secret、token、raw request body、Authorization header を含めてはならない。
+追加管理のerror bodyはerror stringを必須とする。schema由来422だけdetailsを閉じたobject<string,string>として1key付加し、keyは該当routeに定義済みのfield/path/query名だけ、messageはmissing=Required/type=Invalid type/enum・range・format=Invalid valueとする。未知key、構文400、認証/認可、競合、業務validation、I/Oの失敗はdetailsを省略する。未定義key名、secret、入力値、raw body、Authorizationをechoしない。
+
+同一stage内はunknown key→required不足→型→値域の順、各集合は定義済みfield名ASCII昇順で最初の1件だけを選ぶ。query重複/未知keyはdetails無し422、定義済みquery/pathの不正は上のInvalid valueとする。body禁止400/parse400はdetails無し。legacyのdetails配列をこの追加管理契約へ混在させない。
 
 <a id="additional-management-parameter-contract"></a>
 **追加管理 API path / query 固定契約：**
@@ -3048,22 +3238,26 @@ response 算出時点で `reset_at` が現在時刻以下の window は `state_s
 | `{delivery_id}` | notify delivery id | なし | 再送中は `409`、存在しない schema-valid id は `404`。 |
 | `{token}` | URL-safe Base64 token | なし | decode 不能は `401`。decode 後 32 byte 未満は `401`。期限切れは `410`。 |
 
+追加管理routeはEscapedPathのslash区切りsegmentで先にtemplateを確定し、固定segmentのpercent-encoded別名や末尾slashを受け付けず404とする。動的segmentだけを1回percent decodeしてから上表で検証するため、a%2Fbはschema不正422、a%252Fbは%を含むid不正422となる。自動clean/redirectや二重decodeをしない。
+
 list response の配列順は、状態 file または JSON Lines の保存順を基準とする。ただし event 系は `timestamp` 降順、config snapshot は `created_at` 降順、cache entry は `created_at` 降順とする。同一 timestamp の順序は id の ASCII 昇順に固定する。
 
 <a id="additional-management-state-order"></a>
 **追加管理 API 状態更新順固定契約：**
+
+このprofileのconfig_log.actorはsessionならUserRecord.id、API tokenならtoken idを使用し、legacyの固定adminを流用しない。その他のconfig_log key/順序は既存config log正本を適用する。
 
 | 対象 | Read | Write 順 | 失敗時副作用 |
 |------|------|----------|--------------|
 | users / roles | `.users`, `.roles` | 対象主 state → `.audit_log` → `.admin_events` | validation、permission、最後の admin 保護、role 使用中判定の失敗では差分なし。主 state 成功後の `.audit_log` 失敗は `500`、主 state は巻き戻さない。 |
 | external auth | `.external_auth_config` と secret ref | `.external_auth_config` → `.audit_log` → `.admin_events` | discovery test は状態を変更しない。secret 平文を response / log に出さない。 |
 | share links | `.share_links` | `.share_links` → `.audit_log` → `.admin_events` | `GET /api/share/{token}/status` は `.share_links` を read-only で参照し、`.audit_log` と `.admin_events` を書き込まない。token 本体、token hash、Authorization header、Cookie は保存しない。 |
-| datastore switch | `.datastore_config` | `.datastore_config` → `.admin_events` | `dry_run:true` は write なし。switch 実行中は `409`。 |
+| datastore switch | `.datastore_config` | なし | [datastore HTTP契約](#sec-27-49) の現在store検証だけ。 |
 | config snapshots / diff / templates | 対象 state と `.config_snapshots/`、`.config_templates` | snapshot/template state → 対象 config state（restore / apply 時のみ）→ `.config_log`（restore / apply 時のみ）→ `.audit_log` → `.admin_events` | restore / apply の途中失敗は未処理 file を書かず、成功済み file は巻き戻さない。 |
 | queue / retention / webhook resend | `.build_state`, `.server_config`, `.notify_log` | runner owner の対象 state → `.audit_log` → `.admin_events` | running conflict、queue id 不在、同一 delivery 再送中は差分なし。 |
 | projects | `.projects` | `.projects` → `.admin_events` | default project の archive は `409`。 |
 | events / metrics / badge / OpenAPI / version / stats export / diff read | endpoint 固有 state | なし | read-only endpoint は業務状態を作成、修復、削除しない。 |
-| response cache | `.response_cache`, `.server_config` | `.server_config` または `.response_cache` → `.admin_events` | purge 失敗時は未削除 entry を保持する。user 固有 response は cache へ保存しない。 |
+| response cache | `.response_cache`, `.server_config` | `.server_config` または `.response_cache` → `.admin_events` | [cache HTTP契約](#sec-27-68) の全体atomic更新を使用する。user 固有 response は cache へ保存しない。 |
 
 <a id="sec-27-48"></a>
 **27.48 マルチユーザー対応 API 境界：**
@@ -3073,13 +3267,15 @@ list response の配列順は、状態 file または JSON Lines の保存順を
 | method | path | request | response | 成功 | 失敗 |
 |--------|------|---------|----------|------|------|
 | `GET` | `/api/users` | query `limit`, `offset`, `status`, `role_id` | `UserListResponse` | `200` | `401`, `403`, `422`, `500` |
-| `POST` | `/api/users` | `UserCreateInput` | `UserRecord` | `201` | `400`, `401`, `403`, `409`, `422`, `500` |
-| `PATCH` | `/api/users/{id}` | `UserPatchInput` | `UserRecord` | `200` | `400`, `401`, `403`, `404`, `409`, `422`, `500` |
+| `POST` | `/api/users` | `UserCreateInput` | `AdditionalUserView` | `201` | `400`, `401`, `403`, `409`, `422`, `500` |
+| `PATCH` | `/api/users/{id}` | `UserPatchInput` | `AdditionalUserView` | `200` | `400`, `401`, `403`, `404`, `409`, `422`, `500` |
 | `DELETE` | `/api/users/{id}` | body 禁止 | `{ "message": "User disabled" }` | `200` | `401`, `403`, `404`, `409`, `500` |
+
+AdditionalUserViewは `{id,username,display_name,status,role_ids,external_subjects,totp_enabled,created_at,updated_at,password_set:bool}` の閉じた公開型とし、password_setはcredential!=null、totp_enabledはtotp.enabledから計算する。全list/create/patch応答で同じ投影を使用する。credential、totp object、password、password_hash、salt、KDF parameter、TOTP secret、認証内部recordは返さない。id/username等の型は [`docs/details/statefile.md` 詳細本文責務 UserRecord](statefile.md#sec-22-0d) を参照する。raw stateをresponse writerへ渡さない。
 
 `DELETE /api/users/{id}` は物理削除せず `status:"disabled"` にする。
 
-自分自身の最後の admin role を無効化または role 削除する request は `409` とする。
+本人への変更も含むadmin保護条件は [securityマルチユーザー責務](security.md#sec-27-48) を参照し、API独自のself-role禁止条件を追加しない。
 
 <a id="sec-27-49"></a>
 **27.49 データストア切り替え API 境界：**
@@ -3097,6 +3293,8 @@ list response の配列順は、状態 file または JSON Lines の保存順を
 
 `dry_run:false` は `confirmation:"SWITCH_DATASTORE"` を必須とする。
 
+選択可能集合とcheck順は [statefile詳細本文責務](statefile.md#additional-management-datastore-contract) を使用する。未登録target_storeは422、状態破損/読取不能は500。現在storeへの検証成功は202、accepted=false、requestのdry_run/target_store、全check結果を返し、pending操作、移送、admin eventを作成しない。202だけを非同期切替の開始証拠にしない。
+
 <a id="sec-27-50"></a>
 **27.50 外部認証連携 API 境界：**
 
@@ -3105,10 +3303,36 @@ list response の配列順は、状態 file または JSON Lines の保存順を
 | method | path | request | response | 成功 | 失敗 |
 |--------|------|---------|----------|------|------|
 | `GET` | `/api/external-auth-config` | body 禁止 | `ExternalAuthConfigResponse` | `200` | `401`, `403`, `500` |
+| `GET` | `/api/auth/options` | body/query禁止 | `AuthOptionsResponse` | `200` | `400`, `422`, `500` |
+| `GET` | `/api/auth/me` | body/query禁止、本人session | `AuthSelfResponse` | `200` | `400`, `401`, `403`, `422`, `500` |
 | `POST` | `/api/external-auth-config` | `ExternalAuthConfigInput` | `ExternalAuthConfigResponse` | `200` | `400`, `401`, `403`, `422`, `500` |
 | `POST` | `/api/external-auth/test` | `ExternalAuthTestInput` | `ExternalAuthTestResponse` | `200` | `400`, `401`, `403`, `422`, `502` |
 
 response に client secret、private key、raw token を含めてはならない。
+
+provider入力は保存型のid/type/enabled/issuer/client_id/scopes/redirect_uriと任意client_secretだけ。client_secret_ref/時刻/client_secret_setは入力禁止。新規secret省略/nullはpublic client、更新省略/`***`は保持、更新nullは削除、stringは1..4096byteでNUL/CR/LF禁止。APIがstatefileの固定secret pathへcreate-only保存してrefを生成する。旧secretを上書きせず、新secret保存→config atomic確定の順。config失敗は旧ref維持・新fileを未参照のまま保持、旧secret復元を要しない。provider入力arrayはid一意、request順を保存する。既存providerのcreated_atは保持し、実質変更またはsecret rotationだけupdated_atを更新、新規は両時刻をhandler時刻へ固定する。新規providerのclient_secret=***は422、既存の省略/***は保持。provider削除/secret交換後の未参照fileは認証に使用せず、API停止中の明示保守だけで削除する。testのdiscovery_url指定は登録済みenabled providerの導出URLとexact一致する場合だけ許可し、任意URL probeを禁止する。testはdiscoveryを毎回1回取得して同じmetadata検証を行い、既存flow snapshotを更新せず、JWKS/token/UserInfoを呼ばない。local provider/URL不適合は422、上流HTTP/timeout/形式/metadata不適合は502。鍵・user login成功の証明にしない。response providerは保存型からclient_secret_refを除きclient_secret_setを加えた閉じた型。全体enabled/providers/refが同値かつ新secret入力なしならno-op、時刻/state/log/flow世代不変。差分確定後だけexternal_auth_update audit（target_type=external_auth/target_id=null/message=External authentication updated）→admin event（type=security/target_type=external_auth/target_id=null/同message/severity=info）を各1件記録する。
+
+<a id="auth-options-http-contract"></a>
+**認証起動情報HTTP契約：** GET /api/auth/optionsはlegacy管理APIとmulti-user-v1だけに登録し、cicd-v1/site modeでは404とする。body/query禁止、追加管理のschema判定と共通IP access controlを適用し、session/API token/Cookie/permission/rate/audit/access結果ログ/response cacheを使用しない。共通request ID headerとbest-effort api_access_logだけを許可し、auth_type=none/actor=null、業務write0とする。
+
+responseは閉じた `{profile:"legacy-v1"|"multi-user-v1",providers:[{id:string,issuer_origin:string}]}`。profileは起動時検証済み認証profileから取得し、header/query/client入力で選ばせない。legacyではproviders=[]かつexternal auth stateを読まない。multi-userではauthorization mutex内で最新external configをschema検証して読み、全体enabled=falseなら[]、trueならenabled providerだけを保存順で最大16件公開する。issuer_originは [security origin契約](security.md#oidc-origin-contract) のcanonical origin、id以外のdisplay nameは生成しない。client_id/issuer全path/scopes/secret/ref/時刻/user/roleを返さず、秘密fileを開かない。破損/読取失敗は500 `{"error":"Authentication options unavailable"}`、legacyへfallbackしない。responseはapplication/json; charset=utf-8/no-store、ETag/Last-Modified/Set-Cookie無し。このreadは認証可否やprovider疎通成功の保証ではない。
+
+<a id="auth-self-http-contract"></a>
+**本人認証情報HTTP契約：** GET /api/auth/meはmulti-user-v1だけ、legacy/cicd-v1/siteは404。body/query禁止、追加管理validation順を使用する。有効な本人sessionを必要とし、API tokenは403、Cookieをsession代用にしない。必要permissionは設けず、最新user active/revocation/session permissions_hash/provider bindingを通常どおり検証し、401なら本体を返さない。認証後rateはread group、forced password gateは既存どおり適用する。
+
+閉じたresponseは `{user:AdditionalUserView,capabilities:object,auth_source:"local"|"oidc"}`。userは現在sessionの本人だけ、capabilitiesは [security permission enum](security.md#sec-27-58) の*以外の全keyを持つboolean objectで、当該permissionへの現在の認可結果だけを返す（*解決時は全true）。role idからclient側で再計算させず、permissions_hash/credential/TOTP内部値/provider subject binding/tokenを追加しない。authorization mutex内の同一snapshotで生成し、他user指定queryを受け付けない。破損/読取不能は500 `{"error":"Authentication context unavailable"}`。no-store/JSON、response cache read/write0、業務file/audit/event write0、共通rate/access/memory last_used_atだけを許可する。
+
+<a id="oidc-http-contract"></a>
+**外部login HTTP境界：** multi-user-v1だけに以下を登録し、legacy/cicd-v1で暗黙有効化しない。認証手順は [security詳細本文責務](security.md#oidc-code-flow-contract)。同origin JSON POSTだけを許可し、Origin欠落/不一致は403、CORS公開しない。両routeはsession不要、body最大4096byte、Cookieとcode/stateはaccess logにも保存しない。rate/body判定順は [security認証確定責務](security.md#oidc-authentication-commit) のlogin専用順を適用し、追加管理共通validation順から推測しない。
+
+| method/path | JSON request | 成功response | 失敗 |
+|---|---|---|---|
+| POST `/api/auth/oidc/start` | `{provider_id:string}` のみ | 200 `{authorization_url:string,expires_at:Time}`、binding cookie | malformed400、provider不在/disabled422、Origin403、満杯409、rate429、I/O500、upstream502 |
+| POST `/api/auth/oidc/finish` | `{state:string,code:string}` のみ | 200の既存login response、または既存TOTP ticket response | malformed400、Origin403、rate429、flow/claim/signature/user不正401、I/O500、upstream502 |
+
+全応答no-store、cookieを完了時/失敗消費時にMax-Age=0で消去する。401は `{"error":"Unauthorized"}` だけ、502は `{"error":"Upstream unavailable"}`、code/token/上流bodyをdetailsへ出さない。HTTP timeout/非200/非JSONは502、正しく受信したJWTの不正は401。最終cookie失効/response書込失敗でも消費済みflowを再利用しない。browser redirect callbackは管理UI rootだけで処理し、APIからsession入りURLへのredirectを行わない。API tokenはstart/finishを使用できない。
+
+users/roles/external-auth-config/testとOIDC routeはmulti-user-v1だけに登録し、他profileは404とする。multi-user-v1の既存POST `/api/login` はusername/passwordを必須とし、他profileでusernameの有無からprofileを推測しない。TOTP本人操作にはpassword keyを必須追加し、現在userのlocal資格情報を再検証する。login/TOTPの既存response keyは維持し、user管理入力でTOTP値を受け取らない。
 
 <a id="sec-27-51"></a>
 **27.51 統計データの JSON エクスポート API 境界：**
@@ -3125,6 +3349,12 @@ response に client secret、private key、raw token を含めてはならない
 
 response は `generated_at`、`range`、`summary`、`items` を持つ JSON object とする。
 
+`STD`。from/toは両端を含むfinished_at範囲、最大366日（差が366*86400秒以下）とする。targetはhistory.target_fileとの完全一致、nullは指定targetと一致しない。1回取得したreadBuildHistory結果だけを使用し、history_max_countで切らない。全履歴のread adapterの破損行/重複除外を適用し、input読取失敗は500 `Stats export failed`。generated_atはhandler開始のUTC時刻1回、rangeは `{from,to,granularity,target}` の全key（未指定target=null）とする。
+
+summaryは `{total,status_counts,duration_count,duration_sum_seconds}`。totalは対象行数、status_countsは対象行で出現した詳細statusをkeyとする件数map（空なら{}）、duration_countはduration_seconds非null件数、duration_sum_secondsはその合計（空なら0）。全数値は0..9007199254740991のinteger、加算overflowは500で部分JSONを返さない。
+
+granularity=buildのitemsは `{id,finished_at,status,duration_seconds}` の配列、finished_at昇順・同値id ASCII昇順。day/monthはUTCの日/月開始時刻でgroup化し `{bucket_start,total,status_counts,duration_count,duration_sum_seconds}` をbucket昇順、空bucketは出力しない。items上限10000、UTF-8 response上限1MiBを超える場合は422 `Stats export range too large`。ページング、勝手な切捨て、平均値丸めを追加しない。
+
 <a id="sec-27-52"></a>
 **27.52 キュー内個別エントリのキャンセル API 境界：**
 
@@ -3136,7 +3366,7 @@ response は `generated_at`、`range`、`summary`、`items` を持つ JSON objec
 
 `running` の entry は `409` とし、状態を変更しない。
 
-`queued` の entry は `status:"cancelled"` に変更し、history に `cancelled_by_api` を追記する。
+queued entryの取消処理は [runner詳細本文責務の追加queue制御](runner.md#additional-queue-control) を使用する。Queue entryに未定義statusを加えず、未実行queue idをbuild idへ転用してhistoryを書かない。
 
 <a id="sec-27-53"></a>
 **27.53 Prometheus メトリクスエンドポイント：**
@@ -3152,6 +3382,17 @@ metric name は `adlaire_ci_` prefix を必須とする。
 metric line は `# HELP`、`# TYPE`、sample の順で出力する。
 
 token、path secret、repository token を label に含めてはならない。
+
+`STD`。[Prometheus text形式](https://prometheus.io/docs/instrumenting/exposition_formats/) の0.0.4だけを出力し、UTF-8/LF、末尾LF、Content-Type=`text/plain; version=0.0.4; charset=utf-8`、Cache-Control=no-storeとする。下表順で各familyのHELP/TYPE/sampleを連続出力する。全てgauge、HELPは下表のASCII文言、labelとsample timestampは使用しない。
+
+| name | HELP | 値 |
+|---|---|---|
+| adlaire_ci_build_running | Build running. | build_state.runningの0/1 |
+| adlaire_ci_queue_entries | Waiting queue entries. | build_state.queuedの件数 |
+| adlaire_ci_history_entries | Retained history entries. | readBuildHistoryの有効行件数 |
+| adlaire_ci_notify_pending | Pending notifications. | readNotifyPendingの件数 |
+
+単一request内で各adapterを1回読み、非負decimal integerだけを出す。複数file間の同時snapshotを保証したと表記しない。不在時は各adapter既定値、読取不能/破損は500 `Metrics read failed` でtextを一切返さない。履歴retention後に減少し得る値をcounterと呼ばない。任意label/自動runtime/process metric、外部exporterを追加しない。
 
 <a id="sec-27-54"></a>
 **27.54 CLI 管理クライアント API 対応：**
@@ -3200,7 +3441,7 @@ SVG は script、external reference、inline event handler、remote image を含
 
 `GET /api/badge/status.svg` は `GET /api/status` と同じ status 算出結果を read-only で参照し、状態 file の作成、修復、更新、`.response_cache` read/write、audit、admin event を行わない。`target` と `branch` が指定された場合は status 算出対象をその条件へ限定し、該当する status が存在しない場合は `404 {"error":"Status not found"}` とする。
 
-SVG は UTF-8、XML declaration なし、`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20" role="img" aria-label="Adlaire CI: {status}">` を root とする。表示 text は左 `Adlaire CI`、右は `success`、`failure`、`running`、`skipped`、`unknown` のいずれかとし、右背景色は `success=#2e7d32`、`failure=#c62828`、`running=#1565c0`、`skipped=#6d6d6d`、`unknown=#455a64` に固定する。status 文字列以外の動的 text、branch、target、path、error、secret は SVG に含めない。
+SVG は UTF-8、XML declarationなし、xmlns=`http://www.w3.org/2000/svg` のsvg rootとし、寸法・text・色・配置・accessibility属性は [DESIGNデザイン責務 status badge](../DESIGN.md#status-badge-visual-contract) だけを参照する。右statusは `success`、`failure`、`running`、`skipped`、`unknown` の閉集合。status以外の動的text、branch、target、path、error、secretは含めない。要素順は背景rect左/右、text左/右、各属性順はfixtureのcanonical SVG比較で固定する。
 
 response header は `Content-Type: image/svg+xml; charset=utf-8`、`Cache-Control: no-store` とし、`ETag`、`Last-Modified`、`Set-Cookie` を付与しない。
 
@@ -3219,11 +3460,13 @@ retention run は lock 取得中なら `409` とする。
 
 `GET /api/history/retention` は `.server_config.history_retention` を [`docs/details/statefile.md` 詳細本文責務 HistoryRetentionPolicy object](statefile.md#history-retention-policy-object) として読み取り、既定値適用後の `HistoryRetentionPolicy` を返す。不在の `.server_config` は既定値で返し、file を作成しない。破損または読取不能は `500 {"error":"History retention config read failed"}` とする。
 
-`POST /api/history/retention` は `enabled` を必須、`max_count` と `max_age_days` の少なくとも一方を非 `null` 必須とし、未知 key、負数、0、小数、文字列数値を `422` とする。正規化後 policy が既存値と一致する場合は `.server_config`、`.audit_log`、`.admin_events` を変更せず `200` を返す。差分がある場合は `.server_config` を atomic write し、`.audit_log`、`.admin_events` の順で追記する。
+`POST /api/history/retention` は [入力値契約](#additional-management-input-values) に従って既存policyへmergeし、未知key、負数、0、小数、文字列数値、merge後のthreshold全nullを422とする。正規化後 policy が既存値と一致する場合は `.server_config`、`.audit_log`、`.admin_events` を変更せず `200` を返す。差分がある場合は `.server_config` を atomic write し、`.audit_log`、`.admin_events` の順で追記する。
 
 `POST /api/history/retention/run` は `.build_state.running=true` または有効な build lock がある場合に `409 {"error":"Build is running"}` とし、履歴を変更しない。policy `enabled=false` の場合は `200 {"deleted_count":0,"matched_ids":[]}` とし、`.build_history`、`.build_logs/`、`.audit_log`、`.admin_events` を変更しない。policy 有効時は `.build_history` の schema-valid record を `finished_at` 降順、同一時刻は `id` ASCII 昇順で保持対象にし、`max_count` 超過または `max_age_days` 超過の record を古い順に削除対象へ固定する。
 
 retention run は削除対象の `.build_logs/{id}.json`、`.build_logs/archive/{id}.json.gz`、`.build_history` record を同一計画で扱う。削除対象 log の削除に失敗した場合は `500 {"error":"History retention failed"}` とし、以降の対象を処理せず、削除済み log は戻さない。`.build_history` の atomic write に失敗した場合も削除済み log は戻さない。成功時だけ `.audit_log`、`.admin_events` を追記し、`matched_ids` は `.build_history` から削除した build id を削除処理順で返す。
+
+age判定nowは排他取得後のUTC時刻1回とし、finished_at < now-max_age_days*86400秒のときだけage超過（境界一致は保持）。max_countは保持順の0-based index >= max_countを超過とする。削除計画の同時刻tieはid ASCII昇順。logが元から不在なら削除済みとして継続し、symlink/通常file以外/読取不能は失敗として追従削除しない。破損/重複履歴行があるfileをread-only adapterの除外結果だけでrewriteしてはならず、削除開始前に500で拒否する。自動実行契機と排他は [runner詳細本文責務](runner.md#additional-history-retention-schedule) を使用する。
 
 <a id="sec-27-58"></a>
 **27.58 ロールベースアクセス制御 API 境界：**
@@ -3252,6 +3495,8 @@ diff item は `path`、`change`、`left`、`right` を持つ。
 
 secret value は `left` / `right` とも `"***"` に mask する。
 
+ConfigSnapshotDiffResponseは `{left_id,right_id,changes}` の全keyを持つ。changesの導出/順序/値域は [statefile詳細本文責務](statefile.md#config-snapshot-diff-contract) を使用する。missingは404 `Config snapshot not found`、corruptionは500 `Config snapshot corrupted`、read failureは500 `Config snapshot diff failed`。差分10000件またはresponse1MiB超は422 `Config snapshot diff too large`、部分responseやfile書込を行わない。
+
 <a id="sec-27-60"></a>
 **27.60 複数プロジェクト管理 API 境界：**
 
@@ -3268,9 +3513,9 @@ delete は物理削除せず `status:"archived"` にする。
 
 `GET /api/projects` は `.projects.projects` の保存順で返す。`status` query 未指定時は全 project、指定時は一致する project だけを返す。`total` は filter 後件数とし、paging は行わない。`.projects` 不在は [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) の初期値を memory 上で返し、file を作成しない。
 
-`POST /api/projects` は `id` の重複、`id="default"`、`default` または `status` key の指定を `409` または `422` とし、状態を変更しない。成功時は `status:"active"`、`default:false`、`created_at`、`updated_at` を補完し、`.projects.projects` の末尾へ追加する。
+`POST /api/projects` はid重複とid="default"を409、入力禁止のdefault/status keyを422とし、状態を変更しない。成功時は `status:"active"`、`default:false`、`created_at`、`updated_at` を補完し、`.projects.projects` の末尾へ追加する。
 
-`PATCH /api/projects/{id}` は未指定 key を維持し、`status:"archived"` への変更を archive として扱う。`default:true` の project を archive する request、最後の active project を archive する request、`id` 変更、`default` 変更は `409` または `422` とし、状態を変更しない。
+`PATCH /api/projects/{id}` は未指定 key を維持し、`status:"archived"` への変更を archive として扱う。default:trueまたは最後のactive projectのarchiveは409、入力禁止のid/default keyは422とし、状態を変更しない。
 
 `DELETE /api/projects/{id}` は `PATCH` による `status:"archived"` と同じ状態差分を保存し、物理削除しない。成功時は `.projects` → `.admin_events` の順で書く。`.projects` write 成功後の `.admin_events` 失敗は `500` とし、`.projects` は巻き戻さない。
 
@@ -3319,7 +3564,9 @@ API ドキュメント自動生成の owner は `api` とする。
 
 `paths` には実装済み endpoint の route だけを path ASCII 昇順で出力し、各 path 内の HTTP method は `delete`、`get`、`patch`、`post` の順で出力する。`operationId` は leading `/api` と version prefix を除いた path segment を lowerCamelCase 化し、先頭へ HTTP method lowerCamelCase を付ける。path parameter は `By` + lowerCamelCase 名で表す。例として `GET /api/cache-policy` は `getCachePolicy`、`POST /api/config-snapshots/{id}/restore` は `postConfigSnapshotsByIdRestore` とする。同じ `operationId` が発生する場合は OpenAPI 生成失敗として `500 {"error":"OpenAPI generation failed"}` を返し、部分 document を返さない。
 
-各 operation は `summary`、`operationId`、`responses` を必須とする。認証不要の `/api/version`、`/api/openapi.json`、`/api/share/{token}/status` 以外は `security:[{"bearerAuth":[]}]` を持つ。request body がある endpoint だけ `requestBody` を持ち、body 禁止 endpoint に `requestBody` を出力してはならない。JSON response は `application/json`、SSE は `text/event-stream`、Prometheus metrics は `text/plain`、SVG badge は `image/svg+xml`、binary snapshot は `application/octet-stream` として固定する。
+各operationはsummary/operationId/responsesを必須とし、summaryは大文字method + ASCII空白1byte + canonical unversioned route templateとする。responsesは正本の許可statusを10進文字列keyの昇順で全件持ち、descriptionはGo標準http.StatusTextの固定英語値（空なら生成失敗）だけとする。bodyがないstatusではcontentを省略し、bodyがあるstatusは下のmedia typeとschemaを使用する。認証区分は各route正本から導出し、bearer必須だけ `security:[{"bearerAuth":[]}]`、認証不要は `security:[]` とする。login/health/署名Webhook/share tokenをbearer必須へ一律変換しない。認証区分を表現できない実装routeは生成失敗とし、公開したまま一覧から落とさない。request body がある endpoint だけ `requestBody` を持ち、body 禁止 endpoint に `requestBody` を出力してはならない。JSON response は `application/json`、SSE は `text/event-stream`、Prometheus metrics は `text/plain`、SVG badge は `image/svg+xml`、binary snapshot は `application/octet-stream` として固定する。
+
+version aliasはpathsへ重複掲載せずunversioned routeを1件だけ出す。path parameterは全て `in:path,required:true`、queryは `in:query` とし、required/default/enum/nullable/range/additionalPropertiesは各schema正本から生成する。nullableはOpenAPI3.1のJSON Schema unionで表し、3.0のnullable keywordを出さない。operationIdのcamelCase変換はhyphen/underscore/dot区切り語をASCIIで連結し、空語/ASCII外/曖昧なparameter名は生成失敗とする。secretや実環境値をdescription/summaryに挿入しない。
 
 OpenAPI document は route、method、query、request schema、response schema、status、media type、security requirement だけを表す。secret の実値、token の例、Authorization header の例、状態ファイル path の絶対 path、host 名、環境変数値、fixture path を含めてはならない。`example` と `examples` は使用しない。`description` を出力する場合は secret、token、raw request body を含めず、[`docs/details/api.md`](api.md) 詳細本文責務の本文を転載してはならない。
 
@@ -3338,11 +3585,11 @@ OpenAPI document は route、method、query、request schema、response schema�
 
 running、finished、cancelled、missing、duplicate を含む request は `422` とし状態を変更しない。
 
-`POST /api/queue/reorder` は `.build_state.queued` の waiting entry だけを並び替える。`active_queue_entry`、`running`、`current_build_id`、entry の payload、priority、created_seq、created_at、requested_by は変更しない。`.build_state.queued` が空で `queue_ids:[]` の場合は no-op `200` とし、状態を変更しない。
+`POST /api/queue/reorder` は `.build_state.queued` の waiting entry だけを並び替える。`active_queue_entry`、`running`、`current_build_id`、entry の payload、priority、created_seq、queued_at、requested_by は変更しない。`.build_state.queued` が空で `queue_ids:[]` の場合は no-op `200` とし、状態を変更しない。
 
 `queue_ids` は `.build_state.queued[].id` と同じ集合を同じ個数で持つ必要がある。欠落、余剰、重複、active entry id、完了済み build id、cancelled entry id、schema-invalid id は `422 {"error":"Queue reorder validation failed"}` とし、`.build_state`、`.audit_log`、`.admin_events` を変更しない。
 
-成功時は request の `queue_ids` 順に `.build_state.queued` を並び替え、`.build_state` → `.audit_log` → `.admin_events` の順で書く。`.build_state` write 成功後の audit / admin event 失敗は `500` とし、queue 順は巻き戻さない。
+成功時は [runner詳細本文責務の追加queue制御](runner.md#additional-queue-control) へrequestのqueue_idsを渡し、確定した順を返す。永続化したmanual順とrunner取り出し順が一致することを必要とする。主state後のaudit/admin event失敗は500で、確定済みqueue順は巻き戻さない。
 
 <a id="sec-27-65"></a>
 **27.65 設定テンプレート API 境界：**
@@ -3360,11 +3607,11 @@ apply は `confirmation:"APPLY_CONFIG_TEMPLATE"` を必須とする。
 
 `GET /api/config-templates` は `.config_templates.templates` の保存順で返し、`total` は配列件数とする。不在時は空配列を返し、file を作成しない。破損または読取不能は `500 {"error":"Config templates read failed"}` とする。
 
-`POST /api/config-templates` は `name` の完全一致重複を `409` とし、`values` を [`RestoreObject`](#backup-restore-api-effect-contract) の subset として検証する。`values` に secret 平文、`webhook_secret`、`smtp_password`、`*_set`、`exported_at`、未知 key、schema-invalid partial object を含めてはならない。成功時は `tmpl_` id、`created_at`、`updated_at` を補完し、`.config_templates` → `.admin_events` の順で書く。
+`POST /api/config-templates` は `name` の完全一致重複を `409` とし、`values` を [`RestoreObject`](#backup-restore-api-effect-contract) の subset として検証する。`values` に secret 平文、`webhook_secret`、`smtp_password`、`*_set`、`exported_at`、未知 key、schema-invalid partial object を含めてはならない。成功時は `tmpl_` id、`created_at`、`updated_at` を補完し、[追加管理API状態更新順固定契約](#additional-management-state-order) の `config snapshots / diff / templates` 行を適用し、restore/apply専用のconfig更新・config logは行わない。
 
 `POST /api/config-templates/{id}/apply` は template の `values` に含まれる state file だけを [`backup / restore 固定契約](#backup-restore-contract) の restore 書込順で atomic write する。適用前に対象全 payload を検証し、1 件でも不正なら `422` として書込を開始しない。途中 write 失敗では未処理 file、`.config_log`、`.audit_log`、`.admin_events` を書かず、成功済み file は巻き戻さない。`updated_paths` は実際に書いた path の ASCII 昇順とする。
 
-`DELETE /api/config-templates/{id}` は `.config_templates.templates` から対象 1 件を除去し、template 適用済み設定を巻き戻さない。成功時は `.config_templates` → `.admin_events` の順で書く。
+`DELETE /api/config-templates/{id}` は `.config_templates.templates` から対象 1 件を除去し、template 適用済み設定を巻き戻さない。成功時は [追加管理API状態更新順固定契約](#additional-management-state-order) の `config snapshots / diff / templates` 行を適用し、restore/apply専用のconfig更新・config logは行わない。
 
 <a id="sec-27-66"></a>
 **27.66 管理者向けイベントフィード：**
@@ -3384,7 +3631,9 @@ event data に secret、token、password、raw request body を含めてはな�
 
 `GET /api/events/stream` は接続確立後に新規追記された `.admin_events` の schema-valid record だけを送信する。接続時点の既存 record は送信せず、既存 record の取得は `GET /api/events` を使用する。`type` query が指定された場合は一致する record だけを送信する。壊れた行は送信せず、stream を継続する。`.admin_events` 読取不能が header 送信前に発生した場合は `500 {"error":"Admin events read failed"}` を JSON で返す。header 送信後に読取不能が発生した場合は `event: error`、`data: {"error":"Admin events read failed"}`、空行を送信して connection を close する。
 
-event stream の response header は `Content-Type: text/event-stream; charset=utf-8`、`Cache-Control: no-store`、`X-Accel-Buffering: no` とする。admin event frame は `id: {AdminEventRecord.id}\nevent: admin-event\ndata: {compact-json-AdminEventRecord}\n\n` とし、`data` は compact JSON 1 行だけを許可する。keepalive は `: keepalive\n\n` 固定とし、`retry:`、複数 `data:` 行、CRLF、空 event frame を使用しない。client disconnect、SDK `StreamHandle.close()`、logout による close では状態、audit、admin event、cache を変更しない。
+event stream の response header は `Content-Type: text/event-stream; charset=utf-8`、`Cache-Control: no-store`、`X-Accel-Buffering: no` とする。admin event frame は `id: {AdminEventRecord.id}\nevent: admin-event\ndata: {compact-json-AdminEventRecord}\n\n` とし、dataは [状態共通canonical JSON](statefile.md#additional-management-statefile-common-contract) で符号化した1行だけを許可する。keepalive は `: keepalive\n\n` 固定とし、`retry:`、複数 `data:` 行、CRLF、空 event frame を使用しない。client disconnect、SDK `StreamHandle.close()`、logout による close では状態、audit、admin event、cache を変更しない。
+
+streamは1接続につき最大128未送信record、frame最大65536byte（末尾LF込み）、flush/write timeout10秒とする。queue超過は `Event stream overflow`、frame超過は `Admin event too large` のerror frameを送信可能な場合だけ1回送りcloseする。送信不能なclientへerror frameを無期限retryしない。close時はreader/timer/送信goroutineを全て終了する。30秒keepaliveの直前にsession期限/user状態/permissionを再判定し、失効では `Unauthorized` error frame後closeする。query/auth失敗でheaderを送らず、Last-Event-IDによるreplayと自動再接続は実装しない。file切替/短縮を検出した場合は `Admin event source changed` でcloseし、先頭から再送しない。
 
 <a id="sec-27-67"></a>
 **27.67 読み取り専用共有リンク API 境界：**
@@ -3406,7 +3655,7 @@ share token 本体は作成 response で 1 回だけ返す。
 
 `GET /api/share/{token}/status` は token 形式検証、SHA-256 hash 算出、`.share_links` lookup、`revoked_at`、`expires_at` の順で判定する。token decode 不能または decode 後 32 byte 未満は `401 {"error":"Invalid share token"}`、hash 不一致または revoke 済みは `404 {"error":"Share link not found"}`、期限切れは `410 {"error":"Share link expired"}` とする。この endpoint は session、API token、Cookie、permission、rate limit、response cache を使用せず、通常 session を作成しない。
 
-`SharedStatusResponse` は share link scope に対応する key 1 件だけを返す。`scope:"status"` は `{ "status": StatusResponse }`、`scope:"history"` は `{ "history": HistoryPageObject }` とし、history は `limit=20`、`offset=0`、filter なしの `GET /api/history` と同じ sort / corrupt line handling を適用する。`scope:"snapshot_diff"` は `{ "snapshot_diff": SnapshotSiteDiffResponse }` とし、schema-valid snapshot のうち `created_at` 降順、同時刻 `id` ASCII 昇順で先頭 2 件を選び、2 件目を `left_id`、1 件目を `right_id` として [`docs/details/archive.md`](archive.md) 詳細本文責務の diff 境界に渡す。snapshot が 2 件未満の場合は `404 {"error":"Shared resource not found"}` とする。
+`SharedStatusResponse` は share link scope に対応する key 1 件だけを返す。`scope:"status"` は `{ "status": StatusObject }`、`scope:"history"` は `{ "history": HistoryPageObject }` とし、historyはpage=1/per_page=20/filterなしのGET /api/history と同じ sort / corrupt line handling を適用する。`scope:"snapshot_diff"` は `{ "snapshot_diff": SnapshotSiteDiffResponse }` とし、検証済snapshotのmetadata.saved_at降順、同時刻id ASCII昇順で先頭2件を選び、2 件目を `left_id`、1 件目を `right_id` として [`docs/details/archive.md`](archive.md) 詳細本文責務の diff 境界に渡す。snapshot が 2 件未満の場合は `404 {"error":"Shared resource not found"}` とする。
 
 share link response は read-only とし、build trigger、queue、config、user、role、webhook resend、history retention、snapshot 作成、cache write を実行しない。許可される副作用は `.api_access_log` の best-effort 追記だけとし、その log に token 本体、token hash、Authorization header、Cookie を含めてはならない。
 
@@ -3427,13 +3676,22 @@ cache 対象 endpoint は `GET` の read-only endpoint だけとする。
 
 `CachePolicyInput.endpoints` は次の path だけを許可する。`/api/status`、`/api/health`、`/api/sysinfo`、`/api/output-meta`、`/api/dashboard`、`/api/disk-usage`、`/api/stats`、`/api/stats/timeline`、`/api/stats/build-duration`、`/api/stats/build-trends`。`/api/version`、`/api/openapi.json`、`/api/events`、`/api/events/stream`、`/api/share/{token}/status`、`/api/metrics`、`/api/badge/status.svg`、binary endpoint、SSE endpoint、body を持つ endpoint、user / role / token / audit / log / config / snapshot / template / project / queue / webhook resend endpoint は cache 対象にできない。許可外 path、重複、末尾 slash 差分、versioned path は `422` とし、状態を変更しない。
 
-cache key は [`docs/details/statefile.md` 詳細本文責務 ResponseCacheEntry](statefile.md#sec-22-0d) の `key` と同じ値を使用する。hash 入力は `{"method":"GET","path":canonicalPath,"query":canonicalQuery,"vary":vary}` の canonical JSON とし、`canonicalPath` は unversioned path、`canonicalQuery` は query key ASCII 昇順かつ値を string 化した object、`vary` は endpoint が表示内容の分岐に使用した `target`、`branch`、`granularity`、`from`、`to` だけを持つ。認証 token、session id、Cookie、user id、role id、permission、remote address、User-Agent を cache key、entry、header、body へ含めてはならない。
+cache key は [`docs/details/statefile.md` 詳細本文責務 ResponseCacheEntry](statefile.md#sec-22-0d) の `key` と同じ値を使用する。hash 入力は `{"method":"GET","path":canonicalPath,"query":canonicalQuery,"vary":vary}` の canonical JSON とし、`canonicalPath` は unversioned path、`canonicalQuery` は query key ASCII 昇順かつ値を string 化した object、`vary` は endpoint が表示内容の分岐に使用した `target`、`branch`、`granularity`、`from`、`to` だけを持つ。entry.varyにはこのhash入力object全体（内側のvaryと区別）を保存する。認証token、session id、Cookie、user id、role id、permission、remote address、User-Agentをcache key、entry、header、bodyへ含めてはならない。
 
 cache lookup は認証と permission 判定の後、endpoint 固有状態 read の前に行う。policy disabled、endpoint 未許可、entry 不在、entry 破損、`expires_at <= now`、`body_sha256` 不一致、保存 status が `200` 以外、保存 header に禁止 header がある場合は miss とし、endpoint 固有 handler を実行する。hit の場合は保存済み `status`、`headers`、`body` を返し、`X-Adlaire-Cache: HIT` を追加する。miss 後に endpoint 固有 handler が `200` JSON object を返し、secret と user 固有値を含まない場合だけ `X-Adlaire-Cache: MISS` を付けて `.response_cache` へ保存する。`4xx`、`5xx`、binary、SVG、SSE、text、secret を含む response は保存しない。
 
 cache entry の `headers` は `Content-Type: application/json; charset=utf-8` と `Cache-Control` だけを許可する。`Set-Cookie`、`Authorization`、`WWW-Authenticate`、`Location`、`ETag`、`Last-Modified`、`X-Accel-Buffering` を保存してはならない。保存時は `.response_cache` を atomic write し、write 失敗では response を `500 {"error":"Response cache write failed"}` に変更せず、cache 保存だけを諦めて original response を返す。cache 保存失敗を `.admin_events`、`.audit_log`、`.api_access_log` へ追加記録してはならない。
 
-cache policy API 以外の API が業務状態を書き換える request に成功した場合、response 送信前に `.response_cache.entries` を全削除する。自動削除では `.admin_events`、`.audit_log`、`.api_access_log` を追加記録しない。cache purge は `.response_cache.entries` を全削除し、`purged_count` は削除前の schema-valid entry 数とする。purge 途中で削除に失敗した場合は `500 {"error":"Response cache purge failed"}` とし、未削除 entry を保持する。cache policy 変更は `.server_config` の policy を更新するだけで、既存 `.response_cache` の削除は `DELETE /api/response-cache` でだけ行う。`POST /api/cache-policy` と `DELETE /api/response-cache` の成功時は [追加管理 API 状態更新順固定契約](#additional-management-state-order) の `response cache` 行に従って `.admin_events` を追記する。
+<a id="additional-response-cache-concurrency"></a>
+**cache世代・上限：** cacheはTTL内の古い公開read modelを返す補助であり、runner/別process/OSの変更と即時整合するsnapshotではない。認証・認可は毎requestで最新値を再判定し、権限判定結果をcacheしない。管理API process起動ごとにCSPRNG16byteのlowercase hex `instance_id` をmemory生成し、過去instanceのentryは常にmissとする。entropy失敗時はcacheを無効にして通常handlerを使い、権限検証を省略しない。
+
+同一processの業務更新requestは主state write前にmemory generationを1増やし、更新中flagを立てる。更新結果がpartial failureでも世代を戻さない。cache missは開始時generationを捕捉し、更新中でない、終了時も同じgeneration、instance一致の場合だけ保存できる。hitも同じ条件を必要とする。generation/flag/entry選択は同一mutex内で扱い、I/Oはmutex外、保存直前に再照合する。これにより更新前に始まったreadがpurge後に古いbodyを復活させない。複数processをまたぐ即時失効は保証しない。
+
+entry上限128、1body最大262144byte、cache全体8MiBとする。期限切れ/別instanceを先に除外し、なお超過ならcreated_at昇順・同値key ASCII昇順でevictする。時計逆行でnow<created_atはmiss、許可TTL変更後に新TTLより古いentryもmissとする。generation上限は9007199254740991、到達時は新instanceを生成して0へ戻し、生成失敗ではcache無効化。cache hitは共通access log以外のwriteを行わない。
+
+cache policy API 以外の API が業務状態を書き換える request に成功した場合、response 送信前に `.response_cache.entries` を全削除する。自動削除では `.admin_events`、`.audit_log`、`.api_access_log` を追加記録しない。cache purge は `.response_cache.entries` を全削除し、`purged_count` は削除前の schema-valid entry 数とする。purge失敗は500 `Response cache purge failed` とし、atomic境界と保持状態は [cache世代・上限](#additional-response-cache-concurrency) を適用する。cache policy 変更は `.server_config` の policy を更新するだけで、既存 `.response_cache` の削除は `DELETE /api/response-cache` でだけ行う。`POST /api/cache-policy` と `DELETE /api/response-cache` の成功時は [追加管理 API 状態更新順固定契約](#additional-management-state-order) の `response cache` 行に従って `.admin_events` を追記する。
+
+purge/policy更新も [cache世代契約](#additional-response-cache-concurrency) のgeneration更新対象とする。purgeは単一JSON objectのatomic置換であり、entryごとの部分削除はしない。rename前失敗は全entry維持、rename後失敗は新状態維持として500を返す。物理削除失敗でも世代を戻さず、旧entryはhit不可。policyが変わらないPOSTはno-op（世代/logも不変）。entry_countはschema-validかつ同instance/同generation/期限内entry件数とし、`CachePolicyResponse.entry_count` にもこの定義を適用する。
 
 <a id="sec-27-69"></a>
 **27.69 スナップショット間サイト差分 API 境界：**
@@ -3452,7 +3710,7 @@ file content は response に含めない。
 
 diff は各 `site.tar.gz` の通常 file entry だけを path と SHA-256 で比較する。directory entry、tar header、gzip header、mtime、mode、uid、gid は response に含めない。`added` は right にだけ存在する path、`removed` は left にだけ存在する path、`modified` は両方に存在し content hash が異なる path とし、それぞれ path の ASCII 昇順で返す。`unchanged_count` は両方に存在し content hash が一致する通常 file 数とする。
 
-response item は `path` と `sha256` だけを持つ。`modified` item は `left_sha256`、`right_sha256` を持つ。file content、tar path の絶対 path、snapshot 保存 path、secret、token、HTML 本文、差分本文は返さない。比較中に片方の snapshot 検証が失敗した場合は `500 {"error":"Snapshot diff failed"}` とし、状態を変更しない。
+added/removed itemは `{path,sha256}`、modified itemは `{path,left_sha256,right_sha256}` だけを持ち、modifiedへ曖昧なsha256を追加しない。file content、tar path の絶対 path、snapshot 保存 path、secret、token、HTML 本文、差分本文は返さない。比較中に片方の snapshot 検証が失敗した場合は `500 {"error":"Snapshot diff failed"}` とし、状態を変更しない。
 
 <a id="sec-27-70"></a>
 **27.70 Webhook 送信履歴の手動再送 API 境界：**
@@ -3465,15 +3723,15 @@ Webhook 送信履歴の手動再送 API の owner は `runner` とする。
 
 `WebhookResendInput` は `confirmation:"RESEND_WEBHOOK"` を必須とする。
 
-再送対象 payload は保存済み payload hash と delivery metadata から再構成し、secret は statefile から再取得する。
+再送payloadは [statefile詳細本文責務の永続payload](statefile.md#manual-webhook-resend-state) を検証して取得し、secretは送信直前に再取得する。metadataだけから本文を推測しない。
 
 同一 `delivery_id` の再送実行中は `409` とする。
 
-`POST /api/notify-log/{delivery_id}/resend` は `.notify_log` から schema-valid record を `at` 降順、同一時刻は物理行順の逆順で探索し、`id` が一致し、`channel_type="webhook"` で、`result` が `"failure"` または `"dropped"`、かつ `error_code` が `"http_5xx"` または `"timeout"` の record だけを対象にする。対象外 record は `422 {"error":"Webhook delivery is not resendable"}`、不在は `404 {"error":"Webhook delivery not found"}` とする。
+`POST /api/notify-log/{delivery_id}/resend` は `.notify_log` から schema-valid record を `at` 降順、同一時刻は物理行順の逆順で探索し、`id` が一致し、`channel_type="webhook"` で、`result="failure"` かつerror_codeがhttp_5xx/timeout、または `result="dropped"` かつerror_code=retry_exhaustedかつhttp_statusがnullまたは500..599のrecordだけを対象にする。さらにeventが [runner手動再送契約](runner.md#manual-webhook-resend-contract) の再送可能集合に属することを必要とする。対象外recordは422 `Webhook delivery is not resendable`、不在は404 `Webhook delivery not found` とする。
 
-再送は元 record の `event`、`channel_id`、`payload_sha256`、`attempt` を検証した後、`.notify_config` から同じ Webhook channel を再取得し、secret は `.webhook_secret` または channel secret ref から再読込する。保存済み payload 本文は `.notify_log` にないため、再構成できない event は `409 {"error":"Webhook payload unavailable"}` とし、送信しない。secret、送信 URL、Authorization header、payload 本文は response、`.admin_events`、`.audit_log`、server log に含めない。
+再送は元 record の `event`、`channel_id`、`payload_sha256`、`attempt` を検証した後、`.notify_config` から同じ Webhook channel を再取得し、secretは最新のWebhook channel.config.secretからだけ取得し、[runner送信署名責務](runner.md#notify-webhook-wire-signature) を適用する。受信用.webhook_secretや未定義secret_refへfallbackしない。永続payloadが不在/破損/不一致なら409 `Webhook payload unavailable` とし、logから再構成せず送信しない。secret、送信 URL、Authorization header、payload 本文は response、`.admin_events`、`.audit_log`、server log に含めない。
 
-同一 `delivery_id` の resend guard は process 内状態と `.admin_events` の未完了 resend event の両方で判定し、実行中なら `409` とする。送信要求を受理した時点で `202 {"accepted":true,"delivery_id":<delivery_id>,"queued_at":<now>}` を返し、`.admin_events` に `type:"notification"`、`target_type:"notify_log"`、`target_id:<delivery_id>` を追記する。実際の送信結果と `.notify_log` 追記は [`docs/details/runner.md` 詳細本文責務 §27.32](runner.md#sec-27-32) の通知 retry 契約に従う。
+受付と再起動guardは `.notify_resends` を唯一の正本とし、process memoryやadmin eventから未完了状態を推測しない。最新log/payload/channel検証→ledger lockでsource_delivery_id重複確認→新delivery_id用payloadを同じ本文/hashでcreate-only保存→queued record atomic commit→audit→admin eventの順。ledger失敗後の未参照payloadを送信や受付の証拠にしない。失敗は500、確定済みqueued recordは戻さない。202は全必須保存成功後だけ返し、bodyは `{"accepted":true,"delivery_id":<元id>,"queued_at":<保存時刻>}`。同じ元idはterminalを含め再受付409。結果不明のclientは再POSTせずnotify log/eventで確認する。runner消費・結果保存・不確定復旧は [runner詳細本文責務](runner.md#manual-webhook-resend-contract) を参照する。
 
 ---
 

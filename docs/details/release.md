@@ -1,8 +1,31 @@
 # Adlaire CI — Release 詳細仕様
 
+<a id="phase-19-release-contract"></a>
+
+**Phase 19 署名付きRelease profile：**
+
+ownerは `release`、実装主体は [components/release/](../../components/release/)。[`docs/SPEC.md` 方針・ポリシー責務 SPEC 適用profile](../SPEC.md#policy-inhouse-cicd) に従い、本節の `cicd-v1` だけを拡張する。本書R1〜R7の既存9 asset / 8 checksum行は `legacy-v1` の契約とする。build option、7binaryの名前、admin archive内容、公開tag形式、draft補償は既存契約を参照し、次の差分以外を変えない。
+
+**入力：** 既存R1 exact argvへ `--profile cicd-v1 --signing-key-file ABS --source-date-epoch N` を追加する。profile省略はlegacy-v1、legacyで追加2optionは禁止。Nは指定commitのcommitter UTC Unix秒と完全一致、非負整数。signing-key-fileはcheckout外regular0600、parent0700、owner一致、JSON `{schema_version:1,seed:base64}`（decoded32 bytes）、最大4096 bytes。key_idは対応Ed25519 public key32 bytesのSHA256。seedをログ/環境/assetに出さない。新依存はなくGo crypto/ed25519を使用する。
+
+**asset閉集合：** 既存7binary + admin archive + `SHA256SUMS` + `provenance.json` + `sbom.json` + `release-signature.json` =12。checksumはpayload8 + provenance + SBOMの10行、file名byte昇順、既存行形式。SHA256SUMSとsignature自身はchecksum対象外。signatureがmanifest全bytesを署名するため自己参照を作らない。
+
+**provenance schema：** `{schema_version:1,profile:"cicd-v1",repository:string,tag:string,commit:SHA,source_date_epoch:int,go_version:string,goos:"linux",goarch:"amd64",cgo_enabled:false,build_args:string[],source_files:[{path:RelPath,sha256:Digest}],artifacts:[{name:string,sha256:Digest,size:int}]}`。source_filesは実buildに使用したGit管理source全件（.git除く、dirty/untrackedがbuild対象にあれば拒否）をpath順。artifactsはpayload8だけname順、空配列禁止。入力と実際のbuildtoolchainを照合し、異なる実行の情報を合成しない。
+
+**SBOM schema：** `{schema_version:1,format:"adlaire-native-v1",commit:SHA,toolchain:{name:"go",version:string},modules:[{path:string,version:null|string,kind:"main"|"stdlib"}],files:[{asset:string,path:string,sha256:Digest}]}`。modulesはgo.modのmainと実toolchain stdlib、外部require/replaceは拒否。filesはbinary7 + admin archive内全file（asset名、archive相対path）をasset,path順。binaryのpathはbasename。空成功不可、provenanceとのdigest不一致は拒否。SPDX/CycloneDX/SLSA適合や脆弱性不存在を名乗らない。
+
+**signature schema / bytes：** `{schema_version:1,algorithm:"Ed25519",key_id:Digest,tag:string,commit:SHA,manifest_sha256:Digest,signature:base64}`。署名対象はUTF-8 `"adlaire-ci-release-v1\n"+tag+"\n"+commit+"\n"` にSHA256SUMSのraw bytesを連結したもの。Ed25519通常署名（prehash/contextなし）、signature decoded64 bytes。JSON3種はstatefile canonical bytes +末尾LF1個を出力し、signature bytesはJSONの並び順へ依存させない。SHA256はfileの末尾LFも含む。署名時刻を含めない。
+
+固定source/toolchain/epochで独立2buildしpayload8/provenance/SBOM/manifestがbyte一致することを要求する。同じseedの署名も一致確認する。実行ID/検証時刻はPR証跡だけに置きassetへ混入しない。公開は全12asset upload→全件再取得→count/size/hash/署名/JSON cross-reference照合→draft解除の順。途中失敗は既存draft補償を実施し、delete失敗を別errorで記録、公開成功にしない。既存同tagを上書きしない。
+
+生成側の検証errorは [`docs/details/api.md` 詳細本文責務 API error catalog](api.md#phase-19-error-catalog) のP19_SIGNATURE/P19_DIGEST/P19_SCHEMA/P19_TRANSPORT、CLI exitは既存release終了値へ対応させる。trust root・旧版受入・失効は [`docs/details/setup.md` 詳細本文責務 setup受入正本](setup.md#phase-19-setup-contract)、暗号既知値と再現性fixtureは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) へ接続する。Ed25519の方式確認は [RFC8032 §7.1](https://www.rfc-editor.org/rfc/rfc8032#section-7.1) を使用し、独自署名algorithmを実装しない。
+
 owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。Release の作成条件、バージョン体系、標準 OS/arch は [`docs/SPEC.md` ポリシー責務 §1 GitHub リリースポリシー](../SPEC.md#github-リリースポリシー)、asset の受け入れと配置は [`docs/details/setup.md`](setup.md)、admin archive の内容は [`docs/details/admin.md`](admin.md)、fixture と実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 ---
+
+<a id="phase-19-release-implementation-classification"></a>
+**実装分類：** provenance/SBOM cross-reference・cohort再現性/公開補償は `INHOUSE`、使用primitiveはcrypto/ed25519、crypto/sha256、archive/tar、compress/gzip、Go toolchain、Git（`STD`）。入力/状態/異常系は[`docs/details/release.md` 詳細本文責務](#phase-19-release-contract)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `release`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="release-responsibility-boundary"></a>
 **責務境界：**
@@ -261,8 +284,8 @@ Phase 13 の release governance artifact は以下の最低内容を満たす。
 | file | 最低内容 |
 |------|----------|
 | `LICENSE` | license 名、copyright holder、license text、適用範囲。 |
-| `SECURITY.md` | supported versions、vulnerability report channel、secret leakage report handling、expected response policy。 |
-| `CONTRIBUTING.md` | branch / PR 方針への参照、spec-first requirement、test evidence requirement、Phase 単位実装 requirement。 |
+| `SECURITY.md` | [docs/SPEC.md ポリシー責務 §5 セキュリティ報告](../SPEC.md#policy-security-reporting) への利用者向け参照入口。 |
+| `CONTRIBUTING.md` | [AGENTS.md 最上位ルールブック](../../AGENTS.md#agents-approval-rules)、[docs/SPEC.md 責務文書構成](../SPEC.md#document-responsibility-map)、[docs/DETAIL_INDEX.md 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) への開発参加者向け参照入口。 |
 | `CODEOWNERS` | 仕様文書、Go owner package、admin static artifact、workflow、release governance file の reviewer ownership。 |
 
 Phase 13 の `records/release.jsonl` は release evidence 1 件につき `release_id`、`git_tag`、`commit_sha`、`asset_names`、`sha256sums_digest`、`signature_verified`、`sbom_verified`、`reproducible_build_verified`、`download_verified`、`governance_files_verified` を持つ。未実行項目を `true` にしてはならない。

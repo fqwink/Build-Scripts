@@ -1,6 +1,41 @@
 # Adlaire CI — Archive 詳細仕様
 
+<a id="phase-19-artifact-contract"></a>
+
+**Phase 19 immutable成果物契約：**
+
+ownerは `archive`、実装主体は [components/archive/](../../components/archive/)。適用は [`docs/SPEC.md` ポリシー責務 SPEC ポリシー責務](../SPEC.md#policy-inhouse-cicd)、保存metadataは [`docs/details/statefile.md` 詳細本文責務 statefile schema正本](statefile.md#phase-19-schema-registry)。既存snapshot形式は変更しない。
+
+登録入力はproject、run/attempt/job、source SHA、regular directory。sourceと同一directory、symlink/hardlink（nlink!=1）、device/FIFO/socket、dotdot/絶対path/重複/大小文字だけ違うpathを拒否する。fileは1〜10000個、単体100 MiB、全展開1 GiB、compressed1 GiB、pathはRelPath以内、必須index.html（kind=siteだけ）を検査する。go-build成果物は実行fileとして保存可能だがsite配備時は拒否する。
+
+成果物directoryの固定集合は `manifest.json` と `payload.tar.gz`。manifestは `{schema_version:1,kind:"site"|"binary",source_sha:SHA,files:[{path:RelPath,size:int(0,104857600),sha256:Digest,mode:"0644"|"0755"}]}`、filesはpath byte昇順、一意、directory entryは格納しない。manifestのcanonical長は921600 bytes以下とし、file件数上限と同時に満たさなければ登録をP19_ARCHIVEで拒否する。tarはUSTAR regular fileだけ（name100/prefix155 bytesにsegment境界で表現不能なpathはP19_ARCHIVE、暗黙PAX化禁止）、owner/group 0、name空、mtime=0、順序はmanifest、modeは記載値。gzipはmtime0/name空/comment空/OS255、Go compress/gzip BestCompression。PAX/GNU拡張、link、追加member、trailing非zero byte、manifestにないfileを拒否する。digest=SHA256(payload.tar.gzの全bytes)、manifest_digest=SHA256(canonical manifest)。展開前に全headerと累積上限を検査し、展開中にも検査する。圧縮率は安全判定の代用にしない。
+
+登録はwork下O_EXCL staging→全file検証→各fileとdirectory fsync→project/digestへ非上書きrename→親fsync→metadata commit。既存digestなら保存済両fileと新payloadを再検証し、payload全bytes・kind・filesのpath/size/hash/modeが一致した場合だけ重複排除する。manifest.source_shaだけが新runと違う場合は正常な同一content再利用とし、最初のmanifest/source metadataを保持する。異なるsource SHAの同一outputをmanifest全体byte不一致だけで破損扱いしない。後続runのPlan.sourceとJobResult.artifactを来歴の接続に用い、最初のArtifact.source_shaを新runのSHAへ更新しない。metadata commit失敗は未参照directoryとして次GCで回収、成功したdigest内容は更新禁止。artifact source metadataは同じdigestの最初の登録を保持し、後続runはdigest参照を保存する。
+
+環境昇格は再ビルド・再圧縮せずdigestのpinを増やす。pin IDはactive run/deployment/environment/approval/手動operationのID、全pin先の存在をtransactionで検査する。自動pin解除はその参照の終端か更新と同じtransaction。手動pinはoperatorが取得し同じ主体またはproject-adminが解除する。current環境、直前Environment.retained_successes件の成功配備、進行中・承認待ちは解除不能。retention経過だけでpinを無視しない。
+
+GCの候補・順序・中断は [artifact read/GC](#phase-19-artifact-read-gc) を参照する。回収できない容量不足はP19_STORAGEで新登録を止める。
+
+比較は同じprojectの2digestを検証してmanifest pathの和集合を走査し、追加/削除/変更/同一を返す。変更はsize/hash/modeのいずれか差、表示にはpathと旧新size/digest/modeだけ、file本文は返さない。path昇順、API pagination適用。downloadは [docs/details/api.md 詳細本文責務 download wire](api.md#phase-19-artifact-download)、読取とGCは [artifact read/GC](#phase-19-artifact-read-gc) に従う。
+
+site-agentへの配置は専用state-dir配下 `cicd/site/{project}/{environment}/releases/{digest}/content/`、同階層manifest.json、展開完了marker `verified.json={digest,manifest_digest}`（atomic JSON）。site配信はverifiedと全file manifest一致が確定したdirectoryだけを開く。配置済み内容を上書きせず、新digestへ置く。site GCはRouteのstable/candidateと保持済みrollback digestを除外する。
+
+<a id="phase-19-archive-envelope"></a>
+**cacheとの形式分離とstream終端：** ArtifactManifestのkindはsite/binaryのまま固定する。CacheManifestはArtifactManifestと同じkey集合・型・files順序でkindだけcacheを要求する別の保存型とし、artifact登録/配備/APIへ流用しない。cache内容の選択・hit/restoreは [docs/details/runner.md 詳細本文責務 cache lifecycle](runner.md#phase-19-cache-lifecycle) を参照する。file件数・size/path/permissionの共通検証もArtifactManifestの契約を使用する。cache専用kindをsite/binaryへ自動変換しない。
+
+受入ではgzipを単一memberとして読み、CRC/ISIZEとEOFを検証し、2個目member・末尾byte（zeroも含む）を拒否する。展開tar長は `1024 + sum(512 + 512*ceil(file.size/512))` bytesと完全一致を要求する。最後の1024bytesはzeroの2blockだけ、file paddingはzeroだけ、余分なzero blockも拒否する。file数・sizeから上限を先に算出し、読出量が上限を1byteでも超えた時点で停止する。tar.Readerが返す最初のEOFだけで全stream検証を終えず、残りgzipと生圧縮入力の末尾も確認する。各raw header blockのtypeflag byte156がASCII 0（0x30）、magic bytes257..262がustar+NUL、version bytes263..264が00であることをtar.Readerへ渡す前に検査する。PAX/GNU/link等の前置headerをReaderが吸収した後のHeaderだけで判定しない。header checksumとname/prefix/size/mode等のmanifest照合も必須とする。
+
+<a id="phase-19-artifact-read-gc"></a>
+**read/GCの排他とretention：** read adapterは `ReadArtifactChunk(project,digest,offset)`。[docs/details/statefile.md 詳細本文責務 Root read guard](statefile.md#phase-19-artifact-read-guard)（digest1件）下で最新metadataとdeletingを確認し、検証済みparent descriptorからpayloadをO_NOFOLLOWで開き、regular/nlink=1/size_bytes一致をFstatで確認して必要範囲だけReadAtする。byte列とmetadataをmemoryへ確定してdescriptorとguardを解放し、その後APIへ返す。read中のfile作成、pin追加、Root更新、修復、checksum再保存をしない。全体digestの最終検証はclientの責務であり、範囲読取だけでpayload全体を再hashしたとは報告しない。artifactGetも同guardでmanifestのstrict schema/canonical digest/Artifact.manifest_digest一致を確認する。比較はdigest2件を同guardで取得し、同じRoot.generationの両manifestをmemoryへ確定してから比較する。file公開とmetadata確定は同正本のwrite adapterを使用し、staging検証中はRoot lockを持たない。
+
+GCはlock下でdeleting=true→新pin拒否→実file削除/親fsync→metadata削除を行い、失敗時はdeletingを保持する。通常候補は `now>=created_at+Project.quota.retention_days*86400` かつpins空。容量圧迫時だけ期限前もpins空を候補にでき、いずれもcreated_at,digest昇順。pins非空・active run/deployment/環境参照中のartifactは容量対策でも削除しない。deleting claimと実file削除はstatefileのexclusive guardでreadと直列化する。readが先ならそのchunkのmemory確定を待ち、GCが先なら後続readは404。Root lockをnetwork response中まで保持しない。中断後はdeleting recordを再照合して削除を継続し、directoryの再作成やdeleting解除による復活をしない。metadataのない未参照公開directoryはlock下で再照合して回収し、scanだけでArtifactとして採用しない。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
+
 ---
+
+<a id="phase-19-archive-implementation-classification"></a>
+**実装分類：** 閉集合manifest検証・pin/GC/比較は `INHOUSE`、使用primitiveはarchive/tar、compress/gzip、crypto/sha256、os（`STD`）。入力/状態/異常系は[`docs/details/archive.md` 詳細本文責務](#phase-19-artifact-contract)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `archive`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="0-責務境界"></a>
 

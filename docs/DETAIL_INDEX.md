@@ -46,12 +46,24 @@ owner component 別詳細本文、作業ルール、または Pull Request 本�
 | 対象 | 正本参照 |
 |------|----------|
 | テスト方針 / 完了可否 | [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) |
+| Node 禁止適合 / 非依存準備 / 取得再試行・安全診断 / 再混入control | [`docs/SPEC.md` ポリシー責務 §4a Node 全面禁止契約](SPEC.md#policy-node-runtime-ban)、[`docs/details/fixture.md` fixture 証跡責務 Node 非依存開発検証契約](details/fixture.md#development-actions-node-free-contract) |
 | 開発 GitHub Actions 方針 / 必須条件 / 作業手順 | [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3)、[`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](SPEC.md#policy-development-actions)、[`AGENTS.md` 開発 GitHub Actions 作業手順](../AGENTS.md#agents-development-actions) |
 | 開発 Actions 定義 / 実行 / 適用証跡 | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions 証跡固定契約](details/fixture.md#development-actions-evidence-contract) |
 | 既存 7 workflow required gate / 入力 fixture / checker / 正例・負例 | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions required gate 固定契約](details/fixture.md#development-actions-required-gate-contract) |
+| streaming log / UTF-8 page / 出力上限 / 保存容量の文書oracle | [docs/details/fixture.md fixture証跡責務 log境界入力](details/fixture.md#phase-19-log-boundary-vectors) |
+| operation再送 / 内部進行 / 期限GC / attempt結合の文書oracle | [docs/details/fixture.md fixture証跡責務 operation境界入力](details/fixture.md#phase-19-operation-vectors) |
+| 固定Plan / 型付き入力 / matrix / DAG選択 / trigger識別の文書oracle | [docs/details/fixture.md fixture証跡責務 Plan固定入力](details/fixture.md#phase-19-plan-vectors) |
+| worker ACK / chunk完了 / lease期限 / 保存identityの文書oracle | [docs/details/fixture.md fixture証跡責務 worker固定入力](details/fixture.md#phase-19-worker-vectors) |
+| artifact/cache envelope / download byte範囲 / cache保持の文書oracle | [docs/details/fixture.md fixture証跡責務 content境界入力](details/fixture.md#phase-19-content-vectors) |
+| Commit Status / 最新run順位 / scope / claim中断 / 保持容量の文書oracle | [docs/details/fixture.md fixture証跡責務 Status固定入力](details/fixture.md#phase-19-status-vectors) |
+| Phase 19 策定対象 / 故障・復旧・並行実行の受け入れ設計 | [`docs/details/fixture.md` fixture 証跡責務 Phase 19 検証策定契約](details/fixture.md#phase-19-cicd-evidence-contract) |
+| Phase20 IaC / plan意味整合 / 適用受付時刻 / 文書入力oracle | [docs/details/fixture.md fixture証跡責務 IaC検証入口](details/fixture.md#inhouse-iac-fixture-contract)、[完全入力と中断oracle](details/fixture.md#inhouse-iac-concrete-oracles)、[適用受付境界入力](details/fixture.md#inhouse-iac-admission-vectors) |
 | traceability / owner routing / fixture coverage | [`docs/details/fixture.md` fixture 証跡責務 test artifact traceability 固定契約](details/fixture.md#test-artifact-traceability-contract)、[`non-dedicated owner test routing 固定契約`](details/fixture.md#non-dedicated-owner-test-routing-contract)、[`fixture root coverage matrix 固定契約`](details/fixture.md#fixture-root-coverage-matrix-contract) |
 | test execution / closure | [`docs/details/fixture.md` fixture 証跡責務 test execution evidence matrix 固定契約](details/fixture.md#test-execution-evidence-matrix-contract)、[`test verification closure checklist 固定契約`](details/fixture.md#test-verification-closure-checklist-contract)、[`test verification closure record schema 固定契約`](details/fixture.md#test-verification-closure-record-schema-contract)、[`test verification closure record set 固定契約`](details/fixture.md#test-verification-closure-record-set-contract) |
 | test gap inventory / batch closure | [`docs/details/fixture.md` fixture 証跡責務 test gap inventory record 固定契約](details/fixture.md#test-gap-inventory-record-contract)、[`test improvement batch closure 固定契約`](details/fixture.md#test-improvement-batch-closure-contract) |
+| 固定文書vectorの必須case集合 / 本文水増し拒否 / decoder接続 | [docs/details/fixture.md fixture証跡責務 case閉包検査](details/fixture.md#specification-vector-case-integrity) |
+| vector registryの独立照合 / 検査予定と完了の閉包 | [docs/details/fixture.md fixture証跡責務 registry・実行対象照合](details/fixture.md#specification-vector-registry-integrity) |
+| 全仕様参照 / 既知の責務境界 regression guard | [`docs/details/fixture.md` fixture 証跡責務 参照検査](details/fixture.md#specification-reference-checker) |
 | 仕様全般不備 inventory / batch closure | [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract)、[`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) |
 | テスト固有 spec-gap closure | テストまたは fixture の完了可否に影響する仕様不足の記録先は [`docs/details/fixture.md` fixture 証跡責務 test gap inventory record 固定契約](details/fixture.md#test-gap-inventory-record-contract) の `source=spec-gap`。`source=spec-gap` は [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) の `test_gap_connection` で `defect_id` と `gap_id` の 1 対 1 対応を閉じる。非テストの仕様全般不備の記録先は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract)。 |
 | requirement / oracle / assertion / boundary | [`docs/details/fixture.md` fixture 証跡責務 test requirement coverage ledger 固定契約](details/fixture.md#test-requirement-coverage-ledger-contract)、[`test oracle evidence set 固定契約`](details/fixture.md#test-oracle-evidence-set-contract)、[`test assertion identity / failure diagnostics evidence set 固定契約`](details/fixture.md#test-assertion-failure-diagnostics-evidence-set-contract)、[`test assertion id 固定契約`](details/fixture.md#test-assertion-id-contract)、[`test boundary / failure matrix evidence set 固定契約`](details/fixture.md#test-boundary-failure-matrix-evidence-set-contract) |
@@ -59,6 +71,7 @@ owner component 別詳細本文、作業ルール、または Pull Request 本�
 | mutation | [`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](details/fixture.md#mutation-test-evidence-contract)、[`mutation test evidence set 固定契約`](details/fixture.md#mutation-test-evidence-set-contract)、[`mutation selection ledger 固定契約`](details/fixture.md#mutation-selection-ledger-contract) |
 | harness self-verification | [`docs/details/fixture.md` fixture 証跡責務 test harness self-verification evidence set 固定契約](details/fixture.md#test-harness-self-verification-evidence-set-contract) |
 | contract drift | [`docs/details/fixture.md` fixture 証跡責務 test / contract drift 証跡固定契約](details/fixture.md#test-contract-drift-evidence-contract)、[`test / contract drift report schema 固定契約`](details/fixture.md#test-contract-drift-report-schema-contract) |
+| 全仕様文書のpath / 固定anchor / anchor一意性 / Phase参照閉包 | [`docs/details/fixture.md` fixture証跡責務 全仕様参照checker](details/fixture.md#specification-reference-checker) |
 | 変更履歴 artifact 境界検査 | [`docs/details/fixture.md` fixture 証跡責務 変更履歴 artifact 境界検査](details/fixture.md#change-history-artifact-boundary-evidence) |
 | test evidence package | [`docs/details/fixture.md` fixture 証跡責務 test evidence package 記録先固定契約](details/fixture.md#test-evidence-package-record-location-contract) |
 | skip / 未実行 | [`docs/details/fixture.md` fixture 証跡責務 skip / 未実行証跡固定契約](details/fixture.md#test-skip-evidence-contract) |
@@ -423,9 +436,40 @@ Phase 18 の状態遷移判断は、repository 内 checker acceptance fixture �
 
 Phase 19 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、GitHub Actions 使用方針と内製 CI/CD の境界は [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3) を参照する。
 
-Phase 19 は、GitHub Actions required check、Adlaire CI 内製 CI 実行、Adlaire CI 内製 CD、deploy、rollback、release verification、required check 証跡を同一 Phase として扱う。Phase 19 を CI 強化 Phase と CD Phase に分割してはならない。
+設計の安全境界は [`docs/SPEC.md` ポリシー責務 §0i](SPEC.md#policy-inhouse-cicd)、策定対象の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](ROADMAP.md#phase-19-planning-scope)、実装着手可否は [実装前参照](#0c-実装前確認項目) を参照する。
 
-Phase 19 は Phase 18 完了前に仕様全般策定を進めてよい。ただし、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で active Phase として明示されるまで、実装着手、実装 PR、完了判定を行ってはならない。Phase 19 の詳細本文、fixture、required workflow、target path は未確定であり、実装可能な詳細仕様入口として扱ってはならない。
+<a id="phase-19-owner-route"></a>
+**Phase 19 owner / collaborator 境界参照：**
+
+| 判断対象 | owner | 詳細本文 / 接続先 |
+|----------|-------|--------------------|
+| 計画・条件・DAG・matrix・再試行・cancel・worker・隔離実行・job cache | `runner` | [`docs/details/runner.md` 詳細本文責務 Phase 19 実行契約](details/runner.md#phase-19-runner-contract) |
+| IPC framing・ACK・接続・lease期限 | `runner` | [framing](details/runner.md#phase-19-ipc-framing)、[接続と転送](details/runner.md#phase-19-worker-session)、[lease](details/runner.md#phase-19-worker-lease-deadlines) |
+| worker leaseのproject識別・metadata固定・世代採番・local保存照合 | `statefile` | [worker保存identity](details/statefile.md#phase-19-worker-state-identity) |
+| 入力正規化・matrix順・選択保存・自動trigger・固定Plan再実行 | `runner` | [docs/details/runner.md 詳細本文責務 入力](details/runner.md#phase-19-input-normalization)、[matrix](details/runner.md#phase-19-matrix-order)、[条件選択](details/runner.md#phase-19-plan-selection)、[trigger](details/runner.md#phase-19-trigger-admission)、[再実行](details/runner.md#phase-19-attempt-plan) |
+| Plan整合・展開task・revision別cursor | `statefile` | [docs/details/statefile.md 詳細本文責務 保存Plan](details/statefile.md#phase-19-plan-state-invariants) |
+| 自動triggerの予約主体 | `security` | [docs/details/security.md 詳細本文責務](details/security.md#phase-19-automatic-subject) |
+| 配備・承認対象・段階配備・切替・復旧進行 | `runner` | [`docs/details/runner.md` 詳細本文責務 配備・承認・復旧](details/runner.md#phase-19-deployment-contract) |
+| project・template・run・lease・保存 schema・durability | `statefile` | [`docs/details/statefile.md` 詳細本文責務 Phase 19 保存境界](details/statefile.md#phase-19-state-contract) |
+| 成果物登録・重複排除・検証・保持・回収・比較 | `archive` | [`docs/details/archive.md` 詳細本文責務 Phase 19 成果物契約](details/archive.md#phase-19-artifact-contract) |
+| 成果物read/GC・単一gzip/tar終端・cache形式 | `archive` | [docs/details/archive.md 詳細本文責務 envelope](details/archive.md#phase-19-archive-envelope)、[read/GC](details/archive.md#phase-19-artifact-read-gc) |
+| job cache公開・hit/restore・期限/容量削除 | `runner` | [docs/details/runner.md 詳細本文責務 cache lifecycle](details/runner.md#phase-19-cache-lifecycle) |
+| artifact/cache filesystem I/OとRoot commitの排他 | `statefile` | [docs/details/statefile.md 詳細本文責務 read/write guard](details/statefile.md#phase-19-artifact-read-guard) |
+| 利用者・role・環境 grant・承認者・secret・audit | `security` | [`docs/details/security.md` 詳細本文責務 Phase 19 権限契約](details/security.md#phase-19-security-contract) |
+| profile起動・endpoint・request / response・JSON log / metrics | `api` | [`docs/details/api.md` 詳細本文責務 Phase 19 API 接続](details/api.md#phase-19-api-contract) |
+| operation受付・再送・結果照会 | `api` | [docs/details/api.md 詳細本文責務 受付](details/api.md#phase-19-operation-admission) |
+| operation内部進行・保持・GC・対象identity | `statefile` | [docs/details/statefile.md 詳細本文責務 lifecycle](details/statefile.md#phase-19-operation-lifecycle) |
+| operationと実体処理の完了接続 | `runner` | [docs/details/runner.md 詳細本文責務 完了](details/runner.md#phase-19-operation-completion) |
+| SDK method・transport 接続 | `sdk` | [`docs/details/sdk.md` 詳細本文責務 Phase 19 SDK 接続](details/sdk.md#phase-19-sdk-contract) |
+| view・操作・DOM・非同期表示 | `ui` | [`docs/details/ui.md` 詳細本文責務 Phase 19 管理画面](details/ui.md#phase-19-ui-contract) |
+| CLI・静的 package 接続 | `admin` | [`docs/details/admin.md` 詳細本文責務 Phase 19 管理クライアント](details/admin.md#phase-19-admin-contract) |
+| provenance・署名・SBOM・公開前検証 | `release` | [`docs/details/release.md` 詳細本文責務 Phase 19 Release 検証](details/release.md#phase-19-release-contract) |
+| Release 受入・trust root・worker 環境受入 | `setup` | [`docs/details/setup.md` 詳細本文責務 Phase 19 環境受け入れ](details/setup.md#phase-19-setup-contract) |
+| 任意 Commit Status への結果接続 | `commitstatus` | [`docs/details/commitstatus.md` 詳細本文責務 Phase 19 結果通知](details/commitstatus.md#phase-19-commitstatus-contract) |
+| 管理画面の視覚配置 | デザイン責務 | [`docs/DESIGN.md` デザイン責務 Phase 19 管理画面](DESIGN.md#phase-19-admin-visual-contract) |
+| 本番同等の実行・配備・復旧検証 | 本番検証詳細本文責務 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 19 検証](details/production-validation.md#phase-19-production-validation-contract) |
+
+fixture・受け入れ証跡への接続は [横断テスト証跡共通入口](#cross-test-evidence-route) の Phase 19 策定対象を参照する。schema/処理/異常系は各owner行の正本へ、fixture layout/checker/required workflowは [fixture証跡責務 Phase19](details/fixture.md#phase-19-cicd-evidence-contract) へ到達する。正式 fixture / checker / workflow / target path の所在確認は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 19 所在](DOCUMENT_INDEX.md#phase-19-artifact-location) を参照する。
 
 <a id="phase-20-inhouse-iac-entry"></a>
 **Phase 20 内製 IaC 参照：**
@@ -434,7 +478,7 @@ Phase 20 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状�
 
 Phase 20 は、Terraform 的な infrastructure manifest、plan、apply、rollback、drift detection、provider operation boundary を内製 IaC として扱う後続 Phase である。Terraform、外部 IaC tool、外部 provider SDK を production 実装依存として採用する前提で仕様化してはならない。
 
-Phase 20 は Phase 18 完了前に仕様全般策定を進めてよい。ただし、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で active Phase として明示されるまで、実装着手、実装 PR、完了判定を行ってはならない。Phase 20 の owner component、詳細本文、fixture、required workflow、target path は未確定であり、実装可能な詳細仕様入口として扱ってはならない。
+Phase 20の主ownerはsetup、collaboratorはstatefile/security/fixture。採用resource/provider範囲・manifest/plan/apply/drift/rollback/recoverは [docs/details/setup.md 詳細本文責務](details/setup.md#inhouse-iac-contract)、plan意味整合・受付時刻は [適用受付契約](details/setup.md#inhouse-iac-admission)、保存型は [docs/details/statefile.md 詳細本文責務](details/statefile.md#inhouse-iac-state)、検証case/workflow入口は [横断テスト証跡共通入口](#cross-test-evidence-route)、実装/未作成artifact所在は [docs/DOCUMENT_INDEX.md 索引責務](DOCUMENT_INDEX.md#future-management-artifact-location)。成熟度とactive Phaseは [docs/ROADMAP.md 状態・計画責務](ROADMAP.md#roadmap-phase-plan) で判断し、入口の具体化だけを着手許可にしない。
 
 <a id="0f-仕様策定完了チェック"></a>
 **仕様策定完了条件の参照：**
@@ -611,13 +655,15 @@ Phase 20 は Phase 18 完了前に仕様全般策定を進めてよい。ただ�
 <a id="0i6-追加管理api機能"></a>
 **0i.6 追加管理 API 機能：**
 
+下表の横断fixture入口は [fixture証跡責務の追加管理API契約](details/fixture.md#additional-management-api-fixture-contract)、具体case oracleは [fixture証跡責務](details/fixture.md#additional-management-concrete-oracles) を参照する。認証bootstrap/本人情報は [API起動情報](details/api.md#auth-options-http-contract) / [API本人情報](details/api.md#auth-self-http-contract) → [SDK transport](details/sdk.md#oidc-sdk-transport) → [UI bootstrap](details/ui.md#ui-auth-bootstrap)、固定入力は [認可](details/fixture.md#additional-management-authorization-inputs) / [SDK](details/fixture.md#additional-management-sdk-inputs) / [移行](details/fixture.md#additional-management-migration-inputs) / [起動・本人](details/fixture.md#additional-management-bootstrap-inputs) / [UI](details/fixture.md#additional-management-ui-inputs) へ接続する。各入口の存在は機能の成熟度または実行済み検証を意味せず、現在状態は [ROADMAP状態・計画責務](ROADMAP.md#specification-completeness-status) を参照する。
+
 | 機能 | owner | 詳細本文 |
 |------|-------|----------|
 | マルチユーザー対応 | `security` | [`docs/details/security.md` 詳細本文責務 §27.48](details/security.md#sec-27-48)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.48](details/api.md#sec-27-48) |
 | データストア切り替え | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.49](details/api.md#sec-27-49) |
 | 外部認証連携 | `security` | [`docs/details/security.md` 詳細本文責務 §27.50](details/security.md#sec-27-50)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.50](details/api.md#sec-27-50) |
 | 統計データの JSON エクスポート | `api` | [`docs/details/api.md` 詳細本文責務 §27.51](details/api.md#sec-27-51)、SDK は [`docs/details/sdk.md` 詳細本文責務 §23.8](details/sdk.md#sec-23-8)、UI は [`docs/details/ui.md` 詳細本文責務 §24.8](details/ui.md#sec-24-8) |
-| キュー内個別エントリのキャンセル | `runner` | [`docs/details/runner.md` 詳細本文責務 §27.35 queue 契約](details/runner.md#sec-27-35)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.52](details/api.md#sec-27-52) |
+| キュー内個別エントリのキャンセル | `runner` | [`docs/details/runner.md` 詳細本文責務 追加queue制御](details/runner.md#additional-queue-control)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.52](details/api.md#sec-27-52) |
 | Prometheus メトリクスエンドポイント | `api` | [`docs/details/api.md` 詳細本文責務 §27.53](details/api.md#sec-27-53) |
 | CLI 管理クライアント | `admin` | [`docs/details/admin.md` 詳細本文責務 §A7](details/admin.md#sec-a7)、API 対応は [`docs/details/api.md` 詳細本文責務 §27.54](details/api.md#sec-27-54)、fixture 証跡は [`docs/details/fixture.md` Admin CLI fixture 固定契約](details/fixture.md#admin-cli-fixture-contract) |
 | 設定の自動スナップショット | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.55](details/api.md#sec-27-55) |
@@ -629,13 +675,13 @@ Phase 20 は Phase 18 完了前に仕様全般策定を進めてよい。ただ�
 | ユーザー管理 API | `security` | [`docs/details/security.md` 詳細本文責務 §27.61](details/security.md#sec-27-61)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.61](details/api.md#sec-27-61) |
 | API バージョニング | `api` | [`docs/details/api.md` 詳細本文責務 §27.62](details/api.md#sec-27-62) |
 | API ドキュメント自動生成 | `api` | [`docs/details/api.md` 詳細本文責務 §27.63](details/api.md#sec-27-63) |
-| ビルドキューの手動並び替え | `runner` | [`docs/details/runner.md` 詳細本文責務 §27.35 queue 契約](details/runner.md#sec-27-35)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.64](details/api.md#sec-27-64) |
+| ビルドキューの手動並び替え | `runner` | [`docs/details/runner.md` 詳細本文責務 追加queue制御](details/runner.md#additional-queue-control)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.64](details/api.md#sec-27-64) |
 | 設定テンプレート | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.65](details/api.md#sec-27-65) |
 | 管理者向けイベントフィード | `api` | [`docs/details/api.md` 詳細本文責務 §27.66](details/api.md#sec-27-66) |
 | 読み取り専用共有リンク | `security` | [`docs/details/security.md` 詳細本文責務 §27.67](details/security.md#sec-27-67)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.67](details/api.md#sec-27-67) |
 | API レスポンスキャッシュ制御 | `api` | [`docs/details/api.md` 詳細本文責務 §27.68](details/api.md#sec-27-68) |
 | スナップショット間サイト差分 API | `archive` | [`docs/details/archive.md` 詳細本文責務 snapshot 契約](details/archive.md#sec-27-15)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.69](details/api.md#sec-27-69) |
-| Webhook 送信履歴の手動再送 API | `runner` | [`docs/details/runner.md` 詳細本文責務 notification 契約](details/runner.md#sec-27-38)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.70](details/api.md#sec-27-70) |
+| Webhook 送信履歴の手動再送 API | `runner` | [`docs/details/runner.md` 詳細本文責務 通知連携](details/runner.md#sec-27-32)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.70](details/api.md#sec-27-70) |
 
 <a id="0i7-mcp"></a>
 **0i.7 MCP：**

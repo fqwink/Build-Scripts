@@ -23,68 +23,168 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
-        with:
-          go-version: "1.22"
+      - name: Checkout exact source without external actions
+        run: |
+          test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
+          test "$GITHUB_SERVER_URL" = https://github.com
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          workspace=$(pwd -P)
+          expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
+          test "$workspace" = "$expected_workspace"
+          workspace_entry=$(find . -mindepth 1 -maxdepth 1 -print -quit)
+          test -z "$workspace_entry"
+          export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0
+          git -c core.hooksPath=/dev/null init --quiet --template= .
+          git -c core.hooksPath=/dev/null remote add origin https://github.com/fqwink/Build-Scripts.git
+          git -c core.hooksPath=/dev/null fetch --quiet --no-tags --depth=1 origin "$GITHUB_SHA"
+          git -c core.hooksPath=/dev/null checkout --quiet --detach "$GITHUB_SHA"
+          tested_sha=$(git rev-parse HEAD)
+          test "$tested_sha" = "$GITHUB_SHA"
+      - name: Prepare verified go runtime
+        run: bash .github/scripts/development-ci.sh go
       - run: |
           format_output=$(gofmt -l main.go main_test.go components/*/*.go)
           test -z "$format_output"
+      - name: Clean temporary toolchain
+        if: ${{ always() }}
+        run: |
+          if test -f .github/scripts/development-ci.sh; then
+            bash .github/scripts/development-ci.sh cleanup
+          else
+            test -z "${ADLAIRE_CI_TOOLS:-}"
+          fi
 
   phase14-go-test:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
-        with:
-          go-version: "1.22"
+      - name: Checkout exact source without external actions
+        run: |
+          test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
+          test "$GITHUB_SERVER_URL" = https://github.com
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          workspace=$(pwd -P)
+          expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
+          test "$workspace" = "$expected_workspace"
+          workspace_entry=$(find . -mindepth 1 -maxdepth 1 -print -quit)
+          test -z "$workspace_entry"
+          export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0
+          git -c core.hooksPath=/dev/null init --quiet --template= .
+          git -c core.hooksPath=/dev/null remote add origin https://github.com/fqwink/Build-Scripts.git
+          git -c core.hooksPath=/dev/null fetch --quiet --no-tags --depth=1 origin "$GITHUB_SHA"
+          git -c core.hooksPath=/dev/null checkout --quiet --detach "$GITHUB_SHA"
+          tested_sha=$(git rev-parse HEAD)
+          test "$tested_sha" = "$GITHUB_SHA"
+      - name: Prepare verified go runtime
+        run: bash .github/scripts/development-ci.sh go
       - run: go test ./... -count=1
+      - name: Clean temporary toolchain
+        if: ${{ always() }}
+        run: |
+          if test -f .github/scripts/development-ci.sh; then
+            bash .github/scripts/development-ci.sh cleanup
+          else
+            test -z "${ADLAIRE_CI_TOOLS:-}"
+          fi
 
   phase14-obsidian-vault-fixture:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
-        with:
-          go-version: "1.22"
+      - name: Checkout exact source without external actions
+        run: |
+          test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
+          test "$GITHUB_SERVER_URL" = https://github.com
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          workspace=$(pwd -P)
+          expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
+          test "$workspace" = "$expected_workspace"
+          workspace_entry=$(find . -mindepth 1 -maxdepth 1 -print -quit)
+          test -z "$workspace_entry"
+          export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0
+          git -c core.hooksPath=/dev/null init --quiet --template= .
+          git -c core.hooksPath=/dev/null remote add origin https://github.com/fqwink/Build-Scripts.git
+          git -c core.hooksPath=/dev/null fetch --quiet --no-tags --depth=1 origin "$GITHUB_SHA"
+          git -c core.hooksPath=/dev/null checkout --quiet --detach "$GITHUB_SHA"
+          tested_sha=$(git rev-parse HEAD)
+          test "$tested_sha" = "$GITHUB_SHA"
+      - name: Prepare verified go runtime
+        run: bash .github/scripts/development-ci.sh go
       - run: go test . ./components/obsidian -run 'TestPhase14ObsidianVaultProductionEntrypoint|TestRunBuildObsidianVault' -count=1
+      - name: Clean temporary toolchain
+        if: ${{ always() }}
+        run: |
+          if test -f .github/scripts/development-ci.sh; then
+            bash .github/scripts/development-ci.sh cleanup
+          else
+            test -z "${ADLAIRE_CI_TOOLS:-}"
+          fi
 
   phase14-builder-handoff:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
-        with:
-          go-version: "1.22"
+      - name: Checkout exact source without external actions
+        run: |
+          test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
+          test "$GITHUB_SERVER_URL" = https://github.com
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          workspace=$(pwd -P)
+          expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
+          test "$workspace" = "$expected_workspace"
+          workspace_entry=$(find . -mindepth 1 -maxdepth 1 -print -quit)
+          test -z "$workspace_entry"
+          export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0
+          git -c core.hooksPath=/dev/null init --quiet --template= .
+          git -c core.hooksPath=/dev/null remote add origin https://github.com/fqwink/Build-Scripts.git
+          git -c core.hooksPath=/dev/null fetch --quiet --no-tags --depth=1 origin "$GITHUB_SHA"
+          git -c core.hooksPath=/dev/null checkout --quiet --detach "$GITHUB_SHA"
+          tested_sha=$(git rev-parse HEAD)
+          test "$tested_sha" = "$GITHUB_SHA"
+      - name: Prepare verified go runtime
+        run: bash .github/scripts/development-ci.sh go
       - run: go test ./components/obsidian ./components/builder -count=1
+      - name: Clean temporary toolchain
+        if: ${{ always() }}
+        run: |
+          if test -f .github/scripts/development-ci.sh; then
+            bash .github/scripts/development-ci.sh cleanup
+          else
+            test -z "${ADLAIRE_CI_TOOLS:-}"
+          fi
 
   phase14-document-drift:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
-        with:
-          go-version: "1.22"
+      - name: Checkout exact source without external actions
+        run: |
+          test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
+          test "$GITHUB_SERVER_URL" = https://github.com
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          workspace=$(pwd -P)
+          expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
+          test "$workspace" = "$expected_workspace"
+          workspace_entry=$(find . -mindepth 1 -maxdepth 1 -print -quit)
+          test -z "$workspace_entry"
+          export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0
+          git -c core.hooksPath=/dev/null init --quiet --template= .
+          git -c core.hooksPath=/dev/null remote add origin https://github.com/fqwink/Build-Scripts.git
+          git -c core.hooksPath=/dev/null fetch --quiet --no-tags --depth=1 origin "$GITHUB_SHA"
+          git -c core.hooksPath=/dev/null checkout --quiet --detach "$GITHUB_SHA"
+          tested_sha=$(git rev-parse HEAD)
+          test "$tested_sha" = "$GITHUB_SHA"
+      - name: Prepare verified go runtime
+        run: bash .github/scripts/development-ci.sh go
       - run: go test ./... -run TestPhase14ObsidianVaultIntegrationEvidence -count=1
+      - name: Clean temporary toolchain
+        if: ${{ always() }}
+        run: |
+          if test -f .github/scripts/development-ci.sh; then
+            bash .github/scripts/development-ci.sh cleanup
+          else
+            test -z "${ADLAIRE_CI_TOOLS:-}"
+          fi
 
   phase14-required-gate:
     if: ${{ always() }}
@@ -97,13 +197,25 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
-        with:
-          go-version: "1.22"
+      - name: Checkout exact source without external actions
+        run: |
+          test "$GITHUB_REPOSITORY" = fqwink/Build-Scripts
+          test "$GITHUB_SERVER_URL" = https://github.com
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          workspace=$(pwd -P)
+          expected_workspace=$(cd "$GITHUB_WORKSPACE" && pwd -P)
+          test "$workspace" = "$expected_workspace"
+          workspace_entry=$(find . -mindepth 1 -maxdepth 1 -print -quit)
+          test -z "$workspace_entry"
+          export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0
+          git -c core.hooksPath=/dev/null init --quiet --template= .
+          git -c core.hooksPath=/dev/null remote add origin https://github.com/fqwink/Build-Scripts.git
+          git -c core.hooksPath=/dev/null fetch --quiet --no-tags --depth=1 origin "$GITHUB_SHA"
+          git -c core.hooksPath=/dev/null checkout --quiet --detach "$GITHUB_SHA"
+          tested_sha=$(git rev-parse HEAD)
+          test "$tested_sha" = "$GITHUB_SHA"
+      - name: Prepare verified go runtime
+        run: bash .github/scripts/development-ci.sh go
       - name: Verify required checks and checkout identity
         env:
           ADLAIRE_ACTIONS_GATE: required
@@ -111,8 +223,16 @@ jobs:
         run: |
           test "$ADLAIRE_ACTIONS_GATE" = required
           test -n "$ADLAIRE_ACTIONS_NEEDS"
-          go test . -run '^TestDevelopmentActions(RequiredGate|WorkflowContract|GateControls)$' -count=1 -v | tee "$RUNNER_TEMP/development-actions-gate.log"
-          for required_test in TestDevelopmentActionsRequiredGate TestDevelopmentActionsWorkflowContract TestDevelopmentActionsGateControls; do
+          go test . -run '^TestDevelopmentActions(RequiredGate|WorkflowContract|GateControls|NodeFreeControls|BootstrapControls)$' -count=1 -v | tee "$RUNNER_TEMP/development-actions-gate.log"
+          for required_test in TestDevelopmentActionsRequiredGate TestDevelopmentActionsWorkflowContract TestDevelopmentActionsGateControls TestDevelopmentActionsNodeFreeControls TestDevelopmentActionsBootstrapControls; do
             grep -Fq -- "--- PASS: $required_test (" "$RUNNER_TEMP/development-actions-gate.log"
           done
           grep -Fq '"record_type":"development-actions-gate"' "$RUNNER_TEMP/development-actions-gate.log"
+      - name: Clean temporary toolchain
+        if: ${{ always() }}
+        run: |
+          if test -f .github/scripts/development-ci.sh; then
+            bash .github/scripts/development-ci.sh cleanup
+          else
+            test -z "${ADLAIRE_CI_TOOLS:-}"
+          fi

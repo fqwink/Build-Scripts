@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "d4642e8f5aca28b30b4525914b2735ac167a5c5df7698c79b9e2ab4e4310de14",
+  "source_group_sha256": "f730af5cf979d9c69e4a8cb9b34eaa17b04f594826c14a45bbf30d0123baf177",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -15,8 +15,8 @@
     {
       "path": "AGENTS.md",
       "source_exists": true,
-      "sha256": "9d6729a86f7669c0e1d6c9fde179f5cdd5402ddde5505da9810415fbdafdd8f8",
-      "size_bytes": 33007,
+      "sha256": "ae168f5e122c45dc2ee2fe798b993e0399af56cbe06c5573a48133559bebf81a",
+      "size_bytes": 33499,
       "owner_component": "runner",
       "area": "rulebook",
       "detected_terms": [
@@ -75,8 +75,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "6d2c51e1fac9558b24d94ef8250036cbf46a400a58eefb6d69266a7f08235f6f",
-      "size_bytes": 337000,
+      "sha256": "9f6b630074df57d62a89a9b77aac69dd084a6e4248f8e2c5afcedb0329576b5c",
+      "size_bytes": 526857,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [
@@ -115,8 +115,8 @@
     {
       "path": "docs/SPEC.md",
       "source_exists": true,
-      "sha256": "11c9fa1caa14dab8ab1100adb2426f9aaca7ce83f09188430950f232301f1682",
-      "size_bytes": 204611,
+      "sha256": "6904ebdfd6986d6ba4dba2fc7cae4c00dcaf1eb49097bcc50864dbcd9b795787",
+      "size_bytes": 216817,
       "owner_component": "runner",
       "area": "policy",
       "detected_terms": [
@@ -135,8 +135,8 @@
     {
       "path": "docs/ROADMAP.md",
       "source_exists": true,
-      "sha256": "756414f31729dcea48aa7468bf0468cd2f9288f5007090fe90a3568bb65ffd3a",
-      "size_bytes": 60643,
+      "sha256": "e375d679b886e9ab19c9226c288a9148dee1f350273cf2c3a96f447a41c8b4fb",
+      "size_bytes": 67570,
       "owner_component": "runner",
       "area": "roadmap",
       "detected_terms": [
@@ -155,8 +155,8 @@
     {
       "path": "docs/DETAIL_INDEX.md",
       "source_exists": true,
-      "sha256": "5997dfe88efe60ab1915cff0f4410da35b698ce5db4a1a336d9061ab433b046c",
-      "size_bytes": 174283,
+      "sha256": "211e061b89c8855e59ba55823736d5ae697202aae7b2c2088a6e89474fb36a8b",
+      "size_bytes": 183837,
       "owner_component": "runner",
       "area": "detail-index",
       "detected_terms": [
@@ -175,8 +175,8 @@
     {
       "path": "docs/DOCUMENT_INDEX.md",
       "source_exists": true,
-      "sha256": "f9f37ba8b0062293c3980a19a577796f6d8154473d4b3248577761423983d6a4",
-      "size_bytes": 59389,
+      "sha256": "edb6c02d9788325558d1e5794798614fcb5693e1f2e950feed5b7c42f635e028",
+      "size_bytes": 69690,
       "owner_component": "runner",
       "area": "document-index",
       "detected_terms": [
@@ -195,8 +195,8 @@
     {
       "path": "docs/details/fixture.md",
       "source_exists": true,
-      "sha256": "073fb8503fccc6da654f15d99abf2aea2db2104c5ab1144099a6361ff5d5a035",
-      "size_bytes": 996576,
+      "sha256": "253c24e6df868ed073c60eb2bc70ef63f80d55f3cd66451b85027c684796a290",
+      "size_bytes": 1335870,
       "owner_component": "runner",
       "area": "fixture-spec",
       "detected_terms": [
@@ -215,8 +215,8 @@
     {
       "path": ".github/workflows/phase16-quality-evidence-closure.yml",
       "source_exists": true,
-      "sha256": "67531dd8626773164de0a40fa44c62f6364d082b0da35b9cfa0ea9c667977135",
-      "size_bytes": 5729,
+      "sha256": "d8f098234b9ff4a4e84d9e70dd681939712a28190a90420505136c9e0ba5fa12",
+      "size_bytes": 17235,
       "owner_component": "runner",
       "area": "workflow",
       "detected_terms": [
@@ -250,6 +250,26 @@
       ],
       "inventory_refs": [
         "phase16.evidence.evidence-package"
+      ]
+    },
+    {
+      "path": ".github/scripts/development-ci.sh",
+      "source_exists": true,
+      "sha256": "3e05589391fd1df04090dd682edb93f35f158cf35b19d2aefe9cd0adbacac25d",
+      "size_bytes": 4763,
+      "owner_component": "release",
+      "area": "workflow",
+      "detected_terms": [
+        {
+          "term_id": "phase16-node-free-bootstrap",
+          "match": "GOTOOLCHAIN=local",
+          "match_mode": "literal",
+          "count": 2,
+          "first_source_locator": "file:.github/scripts/development-ci.sh#line:5"
+        }
+      ],
+      "inventory_refs": [
+        "phase16.workflow.required-checks"
       ]
     }
   ]

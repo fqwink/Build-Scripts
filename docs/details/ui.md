@@ -1,8 +1,100 @@
 # Adlaire CI — UI 詳細仕様
 
+<a id="phase-19-ui-contract"></a>
+
+**Phase 19 管理画面契約：**
+
+ownerは `ui`、実装artifactは [admin/index.html](../../admin/index.html)。すべての通信は [`docs/details/sdk.md` 詳細本文責務 SDK公開契約](sdk.md#phase-19-sdk-contract) を通し、直接fetch/HTTP/secret storageを追加しない。視覚値は [`docs/DESIGN.md` デザイン責務 DESIGN正本](../DESIGN.md#phase-19-admin-visual-contract)、型とエラーはAPI正本を参照する。
+
+navigationはprojects/runs/artifacts/environments/workers/access/operationsの7view。project選択は全view共通、切替時に古いview requestをabortしcursor/selection/confirmationを破棄する。各success/errorのauthorizationをmemoryに保持し、generationが現在値以上でsubject一致の場合だけ権限表示を更新する。初回認証後はprojectsListのauthorizationを受け取るまで操作を表示せず、表示の権限は同grantとAPI role表から導出する。保存済tokenだけからroleを推測しない。権限のないactionは非表示、既に開いていたviewの403は表示を破棄し権限エラーへ移る。platform-adminのglobal viewとproject grantを混同しない。既存管理画面から「CI/CD」入口で切替え、legacy操作は別viewのまま残す。
+
+以下はDOM action IDとSDK methodの一対一対応。methodと同じoperation IDがjoin keyでありendpointを本書へ複製しない。list/getはviewのdata loader、mutationは同IDのbutton/form submit、login/logoutはsession操作とする。Session.must_change=forcedではpasswordChange/logoutだけを表示し、変更成功時にloginへ戻す。promptでは変更案内だけを出し、強制として操作を止めない。全IDに `data-cicd-action="operationID"` を付け、重複DOM ID禁止。
+
+| SDK method | view | DOM ID |
+|---|---|---|
+| login | session | `cicd-login` |
+| logout | session | `cicd-logout` |
+| passwordChange | session | `cicd-password-change` |
+| projectsList | projects | `cicd-projects-list` |
+| projectPut | projects | `cicd-project-put` |
+| workersList | workers | `cicd-workers-list` |
+| workerPut | workers | `cicd-worker-put` |
+| targetsList | workers | `cicd-targets-list` |
+| targetPut | workers | `cicd-target-put` |
+| usersList | access | `cicd-users-list` |
+| userPut | access | `cicd-user-put` |
+| servicesList | access | `cicd-services-list` |
+| servicePut | access | `cicd-service-put` |
+| definitionsList | projects | `cicd-definitions-list` |
+| definitionPut | projects | `cicd-definition-put` |
+| templatesList | projects | `cicd-templates-list` |
+| templatePut | projects | `cicd-template-put` |
+| environmentsList | environments | `cicd-environments-list` |
+| environmentPut | environments | `cicd-environment-put` |
+| grantsList | access | `cicd-grants-list` |
+| grantPut | access | `cicd-grant-put` |
+| secretPut | access | `cicd-secret-put` |
+| secretsList | access | `cicd-secrets-list` |
+| workerDrain | workers | `cicd-worker-drain` |
+| workerResume | workers | `cicd-worker-resume` |
+| plan | projects | `cicd-plan` |
+| runStart | runs | `cicd-run-start` |
+| runsList | runs | `cicd-runs-list` |
+| runGet | runs | `cicd-run-get` |
+| runRetry | runs | `cicd-run-retry` |
+| runResume | runs | `cicd-run-resume` |
+| runCancel | runs | `cicd-run-cancel` |
+| logsGet | runs | `cicd-logs-get` |
+| artifactsList | artifacts | `cicd-artifacts-list` |
+| artifactGet | artifacts | `cicd-artifact-get` |
+| artifactDownload | artifacts | `cicd-artifact-download` |
+| artifactCompare | artifacts | `cicd-artifact-compare` |
+| artifactPin | artifacts | `cicd-artifact-pin` |
+| cachesList | artifacts | `cicd-caches-list` |
+| cacheDelete | artifacts | `cicd-cache-delete` |
+| environmentStatus | environments | `cicd-environment-status` |
+| deploymentPlan | environments | `cicd-deployment-plan` |
+| deploymentStart | environments | `cicd-deployment-start` |
+| deploymentsList | environments | `cicd-deployments-list` |
+| deploymentGet | environments | `cicd-deployment-get` |
+| deploymentApprove | environments | `cicd-deployment-approve` |
+| deploymentReject | environments | `cicd-deployment-reject` |
+| deploymentCancel | environments | `cicd-deployment-cancel` |
+| deploymentRollback | environments | `cicd-deployment-rollback` |
+| deploymentReconcile | environments | `cicd-deployment-reconcile` |
+| operationGet | runs | `cicd-operation-get` |
+| metricsGet | operations | `cicd-metrics-get` |
+| auditsList | operations | `cicd-audits-list` |
+
+projectsはproject設定、definition/templateのJSON editor、入力型editor、plan DAG（table：job/needs/task/resources）、matrix展開結果を持つ。runsはqueue一覧/attempt切替/job状態/両stream log/再実行・再開・取消。artifactsはdigest一覧/pin/download/manifest差分/cache。environmentsは現在世代/digest/plan差分/承認/禁止時間帯/段階進捗/復旧。workersはhealth/lease/capability/drain/resumeとtarget登録。accessはuser/service/grant/secret version/quota。operationsは24h統計と監査。JSON editorのローカルJSON構文検査は固定「入力形式が不正です」だけを表示し、parserのraw messageを転記しない。schema検証の正本はAPIであり、server errorはAPIの固定message/codeだけを表示する（detailsが空の応答からfield pathを推測しない）。secret本文をerrorへ載せない。入力の全必須値と既定値はschema正本へ接続し、未設定を隠れたdefaultで送らない。
+
+**view state machine：** idle→loading→ready|empty|error|unauthenticated。mutationはready→submitting→accepted→polling→succeeded|failed|recovery_required。submitting応答はOperationResult.operationを採用し、同期terminalならaccepted/pollingを経ずterminal処理へ進む。result=nullなら対象GET/listで取得する。pollingはoperationGet、terminal確認後にaffected list/detail/環境statusを再取得するまで成功表示を確定しない。stale409は現在revisionとplanを再取得し入力内容を保持して差分表示、同じmutationの自動再送禁止。error時は確定前データと新データを混ぜず「更新失敗」状態を表示する。遅延responseはview generationとrequest sequenceが現在と一致する場合だけ適用する。
+
+実行中logは2秒、run/operation/環境進行は5秒、metrics/workerは30秒poll。document.hidden、logout、project/view変更では停止/abortし、復帰時は再取得。1resourceにつきin-flight最大1、429/503はRetry-After秒（1〜30へclamp）、その他失敗はpoll停止し再読込actionを出す。log cursor410は欠落表示と明示再読込、末尾追従は利用者が最下部にいる時だけ。logはtextContent/pre、HTML解釈禁止、最大1 MiB/stream、copy/downloadもmask後だけ。表示bufferの容量はUTF-8 byteで数え、完全scalar単位で先頭を落とす。logsGetの各stream/attempt別next_cursorをそのまま保持し、空page/terminal=falseでも同一cursorを次pollへ渡す。片streamのterminalで他streamの未読pageを止めず、410ではbuffer/cursorを破棄する前に欠落状態を示し、利用者の再読込だけでcursorなし取得へ戻す。
+
+開始/取消/rollback/秘密更新/権限変更/drainはconfirmationでproject/対象ID/revision/digest/環境世代を固定する。確認後のselection変化で無効化。submit中二重押下禁止、o-IDはフォーム1回の操作に固定。secret入力は送信/close/logoutで消去しDOM再描画へ残さない。one-time credentialはそのresponse内でだけ表示しview離脱で破棄する。approveとdeploy開始は別action、受付を配備完了や復旧成功と表示しない。
+
+<a id="phase-19-ui-plan-confirmation"></a>
+**計画確認とattempt選択：** DAG表はAPIのPlanData.jobs順で全jobを表示し、selected=falseも除外済み状態として残す。選択の再計算や展開IDの短縮をしない。runStart confirmationは取得済Plan.digestとdefinition/revision/ref/解決済valuesを同じ表示snapshotへ固定し、project/入力/選択版変更・再取得失敗で破棄する。送信時はそのsnapshotをSDKへ渡し、stale応答で新digestへ自動確認しない。manual=falseでは開始controlを無効化するがplan表示は妨げない。retry/resume confirmationは選択したRun/attempt/revision/保存Planを表示し、最新branchへ切替える操作と混在させない。旧attemptまたは未終端の拒否後はRunを再取得し、元操作を自動再送しない。HTTP・固定Planの正本は [docs/details/api.md 詳細本文責務](api.md#phase-19-plan-request-boundary) を参照する。
+
+<a id="phase-19-ui-artifact-download"></a>
+**成果物の検証済みdownload：** artifactDownloadは1件ずつoffset0からSDKを呼び、開始時のproject/digestと最初のtotal_bytesをmemoryへ固定する。各dataをbase64 decodeしたbyte列として連結し、次requestは返却next_offsetだけを使う。SDK成功後も後続chunkのtotal_bytes/digest一致を確認し、変更・不連続・404・権限失効・通信失敗では中止して部分bufferを破棄する。最後に受信byte数=total_bytesとcrypto.subtle SHA-256=要求digestの両方を確認した後だけBlob/object URLからpayload.tar.gzをdownload可能にする。最終chunkのflagだけ、空finalだけ、manifest_digest一致だけで成功表示しない。allocation/digest/Blob生成失敗も未完了として扱う。
+
+logout・view/project/digest変更・取消でrequestをabortしbuffer/object URLを破棄する。遅延chunkはview generation/request sequence一致時だけ受理し、object URLは利用終了/取消/view離脱でrevokeする。GC404では別artifactへ切り替えず明示再取得入口だけを出す。download開始からpin変更を自動発行しない。file名は固定payload.tar.gz、file内容をDOMへHTMLとして展開しない。
+
+<a id="phase-19-ui-operation-uncertainty"></a>
+**応答消失時の表示：** submitting中の通信断/timeout/abortはerrorと結果未確認の両方を表示し、同じフォームへ新しいo-IDを割り当てて再送しない。memoryに保持するのは要求key・operation名・非秘密の対象identity/attemptだけで、body/secret/credentialを再送用に残さない。利用者の結果確認actionは同keyのoperationGetを行い、保存済みならOperationの実状態と対象GET/listを再取得する。404は未受付の断定に使わず、保持期限経過・応答消失を含む未確認状態として自動再実行を止める。再loginやview変更でも秘密入力を復元しない。ページ再読み込みでmemoryのkeyを失った場合は対象一覧・監査の再取得から確認し、operationを自動合成しない。新しい操作には別の利用者確認と新keyを要求し、元操作の照合ができなければ二重実行リスクを表示する。Operationのtarget_attemptと選択attemptを比較し、旧attemptの完了を新attemptの成功へ表示しない。
+
+recovery_required表示は未終端の要照合状態であり成功ではない。通常pollを停止して対象再取得とplatform-adminの明示reconcile入口を残し、照合操作の成功だけで元操作を完了表示しない。利用者の結果確認で元operationGetを再取得し、succeeded/failedになった場合だけ終端表示へ遷移する。
+
+全フォームlabel、errorのaria-describedby、status role=status、dialog focus trap/escape/close後focus復帰、table caption/th scope、icon aria-labelを必須にする。キーボードだけで全操作可能、色だけで状態を伝えない。検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)。
+
 UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) を参照する。標準管理 UI の色、寸法、余白、配置、responsive、focus の視覚値は [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) を参照する。[`docs/details/ui.md`](ui.md) 詳細本文責務は UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
 
 ---
+
+<a id="phase-19-ui-implementation-classification"></a>
+**実装分類：** view generation・confirmation・poll lifecycleは `INHOUSE`、使用primitiveはDOM、Promise、AbortController、SDK（`STD`）。入力/状態/異常系は[`docs/details/ui.md` 詳細本文責務](#phase-19-ui-contract)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `ui`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="0-責務境界"></a>
 
@@ -235,12 +327,14 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 2. `window.AdlaireCI` 等の global 参照を使わず、`./adlaire-ci-sdk.js` から `AdlaireCI` と `AdlaireCIError` を ES Module import する。
 3. `AdlaireCI` を `new AdlaireCI({baseUrl})` で 1 回だけ生成する。`baseUrl` の既定値は `window.location.origin` とし、`/api` を含めない。`data-api-base-url` が不在または空文字なら既定値を使用する。値がある場合は absolute `http` / `https` URL として parse し、`origin === window.location.origin`、path が `/`、userinfo、query、fragment なしの全条件を満たす場合だけ SDK constructor へ渡す。条件違反は `UI initialization failed` を表示し、SDK を生成せず HTTP 送信を行わない。
 4. すべての panel を `hidden=true` にし、`panel-login` だけを表示する。
-5. form submit と button click の event listener を登録する。登録対象は [DOM / section / form field 命名契約表](#ui-dom-naming-contract) の id に限定する。
+5. form submit と button click の event listener を登録する。登録対象は [DOM / section / form field 命名契約表](#ui-dom-naming-contract) と、追加管理版では [追加管理DOM表](#sec-24-8) のidだけとする。
 6. token state は [UI 共通動作契約](#ui-common-contract) の初期表示に従って空で初期化する。
 7. `global-error`、`global-success`、各 panel error/success を空にする。
-8. login password field へ focus する。
+8. 追加管理版は [認証bootstrap](#ui-auth-bootstrap) でcallback捕捉/URL消去→getAuthOptionsを1回実行し、応答後に対応するusernameまたはpasswordへfocusする。応答前はlogin submitをdisabledのまま保持する。従来legacy-only版はpasswordへfocusし、bootstrap拡張のHTTPを暗黙追加しない。
 
-ログイン成功後の初期取得順は、`getDashboard()` → `getStatus()` → `getQueue()` → `getMaintenance()` → `getDashboardLayout()` とする。`must_change:"none"` と `must_change:"prompt"` の session 発行直後、または `must_change:"forced"` の session で password 変更が成功した直後だけ、この 5 method を左から順に実行する。TOTP 必須 response 受信時と `must_change:"forced"` の session 発行直後は初期取得を実行しない。途中で `401` を受信した場合は残りの取得を中止してログイン画面へ戻す。`getMaintenance()` が `enabled=true` を返した場合は `maintenance-banner` を表示し、ビルド開始、強制ビルド、rollback、hook 追加、設定変更系ボタンを disabled にする。
+multi-user-v1のlogin/session確定後、must_change=forcedは先に既存password変更専用状態へ移りgetCurrentUser/初期5取得を呼ばない。本人password変更成功後だけ本人情報取得へ進む。forced以外はgetCurrentUserを1回取得して本人view/capabilitiesをmemoryへ保持する。失敗時はprotected初期取得を行わず既存error処理へ、401はloginへ戻す。capabilities["status:read"]=falseならstatus系初期取得を省略しpanel選択navは有効のまま、TOTP controlsはuser.password_set=falseでdisabledとする。user/capabilitiesはlogout/401で消去し、role名/tokenから補完しない。legacyはgetCurrentUserを呼ばない。
+
+status:readが許可されたmulti-userまたはlegacyのログイン成功後の初期取得順は、`getDashboard()` → `getStatus()` → `getQueue()` → `getMaintenance()` → `getDashboardLayout()` とする。`must_change:"none"` と `must_change:"prompt"` の session 発行直後、または `must_change:"forced"` の session で password 変更が成功した直後だけ、この 5 method を左から順に実行する。TOTP 必須 response 受信時と `must_change:"forced"` の session 発行直後は初期取得を実行しない。途中で `401` を受信した場合は残りの取得を中止してログイン画面へ戻す。`getMaintenance()` が `enabled=true` を返した場合は `maintenance-banner` を表示し、ビルド開始、強制ビルド、rollback、hook 追加、設定変更系ボタンを disabled にする。
 
 イベント処理は、各操作につき以下の順で行う。
 
@@ -499,11 +593,23 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 
 [`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8) は API request / response schema、SDK method 本文、state schema を再定義しない。
 
+<a id="ui-auth-bootstrap"></a>
+**legacy/multi-user認証bootstrap：** 本節はPhase21追加管理版AdlaireCI UIの起動拡張だけに適用し、従来legacy-only版/AdlaireCICD/siteの起動経路を置換しない。既存baseUrl検証→SDK1instance生成後、getAuthOptionsを1回呼ぶ。完了前はlogin submit/OIDC controlsをdisabled、他panelはhidden。profile/providersをmemoryだけへ保持し、legacy-v1は従来password、multi-user-v1はusername/passwordとprovider selectを表示する。初期DOMに任意provider情報を埋めず、URL/localStorage/token形式からprofileを推測しない。
+
+root callbackのcode/state/errorはgetAuthOptions開始より前にmemory捕捉・history.replaceStateでquery/fragment消去する。multi-user成功後だけ既存OIDC完了手順へ1回接続し、legacy応答/壊れたprofile/providers/通信失敗ならfinishせず消去する。HTTP/SDK/bootstrap形式失敗はlogin summaryへUI initialization failedを1回表示し、controlsを有効化せず、auth-options-retry buttonの明示操作だけで再GETする。自動retry・401によるprofile切替なし。再GETでprofileが変わる場合は未完了login/ticket/confirmationを破棄する。
+
+DOM idはauth-options-retry、login-username、oidc-provider-select、oidc-login-submit。provider selectは取得順、空ならOIDC submit disabled、HTTPS以外のUI originでもOIDC submit disabled（local passwordはそのHTTP契約を維持）。provider/URLの不正はUI initialization failed、存在しないproviderを補完しない。API Origin検証はUI側検査で代替しない。logout/401でも公開bootstrap metadataはsecretとして扱わないが、進行中callbackと全secretは既存消去順で除去する。現在sessionを無効化する操作の成功時は保有SDK instanceも破棄してloginへ戻し、次の明示login時に同じ検証済みbaseUrlで1instanceだけ作り直す。無効tokenでlogoutを追加送信せず、UIからprivate _tokenを書き換えない。
+
+<a id="oidc-ui-flow"></a>
+**外部login操作：** [認証bootstrap](#ui-auth-bootstrap) でmulti-user-v1を受けたlogin画面だけにusername入力とprovider選択を表示する。providerはgetAuthOptionsのid/issuer_originだけ（最大16件）を使用し、labelはidをtextContentで表示する。管理configを未認証で取得せず、verified配布HTMLへの環境別書換を必要としない。選択→SDK start成功→authorization_urlのHTTPS/same issuer-originを確認→location.assignの順。callbackはroot URLのqueryにcode/stateまたはerrorを1件ずつ受け、値をmemoryへ捕捉して即座にhistory.replaceStateでquery/fragmentを除去→SDK finish1回。error/code重複/fragment token/未知queryはfinishせず一般login失敗表示。値はtextContent、DOM属性、trace、storageへ残さない。finish後は成功・失敗ともcode/stateを消去し、再試行は新規startから行う。TOTP ticketをsessionと誤認せず、ticket失効時は外部loginから再開始する。API500/502時もcodeを再交換しない。
+
 | UI 領域 | 対象機能 | 使用 SDK method | 成功後再取得 |
 |---------|----------|-----------------|--------------|
 | ユーザー管理 panel | マルチユーザー対応、ユーザー管理 API | `getUsers`, `createUser`, `updateUser`, `disableUser` | `getUsers`, `getAuditLog` |
 | ロール管理 panel | ロールベースアクセス制御 | `getRoles`, `createRole`, `updateRole`, `deleteRole` | `getRoles`, `getAuditLog` |
 | 外部認証 panel | 外部認証連携 | `getExternalAuthConfig`, `setExternalAuthConfig`, `testExternalAuth` | `getExternalAuthConfig`, `getAuditLog` |
+| 外部login | `multi-user-v1`の明示login領域 | `getAuthOptions`, `getCurrentUser`, `startOidcLogin`, `finishOidcLogin` | session確定後だけ既存初期ロード、TOTP ticketならTOTP入力へ |
+| 本人TOTP | multi-user-v1のsecurity領域 | 既存setup/confirm/disable methodへpassword optionsを渡す | 成功後本人session再login、入力password/secret/codeを消去。本人response.user.password_set=falseでは操作不可。 |
 | データストア panel | データストア切り替え | `getDatastore`, `switchDatastore` | `getDatastore`, `getAdminEvents` |
 | 統計 export panel | 統計データの JSON エクスポート | `exportStats` | なし |
 | queue 操作 panel | キュー内個別エントリのキャンセル、ビルドキューの手動並び替え | `cancelQueueEntry`, `reorderQueue`, `getQueue` | `getQueue`, `getStatus` |
@@ -527,7 +633,7 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 | ユーザー管理 panel | `panel-users` | `users-refresh`, `user-create-submit`, `user-update-submit`, `user-disable-submit` | `createUser` / `updateUser` / `disableUser` 成功後は `getUsers` → `getAuditLog` の順で再取得する。最後の admin 保護は API response で確定し、UI は推測しない。 |
 | ロール管理 panel | `panel-roles` | `roles-refresh`, `role-create-submit`, `role-update-submit`, `role-delete-submit` | permission checkbox は DOM 順で配列化し、未知 permission を UI 側で削除しない。 |
 | 外部認証 panel | `panel-external-auth` | `external-auth-save`, `external-auth-test` | client secret field は成功、失敗、panel 遷移、logout、`401` で消去する。 |
-| データストア panel | `panel-datastore` | `datastore-dry-run`, `datastore-switch` | switch は confirmation dialog で `SWITCH_DATASTORE` を渡す。dry-run は confirmation を渡さない。 |
+| データストア panel | `panel-datastore` | `datastore-dry-run`, `datastore-switch` | switch は confirmation dialog で `SWITCH_DATASTORE` を渡す。dry-run は confirmation を渡さない。accepted=falseの202を切替開始/完了と表示せず、checksとtarget_storeだけを表示する。 |
 | 設定 snapshot panel | `panel-config-snapshots` | `config-snapshot-create`, `config-snapshot-restore`, `config-snapshot-delete`, `config-snapshot-diff` | restore は confirmation `RESTORE_CONFIG` を渡し、成功後 `getConfigSnapshots` → `getConfig` → `getConfigLog`。 |
 | queue 操作 panel | `panel-queue-admin` | `queue-cancel-submit`, `queue-reorder-submit` | reorder は表示中 queued id 全件を順序どおり渡す。active entry を含めない。 |
 | 設定 template panel | `panel-config-templates` | `config-template-create`, `config-template-apply`, `config-template-delete` | apply は confirmation `APPLY_CONFIG_TEMPLATE` を渡す。secret 平文を preview に表示しない。 |
@@ -535,6 +641,13 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 | share link panel | `panel-share-links` | `share-link-create`, `share-link-revoke`, `share-token-copy` | 作成 token は `share-token-once` だけに表示し、copy 完了、revoke 成功、panel 遷移、logout、`401` で消去する。 |
 | cache panel | `panel-cache` | `cache-policy-save`, `cache-purge` | purge 成功後は `getCachePolicy` → `getAdminEvents`。 |
 | webhook resend panel | `panel-webhook-resend` | `webhook-resend-submit` | confirmation `RESEND_WEBHOOK` を渡し、成功後 `getNotifyLog` → `getAdminEvents`。 |
+| 統計 export panel | `panel-stats-export` | `stats-export-submit` | exportStatsのobjectをJSON textとして表示し、summary/itemsを再集計しない。 |
+| metrics panel | `panel-metrics` | `metrics-refresh` | getPrometheusMetricsのtextをtextContentだけで表示する。 |
+| badge panel | `panel-badge` | `badge-refresh` | Blobをobject URLのimgで表示し、置換/離脱/logout時にURL.revokeObjectURLする。SVGをinnerHTMLへ挿入しない。 |
+| 履歴 retention panel | `panel-retention` | `retention-save`, `retention-run` | 保存/run成功後はgetHistoryRetention→getHistory。APIが返すdeleted_count/matched_idsだけを表示し、未定義dry_run入力/表示を追加しない。 |
+| project panel | `panel-projects` | `projects-refresh`, `project-create-submit`, `project-update-submit`, `project-archive-submit` | create/update/archive後はgetProjects→getAdminEvents。 |
+| API 情報 panel | `panel-api-info` | `api-version-refresh`, `openapi-refresh` | version/OpenAPI objectをJSON textで表示し、script/linkを実行しない。 |
+| snapshot diff panel | `panel-snapshot-diff` | `snapshot-diff-submit` | diffSnapshotsの配列順と件数をそのまま表示し、pathをHTMLとして解釈しない。 |
 
 上表の panel id と control id は `admin/index.html` 内で一意とする。未実装の追加管理 UI を作る場合でも、表にない id を使って既存機能を代替してはならない。UI は API response に存在しない件数、status、permission、diff、token 値を合成しない。
 
@@ -545,11 +658,13 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 | SDK 呼び出し開始 | 対象 panel の submit control を disabled にし、同一操作の二重送信を防ぐ。 | 別 panel 全体を無効化しない。 |
 | `200` / `201` / `202` success | 対象行または summary を API response で更新し、[追加管理 API UI DOM / 操作固定表](#sec-24-8) の再取得順を実行する。 | UI 側で成功 status、件数、token、diff を推測しない。 |
 | `401` | 全 secret field、share token 表示、stream handle、pending confirmation を破棄し、login panel へ遷移する。 | 失敗した request を自動再送しない。 |
-| `403` | 対象 panel の summary に permission error を表示し、入力値は保持する。 | role / permission を UI 側で推測して非表示にしない。 |
-| `409` | 対象 panel の summary に conflict を表示し、該当一覧を再取得する。 | 競合解決を UI 側で自動適用しない。 |
+| `403` | 対象 panel の summary に permission error を表示し、非secret入力値だけを保持する。 | role / permission を UI 側で推測して非表示にしない。 |
+| `409` | 対象 panel の summary に conflict を表示し、usersはgetUsers、rolesはgetRoles、projectsはgetProjects、snapshotはgetConfigSnapshots、templateはgetConfigTemplates、shareはgetShareLinks、resendはgetNotifyLog、queueはgetQueueを各1回再取得する。該当一覧のないpanelは再取得なし。 | 競合解決を UI 側で自動適用しない。 |
 | `422` with `details` | `details` key と同じ `name` または `data-field` の control へ field error を表示し、最初の field error へ focus する。 | API に存在しない field error を合成しない。 |
-| network error | 対象 panel の summary に connection failure を表示し、入力値を保持する。 | 成功扱い、楽観更新、local retry queue 作成を行わない。 |
+| network error | 対象 panel の summary に connection failure を表示し、非secret入力値だけを保持する。 | 成功扱い、楽観更新、local retry queue 作成を行わない。 |
 | stream close | stream state を stopped にし、secret field を保持しない。 | close 済み `StreamHandle` を再利用しない。 |
+
+成功後の指定再取得自体が失敗した場合、元mutationの成功を取り消さずsummaryへread errorを表示し、古い一覧を成功後状態として合成しない。mutationを再送しない。secret消去は入力保持/field focusより優先し、全submitのfinallyでpassword/secret/code/one-time tokenを消去する。422のdetailsは追加管理のobject型だけをname/data-fieldへ照合し、未知fieldはsummaryへInvalid valueを表示する。queueだけは下の409/422再取得規則を優先し、他panelの422では一覧を自動再取得しない。共通401処理は1回だけ実行する。
 
 confirmation を必要とする操作では、UI は固定文言を表示し、ユーザー操作で明示された場合だけ confirmation value を SDK method へ渡す。
 
@@ -561,7 +676,9 @@ SSE stream は panel 離脱、logout、`401`、明示 stop 操作で close す�
 
 UI は Prometheus metric、SVG badge、OpenAPI document、snapshot diff、config diff を再計算せず、SDK response を表示用に整形するだけとする。
 
-event feed panel は SDK の `onEvent` callback が渡す `AdminEventRecord` を、`timestamp` 降順、同一 `timestamp` は `id` ASCII 昇順の表示順に挿入する。UI は event id、type、severity、actor、target、message を生成・補完せず、stream frame の parse、keepalive 処理、error frame 処理を直接実装しない。stream error では panel summary に error を 1 回表示し、`getAdminEvents` を 1 回だけ再取得する。user stop の `done=null` では error を表示せず、`getAdminEvents` を 1 回だけ再取得する。
+event feed panel は SDK の `onEvent` callback が渡す `AdminEventRecord` を、`timestamp` 降順、同一 `timestamp` は `id` ASCII 昇順の表示順に挿入する。同idのeventは既存行を置換し、異なるstream世代からの遅延callbackは破棄する。UI は event id、type、severity、actor、target、message を生成・補完せず、stream frame の parse、keepalive 処理、error frame 処理を直接実装しない。stream errorではactiveなevents panelかつ認証有効な場合だけsummaryへerrorを1回表示しgetAdminEventsを1回再取得する。明示stopのdone=nullも同条件でerror無しの再取得1回。panel離脱/logout/401によるcloseは再取得0、close後の遅延callbackは世代番号で破棄する。
+
+queue並べ替えの送信値は表示上のqueued全件とし、空表示なら[]を送信できる。409/422ではローカル順を成功表示せずgetQueueを1回再取得し、競合前の表示を新応答で置換する。server側active移動を手動順へ戻さない。設定snapshot panelの自動設定は `config-snapshot-auto-enabled` checkboxと `config-snapshot-max-count` number inputで扱い、getConfig/setConfigの既存経路だけを使う。保存前の値域は [statefile詳細本文責務](statefile.md#automatic-config-snapshot-contract)、成功後はgetConfig→getConfigSnapshots、失敗時は入力値を保持して成功表示しない。容量不足時に自動削除せず、snapshotの手動deleteまたはdisable-only操作を明示選択させる。
 
 ---
 

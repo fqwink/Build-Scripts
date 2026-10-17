@@ -1,5 +1,1988 @@
 # Adlaire CI — Fixture 詳細仕様
 
+<a id="phase-19-cicd-evidence-contract"></a>
+**Phase 19 実行型fixture・完了判定契約：**
+
+本節はfixture証跡責務。機能の処理値はowner詳細本文を参照し、本節はoracle/入力生成/記録を所有する。仕様策定時のdocument検査と、将来の製品実装検証を混同しない。責務入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 DETAIL_INDEX](../DETAIL_INDEX.md#phase-19-owner-route)。
+
+<a id="phase-19-fixture-layout"></a>
+**正式root / artifact：** 実装時に `testdata/phase19/inhouse-cicd/` を作り、rootに `manifest.json`、各case IDのlowercase directory（例 `p19-plan/`）に `input.json`, `fake.json`, `expected.json`, `effects.json`, `security_expected.json` を配置する。これらは現時点で未作成、実在を索引へ偽記載しない。harnessは既存 `main_test.go`、owner testは既存 `components/<owner>/<owner>_test.go`、SDK/UI Deno test driverは既存root Go testからtemporaryへ抽出してDenoで実行する。owner package6個目のGo fileやPhase専用仕様書を作らない。
+
+manifest schemaは `{schema_version:1,profile:"cicd-v1",cases:[{id,owner,contract_ref,input_sha256,fake_sha256,expected_sha256,effects_sha256,security_expected_sha256,assertions:string[],mutations:string[],race_triggers:string[]}]}`。16caseを下表順、unknown/duplicate/missing/hash差はharness起動前fail。contract_refはowner正本anchor、hashは実file bytesから再導出する。expectedをproduction出力から生成して一致させない。
+
+input.json=`{schema_version:1,case_id,variants:[{id,initial_root:Root,requests:[{operation,request_id,params,body}],advance_ms:int[],faults:[{boundary,call:int(1,2147483647),result:"error"|"crash"|"timeout"}]}]}`。
+fake.json=`{clock_start:"2026-01-01T00:00:00Z",entropy_hex:string,github:[{method,path,status,body}],transport:[{peer,frame,result}],filesystem:[{boundary,call,result}],process:[{argv,exit,stdout_base64,stderr_base64,ignore_term:bool}]}`。全fakeは呼出順と残未使用入力を検査し、未登録呼出を成功させない。clock/sleep/entropy/network/process/fs adapterをproduction入口へ注入する。testが本番処理をコピーして代替しない。
+
+expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,trace:[{kind,target,at_ms}],diagnostics:string[]}]}`、effects.json=`{variants:[{id,files:[{path,sha256,mode}],absent_paths:string[],max_parallel:int,remaining_processes:int}]}`、security_expected.json=`{variants:[{id,forbidden_bytes_base64:string[],forbidden_paths:string[],denied_operations:string[]}]}`。全object key必須、unknown/duplicate拒否、配列順を比較し、Rootだけ時刻/乱数をfake値へ結び付ける。秘密scanはstdout/stderr/state/log/cache/artifact/notification/診断の全bytesを対象にし、暗号ciphertext中の偶然一致はplain leakと誤判定しない（secret markerは固定32byte以上のtest値）。schema/JSON/IPCの追加oracleは文書checkerの全負例に加え、metadata全長/offset/final digest、broker peer UIDとstage順、SiteState同時commit、PageEnvelopeのgeneration/byte分割、認証must_changeを各該当caseのnormal/fault/concurrentへ入力し、期待失敗codeと禁止副作用を比較する。
+
+全caseは `normal` / `lower-bound` / `upper-bound` / `fault` / `restart` / `concurrent` の6variantを必須とする。境界はownerの最小値-1/最小値/最大値/最大値+1をそれぞれ有効性と副作用で検査する。faultは下表の異常入力、restartはdurable claim前/後・外部effect前/後・terminal commit前/後の6停止点、concurrentは同一資源2要求をbarrierで前後両順へ制御する。timing sleepだけのrace再現は禁止。operationはAPI catalogのoperation ID閉集合、request_idは各requestのo-IDでIdempotency-Keyへ対応し、params/bodyは該当wire型を使う。各variantのassertion IDは `owner.phase19-case.variant.assertion` の4 segment（caseは表IDのP19-を除いたlowercase、ownerは表owner、assertionはresponse/state/effects/security、例 `runner.phase19-plan.normal.response`）の4個（計384）とし、下表oracleをこの4面へ接続する。
+
+| case | owner | 固定入力・故障 | oracle | 必須mutation |
+|---|---|---|---|---|
+| P19-PLAN | runner | 不正schema/未知key/入力型/duplicate ID/cycle/257展開 | P19_SCHEMA/P19_DAG/P19_MATRIX、process0、approval消費0 | DAG循環検査を除去 |
+| P19-EVENT | runner | Commit Statusのscope/別run順位/claim中断/容量/通知の同run別attemptと同遷移再送/同一watch2回/anchor境界/clock逆行/tree取得失敗/coalescing | run1件、cursor不変on失敗、assignedは取消されない | event_key照合を除去 |
+| P19-DAG | runner | A→B、optional C失敗、matrix 2x2、parallel=2、fail-fast | BはA終端後、同時<=2、optionalはrun失敗へ反転しない | required依存判定を反転 |
+| P19-RETRY | runner | transport失敗2回/恒久失敗/attempt上限/resume digest不一致 | try列1,2,3、待機1,2秒、恒久retry0、旧attempt不変 | retry分類を全error許可 |
+| P19-CANCEL | runner | queued cancel/TERM無視child/cleanup失敗 | KILL後Wait/残存0でのみcancelled、不明はrecovery_required | process Waitを除去 |
+| P19-WORKER | runner | drain/lease30秒境界/旧世代result/EOF/262144 byte frame境界/2 MiB metadata/4slot同時照会 | 新割当0、期限後commit拒否、slot再利用前照合 | lease_generation照合を除去 |
+| P19-ISOLATION | setup | host sentinel/network/exec/readonly/memory/disk/tasks/output上限/workerと他job UIDへのsignal/偽SO_PEERCRED | 各禁止操作失敗、上限停止、child残存0、未能力はP19_CAPABILITY | sandbox propertyを1項ずつ除去 |
+| P19-CACHE | runner | 別project/secretあり/同key異bytes/TTL境界/in_use GC競合 | 越境hit0、secret指定拒否、破損miss、pin中削除0 | keyからprojectを除去 |
+| P19-ARTIFACT | archive | tar traversal/link/重複/size超過/digest改竄/pinとGC/別source SHAの同一payload再登録 | 展開外write0、全file比較、deleting新pin拒否 | pin検査を除去 |
+| P19-APPROVAL | security | 本人/同user別token/3600秒境界/失効/plan変更 | 人数増加なし、期限now>=expires拒否、配備起動0 | plan_digest照合を除去 |
+| P19-DEPLOY | runner | StageObservationの各窓保存・再起動照合/全3strategy/古い世代/部分切替/health不良/返信消失/canary複数step/10秒窓境界/Routeと操作結果commit間crash/Host binding未知・越境・Forwarded偽装 | file/Route世代/旧digest実復元、finalize後stable一致、query前再送0、不明blocked | health後終端条件を除去 |
+| P19-DURABILITY | statefile | SiteOperation.committed_atの30日期限前後/全write/fsync/rename前後crash/容量/Head改竄 | precommit Head不変、postrename不確定、保護参照不変 | directory fsyncを除去 |
+| P19-ACCESS | security | 全role×operation/他project/期限/quota/token失効/UserInputへcredential混入/安全整数のgeneration/immutable revision+1/本人だけのAuthorization projection/遅延旧世代permission | 403と副作用0、資格情報projection0、quota超過拒否 | scope照合を除去 |
+| P19-LOG-UI | ui | secret全byte境界/17MiB出力/cursor410/遅延response | mask前の保存0/保存後のleak0、ring<=1MiB、旧view更新0、poll停止 | mask chunk保留を除去 |
+| P19-RELEASE | release | 独立build/署名既知値/鍵失効/manifest改竄/cohort混在 | 10checksum/12assets、tamper全拒否、old cohort維持 | signature Verifyを除去 |
+| P19-STATUS | commitstatus | 旧attempt遅延/送信timeout/通知disabled/SHA違い | 旧結果送信0、実行結果不変、Actions証跡へ流用0 | 最新attempt照合を除去 |
+
+**fault / fakeの閉じた入力：** boundaryは `state.open/write/fsync-file/rename/fsync-directory/read-head/read-snapshot`、`archive.header/read/write/publish/gc`、`worker.assign/start/heartbeat/result/cleanup`、`site.stage/switch/finalize/health/query/restore`、`broker.peer/claim/unit-start/unit-wait/cleanup`、`http.request/response`、`log.mask/flush/read` だけ。callは同boundaryの1始まり累積呼出回数、未知名/未消費指定はtest失敗。advance_msは0〜7200000の非負値で順にfake clockだけを進める。entropy_hexは64hex seed、fake entropyはSHA256(seed bytes || uint64 big-endian counter)をcounter0から連結し必要長だけ返す。production crypto/randを置換するのはtest injection内だけ。process.argvはrunner exact argvのplaceholderをfixture identityで置換した配列、未登録argvは即test失敗。stateful network/site fakeは必ず前request後のRouteとfile bytesを更新し、常時成功応答を返すだけのfakeは禁止する。
+
+**補助固定vector：** canonical JSONは `{"b":2,"a":1}` → `{"a":1,"b":2}`、duplicate keyは拒否。matrix {os:[linux,other],v:[1,2]}はaxis ASCII順で4tuple、exclude={v:2}で2tuple。leaseはnow=untilで失効、approvalもnow=expiresで失効。freezeはfrom含む/until含まない。AES-GCMは [Go標準AEAD仕様](https://pkg.go.dev/crypto/cipher#NewGCM) に加え、[NIST GCM-AES256 Example #1〜4](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/AES_GCM.pdf) のkey/IV/AAD/plaintext/ciphertext/tagを固定独立oracleとして用い、Seal結果をciphertext||tagへbyte完全一致させOpen結果も比較する。空/非空AAD・plainの両方を含め、key/nonce/AAD/tag各1bit反転を拒否する。製品固有AADはsecurity正本の区切りを含むbyte列を別oracleで検査し、roundtripだけでAAD不使用を見逃さない、Ed25519は [RFC8032 §7.1](https://www.rfc-editor.org/rfc/rfc8032#section-7.1) のTEST1〜3を独立既知値として取り込み、公開鍵/署名/message改竄を拒否する。既知値は実装出力で再生成しない。
+
+<a id="specification-vector-case-integrity"></a>
+**固定文書vectorのcase閉包検査：** 対象は本書のStatus / Plan / worker / content / operation / log固定入力の6anchor、JSON配列21group、224caseとする。各groupの必須ID集合は各固定JSONに列挙した集合そのものとし、checker側の独立registryと完全一致させる。件数一致やID一意だけを集合一致の代用にせず、必須ID欠落・未知IDへの同数置換・同一ID重複・case除去を拒否する。case配列の順序変更だけは許可するが、case内の順序付き入力/expectedは各vector契約を維持する。
+
+同じgroup内でidだけを除いたcase本文が完全同一になる水増しも拒否する。比較はJSON object key順・空白・string escapeの表記差を正規化し、数値tokenの表記と配列順を維持したbyte一致とする。異なるgroup間の同値や一部fieldだけの同値を禁止するものではない。registryは入力文書から実行時に生成せず、入力/期待値/意味のある異常系を変更する仕様改訂では独立に照合して更新する。集合一致は意味的網羅の代替ではなく、既存の各vector oracleと併用する。
+
+実在入口は [main_test.go](../../main_test.go) の `TestSpecificationVectorCaseIntegrity` と各6decoder。元の入力を全件acceptし、各groupへunknown-id/clone-body/missing-case/duplicate-idの4負例（計84）をmemory copyだけに注入して固定reason `case coverage:` によるrejectを要求する。順序反転の正例21件もacceptする。helperには独立の完全JSON入力4件を与え、number-token（1/1e0）とarray-order（[1,2]/[2,1]）はaccept、object-orderとstring-escapeの同一本文はrejectとする。これらのassertion IDは `statefile.spec-vector.<case>.canonical` とする。assertion IDは `statefile.spec-vector.<anchor短縮名>-<group kebab名>-<control>.reject/accept`、原入力は `.accept`、前提不足は `.fixture`。対象anchor・expected reason・actual・再現commandをsecretなしで診断する。各decoder接続6箇所とhelperのidentity/body照合の削除をsource mutationとして隔離copyで検出し、compile failureをkillへ算入しない。製品runtimeの実行証跡へ換算しない。
+
+<a id="specification-vector-registry-integrity"></a>
+**registryと実行対象の独立照合：** case ID registryの正本との一致検査に加え、次の必須group入力を独立oracleとして [main_test.go](../../main_test.go) の `TestSpecificationVectorRegistryIntegrity` へ渡す。checker側のrequired group定義と全field・配列順を照合する。6anchor/21group/224caseの総数だけで代用せず、anchor/groupの完全な対応、groupごとのcase件数、suite内IDの形式・一意性を照合する。未知anchor/group、欠落、空集合、同数の改名・別groupへの移動を拒否する。required group定義自体も21件、anchor6件、case合計224、pair一意、case数2以上を要求する。case ID registryや文書vectorを走査してrequired group定義を自動生成しない。
+
+```json
+[
+  {
+    "anchor": "phase-19-status-vectors",
+    "group": "cases",
+    "case_count": 21
+  },
+  {
+    "anchor": "phase-19-plan-vectors",
+    "group": "input_cases",
+    "case_count": 22
+  },
+  {
+    "anchor": "phase-19-plan-vectors",
+    "group": "matrix_cases",
+    "case_count": 11
+  },
+  {
+    "anchor": "phase-19-plan-vectors",
+    "group": "dag_cases",
+    "case_count": 7
+  },
+  {
+    "anchor": "phase-19-plan-vectors",
+    "group": "selector_cases",
+    "case_count": 7
+  },
+  {
+    "anchor": "phase-19-plan-vectors",
+    "group": "event_cases",
+    "case_count": 3
+  },
+  {
+    "anchor": "phase-19-worker-vectors",
+    "group": "ack_cases",
+    "case_count": 12
+  },
+  {
+    "anchor": "phase-19-worker-vectors",
+    "group": "chunk_cases",
+    "case_count": 16
+  },
+  {
+    "anchor": "phase-19-worker-vectors",
+    "group": "lease_cases",
+    "case_count": 12
+  },
+  {
+    "anchor": "phase-19-content-vectors",
+    "group": "chunk_cases",
+    "case_count": 11
+  },
+  {
+    "anchor": "phase-19-content-vectors",
+    "group": "query_cases",
+    "case_count": 8
+  },
+  {
+    "anchor": "phase-19-content-vectors",
+    "group": "wire_cases",
+    "case_count": 12
+  },
+  {
+    "anchor": "phase-19-content-vectors",
+    "group": "cache_cases",
+    "case_count": 9
+  },
+  {
+    "anchor": "phase-19-content-vectors",
+    "group": "key_cases",
+    "case_count": 3
+  },
+  {
+    "anchor": "phase-19-content-vectors",
+    "group": "envelope_cases",
+    "case_count": 13
+  },
+  {
+    "anchor": "phase-19-operation-vectors",
+    "group": "admission_cases",
+    "case_count": 8
+  },
+  {
+    "anchor": "phase-19-operation-vectors",
+    "group": "transition_cases",
+    "case_count": 12
+  },
+  {
+    "anchor": "phase-19-operation-vectors",
+    "group": "gc_cases",
+    "case_count": 8
+  },
+  {
+    "anchor": "phase-19-log-boundary-vectors",
+    "group": "mask_cases",
+    "case_count": 12
+  },
+  {
+    "anchor": "phase-19-log-boundary-vectors",
+    "group": "page_cases",
+    "case_count": 13
+  },
+  {
+    "anchor": "phase-19-log-boundary-vectors",
+    "group": "budget_cases",
+    "case_count": 4
+  }
+]
+```
+
+`TestSpecificationVectorCaseIntegrity` はcase ID registryでなく上記required group定義から対象を列挙する。実行前にregistryを照合し、各caseの検証終了後だけ完了identityを記録する。予定集合はcanonical4件、原入力6件、21groupごとの既存5controlの105件、計115件とする。順序は比較対象外だが、予定/完了identityの欠落・余分・重複・空集合は `case execution:` で拒否する。件数だけの照合、未実行controlの完了記録、skipの成功変換をしない。
+
+registryの正例は全6suite/21group、負例は各suiteのdrop/rename/empty、各groupのdrop/rename/short/long/duplicate/invalid/empty、未知suite1件と未知group6件の計172件。各負例は新しいmemory copyで作り、`case registry:` による拒否を要求する。実行照合の正例は同順/逆順、負例は欠落/余分/重複/同数置換/空予定/重複予定/空完了の7件。入口は同fileの `TestSpecificationVectorExecutionIntegrity`。assertion IDは `statefile.spec-registry.<case>.reject/accept` と `statefile.spec-execution.<case>.reject/accept`、入力/前提不備は `.fixture`、文書照合は `statefile.spec-registry.document.match`、実行完了は `statefile.spec-execution.complete.match` とする。検出位置、期待reason、実値、再現commandを診断する。registry group削除、独立定義削除、scope/group/case-count/ID guard除去、実行記録省略、完了照合無効化を隔離copyのsource mutationで検出し、全byte復元を確認する。製品runtimeの網羅・潜在不具合不存在を保証する検査ではない。
+
+<a id="phase-19-status-vectors"></a>
+**Commit Statusの文書入力・中断oracle：** 処理は [docs/details/commitstatus.md 詳細本文責務 最新結果の送信契約](commitstatus.md#phase-19-status-delivery)、保存は [docs/details/statefile.md 詳細本文責務 StatusDelivery](statefile.md#phase-19-status-delivery-state) を参照する。以下21caseを `TestPhase19StatusSpecificationVectors` が読む。各run/eventはbaselineの完全なprojectionへ列挙fieldだけを上書きし、配列順は入力順、expectedは独立固定値とする。projectionのowner/repo/sha/definition_idは保存Plan.source/definition、他はRunの同名fieldであり、Rootをこの省略形で保存する契約ではない。existingは選択tupleに既存StatusDeliveryがあることを表し、sent/codeの値によらずdeduplicatedとする。全文UTF-8/65536byte以下、全key必須、unknown/duplicate/null/trailing拒否、case ID一意、run配列は空を許可するが本fixtureの21case集合を変更しない。候補のscope/順位/現在stateと期待decisionを完全比較し、HTTPや製品runtimeを動かした証跡には換算しない。
+
+```json
+{
+  "schema_version": 1,
+  "baseline": {
+    "owner": "alice",
+    "repo": "site",
+    "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "project_id": "p",
+    "definition_id": "main",
+    "run_id": "ra",
+    "attempt": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "state": "running"
+  },
+  "cases": [
+    {
+      "id": "running",
+      "runs": [
+        {}
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "different-run-attempt",
+      "runs": [
+        {
+          "attempt": 100
+        },
+        {
+          "run_id": "rb",
+          "created_at": "2026-01-01T00:00:01Z"
+        }
+      ],
+      "event": {
+        "attempt": 100
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "rb",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "superseded"
+      }
+    },
+    {
+      "id": "new-run",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "created_at": "2026-01-01T00:00:01Z"
+        }
+      ],
+      "event": {
+        "run_id": "rb",
+        "created_at": "2026-01-01T00:00:01Z"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "rb",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "new-attempt",
+      "runs": [
+        {},
+        {
+          "attempt": 2,
+          "created_at": "2026-01-01T00:00:01Z"
+        }
+      ],
+      "event": {
+        "attempt": 2,
+        "created_at": "2026-01-01T00:00:01Z"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 2,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "same-time-id",
+      "runs": [
+        {},
+        {
+          "run_id": "rb"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "rb",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "superseded"
+      }
+    },
+    {
+      "id": "same-time-attempt",
+      "runs": [
+        {},
+        {
+          "attempt": 2
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 2,
+        "state": "pending",
+        "decision": "superseded"
+      }
+    },
+    {
+      "id": "scope-owner",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "created_at": "2026-01-01T00:00:01Z",
+          "owner": "bob"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "scope-repo",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "created_at": "2026-01-01T00:00:01Z",
+          "repo": "other"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "scope-sha",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "created_at": "2026-01-01T00:00:01Z",
+          "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "scope-project-id",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "created_at": "2026-01-01T00:00:01Z",
+          "project_id": "other"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "scope-definition-id",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "created_at": "2026-01-01T00:00:01Z",
+          "definition_id": "other"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "queued-only",
+      "runs": [
+        {
+          "state": "queued"
+        }
+      ],
+      "event": {
+        "state": "queued"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "",
+        "attempt": 0,
+        "state": "",
+        "decision": "idle"
+      }
+    },
+    {
+      "id": "queued-newer",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "state": "queued",
+          "created_at": "2026-01-01T00:00:01Z"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "cancel-requested",
+      "runs": [
+        {
+          "state": "cancel_requested"
+        }
+      ],
+      "event": {
+        "state": "cancel_requested"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "succeeded",
+      "runs": [
+        {
+          "state": "succeeded"
+        }
+      ],
+      "event": {
+        "state": "succeeded"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "success",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "failed",
+      "runs": [
+        {
+          "state": "failed"
+        }
+      ],
+      "event": {
+        "state": "failed"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "failure",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "cancelled",
+      "runs": [
+        {
+          "state": "cancelled"
+        }
+      ],
+      "event": {
+        "state": "cancelled"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "error",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "recovery-required",
+      "runs": [
+        {
+          "state": "recovery_required"
+        }
+      ],
+      "event": {
+        "state": "recovery_required"
+      },
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "error",
+        "decision": "send"
+      }
+    },
+    {
+      "id": "delayed-start",
+      "runs": [
+        {
+          "state": "failed"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "failure",
+        "decision": "superseded"
+      }
+    },
+    {
+      "id": "existing-claim",
+      "runs": [
+        {}
+      ],
+      "event": {},
+      "existing": true,
+      "expected": {
+        "run_id": "ra",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "deduplicated"
+      }
+    },
+    {
+      "id": "scope-ascii-case",
+      "runs": [
+        {},
+        {
+          "run_id": "rb",
+          "owner": "ALICE",
+          "repo": "SITE",
+          "created_at": "2026-01-01T00:00:01Z"
+        }
+      ],
+      "event": {},
+      "existing": false,
+      "expected": {
+        "run_id": "rb",
+        "attempt": 1,
+        "state": "pending",
+        "decision": "superseded"
+      }
+    }
+  ]
+}
+```
+
+製品P19-EVENTのfault/restart/concurrentには次の独立oracleを追加する。全caseでrun/deploymentの確定値不変、raw secret/Authorization露出0を比較する。
+
+| 停止・競合入力 | 期待結果 |
+|---|---|
+| claim保存前のwrite/rename/fsync失敗、またはRoot commit不確定 | HTTP0。旧Headまたは不確定Headの復旧条件を保持、成功推定0。 |
+| claim成功直後のcrash、送信後応答消失、201後結果保存前crash | 同key再HTTP0。再起動でfalse/unknownへ確定、成功送信を推定しない。 |
+| claim後・送信直前の新run/終端更新 | 再選択で旧keyをfalse/superseded、HTTP0。 |
+| 旧HTTP中に同scopeで新run開始と終端、または別scopeの同SHA | 同scopeは旧完了後に最新を再選択、別scopeは混合0。両barrier順を固定。 |
+| 1024件が期限前または未確定、Runも同commit回収可能な適格1件だけ期限一致、clock後退 | 前者P19_QUOTA/HTTP0、適格1件を先に回収したcaseだけclaim1、後退で回収0。 |
+| sent=true/code非null、deliveryだけ残してRunを削除 | P19_STATE_CORRUPT、HTTP0。 |
+| HTTP429/500/timeout、または結果保存失敗 | HTTP1回のみ。既存固定reason、結果保存失敗はcoordinator停止、製品結果を反転0。 |
+
+文書oracleのmutationはscope照合除去、attemptだけで順位決定、queued採用、現在state照合除去、既存claim無視、schema拒否無効化を個別にkillする。routing regressionはassertion-owner/専用test/Obsidian test/旧globの各比較を除去してkillする。製品のHTTP順・durable claim・GC・crashは将来fixtureで観測し、文書checkerの成功で代替しない。
+
+<a id="phase-19-worker-vectors"></a>
+**worker通信の文書入力：** 処理の正本は [docs/details/runner.md 詳細本文責務 framing](runner.md#phase-19-ipc-framing)、[接続](runner.md#phase-19-worker-session)、[lease](runner.md#phase-19-worker-lease-deadlines)、保存identityは [docs/details/statefile.md 詳細本文責務](statefile.md#phase-19-worker-state-identity)。TestPhase19WorkerSpecificationVectorsは以下40case（ACK12/chunk16/lease12）を読む純粋な文書oracleであり、SSH/systemd/broker/製品runtimeの実行証跡ではない。全key必須、unknown/duplicate/null/trailing/invalid UTF-8を拒否、全配列を通じID一意。ACK入力は方向別の送信順で、expected_pendingはc2w/w2cの未ACK件数。errorは文書oracleでP19_TRANSPORTとして停止し、実際のerror.code照合は製品fixtureで行う。chunk.repeat>1だけはdataを標準base64で1回decodeした1byteをその回数反復して再encodeする入力generator、repeat=1は不正base64も加工しない。total_bytes/digestはfile全体、各chunk.digestも同じ全体値。固定SHA256はchecker作成前にnative Ruby標準Digestから独立確定した。leaseの時刻は固定epochからのms、proposed_ms=0は更新のない照会、durableはworker/brokerの必要保存がすべて成功したことを表す。期待値をcheckerの出力から更新しない。
+
+```json
+{
+  "schema_version": 1,
+  "ack_cases": [
+    {"id":"ack-normal","frames":[{"direction":"c2w","type":"assign","seq":1,"ack_seq":0},{"direction":"w2c","type":"ack","seq":1,"ack_seq":1}],"expected_pending":[0,0],"expected_code":"ok"},
+    {"id":"ack-duplex","frames":[{"direction":"c2w","type":"heartbeat","seq":1,"ack_seq":0},{"direction":"w2c","type":"log","seq":1,"ack_seq":0},{"direction":"c2w","type":"ack","seq":2,"ack_seq":1},{"direction":"w2c","type":"ack","seq":2,"ack_seq":1}],"expected_pending":[0,0],"expected_code":"ok"},
+    {"id":"ack-reverse","frames":[{"direction":"w2c","type":"log","seq":1,"ack_seq":0},{"direction":"c2w","type":"heartbeat","seq":1,"ack_seq":0},{"direction":"w2c","type":"ack","seq":2,"ack_seq":1},{"direction":"c2w","type":"ack","seq":2,"ack_seq":1}],"expected_pending":[0,0],"expected_code":"ok"},
+    {"id":"ack-next-seq","frames":[{"direction":"c2w","type":"assign","seq":1,"ack_seq":0},{"direction":"w2c","type":"ack","seq":1,"ack_seq":1},{"direction":"c2w","type":"chunk","seq":2,"ack_seq":0},{"direction":"w2c","type":"ack","seq":2,"ack_seq":2}],"expected_pending":[0,0],"expected_code":"ok"},
+    {"id":"ack-pending","frames":[{"direction":"c2w","type":"assign","seq":1,"ack_seq":0},{"direction":"c2w","type":"chunk","seq":2,"ack_seq":0}],"expected_pending":[1,0],"expected_code":"P19_INPUT"},
+    {"id":"ack-no-pending","frames":[{"direction":"w2c","type":"ack","seq":1,"ack_seq":1}],"expected_pending":[0,0],"expected_code":"P19_INPUT"},
+    {"id":"ack-mismatch","frames":[{"direction":"c2w","type":"assign","seq":1,"ack_seq":0},{"direction":"w2c","type":"ack","seq":1,"ack_seq":2}],"expected_pending":[1,0],"expected_code":"P19_INPUT"},
+    {"id":"ack-duplicate","frames":[{"direction":"c2w","type":"assign","seq":1,"ack_seq":0},{"direction":"w2c","type":"ack","seq":1,"ack_seq":1},{"direction":"w2c","type":"ack","seq":2,"ack_seq":1}],"expected_pending":[0,0],"expected_code":"P19_INPUT"},
+    {"id":"ack-seq-gap","frames":[{"direction":"c2w","type":"assign","seq":2,"ack_seq":0}],"expected_pending":[0,0],"expected_code":"P19_INPUT"},
+    {"id":"ack-seq-repeat","frames":[{"direction":"c2w","type":"assign","seq":1,"ack_seq":0},{"direction":"w2c","type":"ack","seq":1,"ack_seq":1},{"direction":"c2w","type":"start","seq":1,"ack_seq":0}],"expected_pending":[0,0],"expected_code":"P19_INPUT"},
+    {"id":"ack-error-stop","frames":[{"direction":"c2w","type":"assign","seq":1,"ack_seq":0},{"direction":"w2c","type":"error","seq":1,"ack_seq":0}],"expected_pending":[1,0],"expected_code":"P19_TRANSPORT"},
+    {"id":"ack-after-ack","frames":[{"direction":"c2w","type":"assign","seq":1,"ack_seq":0},{"direction":"w2c","type":"ack","seq":1,"ack_seq":1},{"direction":"c2w","type":"ack","seq":2,"ack_seq":1}],"expected_pending":[0,0],"expected_code":"P19_INPUT"}
+  ],
+  "chunk_cases": [
+    {"id":"chunk-empty","total_bytes":0,"digest":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","chunks":[{"offset":0,"data":"","repeat":1,"final":true,"digest":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}],"expected_code":"ok"},
+    {"id":"chunk-one","total_bytes":1,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb","chunks":[{"offset":0,"data":"YQ==","repeat":1,"final":true,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"}],"expected_code":"ok"},
+    {"id":"chunk-two","total_bytes":2,"digest":"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603","chunks":[{"offset":0,"data":"YQ==","repeat":1,"final":false,"digest":"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603"},{"offset":1,"data":"Yg==","repeat":1,"final":true,"digest":"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603"}],"expected_code":"ok"},
+    {"id":"chunk-max","total_bytes":12288,"digest":"de52010b4de93bed4fc0a5447aefa4b10b7b4290dc96142819d0795583420cb7","chunks":[{"offset":0,"data":"YQ==","repeat":12288,"final":true,"digest":"de52010b4de93bed4fc0a5447aefa4b10b7b4290dc96142819d0795583420cb7"}],"expected_code":"ok"},
+    {"id":"chunk-tail","total_bytes":12289,"digest":"6dd760245927f6626a8df0b1c54e925c34d47ac20ec0b2ecd197b3e4f71b5e7d","chunks":[{"offset":0,"data":"YQ==","repeat":12288,"final":false,"digest":"6dd760245927f6626a8df0b1c54e925c34d47ac20ec0b2ecd197b3e4f71b5e7d"},{"offset":12288,"data":"YQ==","repeat":1,"final":true,"digest":"6dd760245927f6626a8df0b1c54e925c34d47ac20ec0b2ecd197b3e4f71b5e7d"}],"expected_code":"ok"},
+    {"id":"chunk-over","total_bytes":12289,"digest":"6dd760245927f6626a8df0b1c54e925c34d47ac20ec0b2ecd197b3e4f71b5e7d","chunks":[{"offset":0,"data":"YQ==","repeat":12289,"final":true,"digest":"6dd760245927f6626a8df0b1c54e925c34d47ac20ec0b2ecd197b3e4f71b5e7d"}],"expected_code":"P19_INPUT"},
+    {"id":"chunk-no-final","total_bytes":1,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb","chunks":[{"offset":0,"data":"YQ==","repeat":1,"final":false,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"}],"expected_code":"P19_INPUT"},
+    {"id":"chunk-gap","total_bytes":2,"digest":"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603","chunks":[{"offset":1,"data":"YQ==","repeat":1,"final":false,"digest":"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603"},{"offset":1,"data":"Yg==","repeat":1,"final":true,"digest":"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603"}],"expected_code":"P19_INPUT"},
+    {"id":"chunk-duplicate-final","total_bytes":1,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb","chunks":[{"offset":0,"data":"YQ==","repeat":1,"final":true,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"},{"offset":1,"data":"","repeat":1,"final":true,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"}],"expected_code":"P19_INPUT"},
+    {"id":"chunk-early-final","total_bytes":2,"digest":"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603","chunks":[{"offset":0,"data":"YQ==","repeat":1,"final":true,"digest":"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603"}],"expected_code":"P19_INPUT"},
+    {"id":"chunk-extra-byte","total_bytes":0,"digest":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","chunks":[{"offset":0,"data":"YQ==","repeat":1,"final":true,"digest":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}],"expected_code":"P19_INPUT"},
+    {"id":"chunk-empty-middle","total_bytes":1,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb","chunks":[{"offset":0,"data":"","repeat":1,"final":false,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"},{"offset":0,"data":"YQ==","repeat":1,"final":true,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"}],"expected_code":"P19_INPUT"},
+    {"id":"chunk-bad-padding","total_bytes":1,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb","chunks":[{"offset":0,"data":"YQ","repeat":1,"final":true,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"}],"expected_code":"P19_INPUT"},
+    {"id":"chunk-newline","total_bytes":1,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb","chunks":[{"offset":0,"data":"YQ==\n","repeat":1,"final":true,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"}],"expected_code":"P19_INPUT"},
+    {"id":"chunk-digest","total_bytes":1,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb","chunks":[{"offset":0,"data":"Yg==","repeat":1,"final":true,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"}],"expected_code":"P19_DIGEST"},
+    {"id":"chunk-changed-digest","total_bytes":2,"digest":"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603","chunks":[{"offset":0,"data":"YQ==","repeat":1,"final":false,"digest":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"},{"offset":1,"data":"Yg==","repeat":1,"final":true,"digest":"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603"}],"expected_code":"P19_DIGEST"}
+  ],
+  "lease_cases": [
+    {"id":"lease-before","wall_ms":29999,"mono_ms":29999,"until_ms":30000,"deadline_ms":30000,"proposed_ms":0,"generation_matches":true,"durable":true,"expected_until_ms":30000,"expected_deadline_ms":30000,"expected_code":"ok"},
+    {"id":"lease-wall-equal","wall_ms":30000,"mono_ms":29999,"until_ms":30000,"deadline_ms":30000,"proposed_ms":60000,"generation_matches":true,"durable":true,"expected_until_ms":30000,"expected_deadline_ms":30000,"expected_code":"P19_LEASE"},
+    {"id":"lease-mono-equal","wall_ms":29000,"mono_ms":30000,"until_ms":30000,"deadline_ms":30000,"proposed_ms":59000,"generation_matches":true,"durable":true,"expected_until_ms":30000,"expected_deadline_ms":30000,"expected_code":"P19_LEASE"},
+    {"id":"lease-backward","wall_ms":0,"mono_ms":30000,"until_ms":30000,"deadline_ms":30000,"proposed_ms":0,"generation_matches":true,"durable":true,"expected_until_ms":30000,"expected_deadline_ms":30000,"expected_code":"P19_LEASE"},
+    {"id":"lease-renew","wall_ms":5000,"mono_ms":5000,"until_ms":30000,"deadline_ms":30000,"proposed_ms":35000,"generation_matches":true,"durable":true,"expected_until_ms":35000,"expected_deadline_ms":35000,"expected_code":"ok"},
+    {"id":"lease-old-ack","wall_ms":5000,"mono_ms":5000,"until_ms":30000,"deadline_ms":30000,"proposed_ms":29000,"generation_matches":true,"durable":true,"expected_until_ms":30000,"expected_deadline_ms":30000,"expected_code":"ok"},
+    {"id":"lease-same-ack","wall_ms":0,"mono_ms":5000,"until_ms":30000,"deadline_ms":30000,"proposed_ms":30000,"generation_matches":true,"durable":true,"expected_until_ms":30000,"expected_deadline_ms":30000,"expected_code":"ok"},
+    {"id":"lease-generation","wall_ms":5000,"mono_ms":5000,"until_ms":30000,"deadline_ms":30000,"proposed_ms":35000,"generation_matches":false,"durable":true,"expected_until_ms":30000,"expected_deadline_ms":30000,"expected_code":"P19_LEASE"},
+    {"id":"lease-save-failed","wall_ms":5000,"mono_ms":5000,"until_ms":30000,"deadline_ms":30000,"proposed_ms":35000,"generation_matches":true,"durable":false,"expected_until_ms":30000,"expected_deadline_ms":30000,"expected_code":"P19_LEASE"},
+    {"id":"lease-too-far","wall_ms":5000,"mono_ms":5000,"until_ms":30000,"deadline_ms":30000,"proposed_ms":40001,"generation_matches":true,"durable":true,"expected_until_ms":30000,"expected_deadline_ms":30000,"expected_code":"P19_LEASE"},
+    {"id":"lease-skew-limit","wall_ms":5000,"mono_ms":5000,"until_ms":30000,"deadline_ms":30000,"proposed_ms":40000,"generation_matches":true,"durable":true,"expected_until_ms":40000,"expected_deadline_ms":35000,"expected_code":"ok"},
+    {"id":"lease-no-query-renew","wall_ms":10000,"mono_ms":10000,"until_ms":30000,"deadline_ms":30000,"proposed_ms":0,"generation_matches":true,"durable":true,"expected_until_ms":30000,"expected_deadline_ms":30000,"expected_code":"ok"}
+  ]
+}
+```
+
+assertionはrunner.worker-spec.<case>.result、schema負例はrunner.worker-spec.schema-<case>.reject。ACK待ち中ACK送信禁止、ACK番号検査除去、chunk offset/final/hash検査除去、期限一致を有効化、monotonic失効無視、同値ACK再設定、durable確認除去、Lease.project_id/WorkerExecution.assignment_digest/JobResult.execution_id型の緩和を実source変異で検出する。文書checkerの順序・境界検査から実process停止や分散atomic性の成功を推定しない。
+
+将来P19-WORKER/ISOLATION/DURABILITY/CANCELはこの固定入力を実transportへ接続する。追加variantは、hello両方向とprobe副作用0、262143/262144/262145 byteの完全line、CRLF/空行/BOM/invalid UTF-8/途中EOF、ACKとlog同時送信の両順、出力backpressure中のheartbeat/cancel、metadata final前/不足sourceのstart拒否、別project同名run/job、coordinator再起動後の保存execution_id、旧世代/別try/異metadataのquery、worker両file間crash、broker保存前後の返信消失、compile result ACK後のtest転送と全final前の次stage拒否、中間running結果でRun終端0、wall時計後退/前進とmonotonic期限、更新ACK遅延到着、失効とresult同時刻、停止後のWait/cgroup空/cleanup失敗を含む。各checkpointでRoot/local file/slot/unit/残存process/secret非保存を比較し、result ACK前の保存失敗は成功へ変換しない。現時点の実runtime rootは未作成のまま、製品受入は未実施とする。
+
+<a id="phase-19-plan-vectors"></a>
+**固定Planとtriggerの文書入力：** 処理の正本は [docs/details/runner.md 詳細本文責務 入力](runner.md#phase-19-input-normalization)、[matrix](runner.md#phase-19-matrix-order)、[条件選択](runner.md#phase-19-plan-selection)、[自動trigger](runner.md#phase-19-trigger-admission)、[再実行](runner.md#phase-19-attempt-plan)、保存表現は [docs/details/statefile.md 詳細本文責務](statefile.md#phase-19-plan-state-invariants)。TestPhase19PlanSpecificationVectorsは以下50case（入力22/matrix11/DAG7/selector7/event3）とschema負例6件を読む文書oracleであり、製品の計画/queue/worker/外部GitHubの実行証跡ではない。全key必須、unknown/duplicate/null/trailing/invalid UTF-8を拒否し、IDは全配列で一意。入力caseは宣言key xだけ、明示nullと欠落を区別、scalarの指数/負の0もraw JSONで保持して比較する。selector caseのpatternはliteralだけで、glob処理の製品受入を代替しない。matrix全tuple順と全展開IDのSHA256、event keyのSHA256はnative Ruby標準JSON/Digestでchecker作成前に独立固定した。
+
+```json
+{
+  "schema_version": 1,
+  "input_cases": [
+    {"id":"default-missing","kind":"string","min":0,"max":8,"required":false,"default":"yes","choices":[],"values":{},"expected":{"x":"yes"},"expected_code":"ok"},
+    {"id":"false-present","kind":"boolean","min":0,"max":1,"required":false,"default":true,"choices":[],"values":{"x":false},"expected":{"x":false},"expected_code":"ok"},
+    {"id":"zero-present","kind":"integer","min":0,"max":9,"required":false,"default":1,"choices":[],"values":{"x":0},"expected":{"x":0},"expected_code":"ok"},
+    {"id":"empty-present","kind":"string","min":0,"max":8,"required":false,"default":"yes","choices":[],"values":{"x":""},"expected":{"x":""},"expected_code":"ok"},
+    {"id":"optional-absent","kind":"string","min":0,"max":8,"required":false,"default":null,"choices":[],"values":{},"expected":{},"expected_code":"ok"},
+    {"id":"required-value","kind":"integer","min":-2,"max":2,"required":true,"default":null,"choices":[-2,0,2],"values":{"x":2},"expected":{"x":2},"expected_code":"ok"},
+    {"id":"required-missing","kind":"integer","min":0,"max":9,"required":true,"default":null,"choices":[],"values":{},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"required-default","kind":"integer","min":0,"max":9,"required":true,"default":1,"choices":[],"values":{"x":1},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"explicit-null","kind":"string","min":0,"max":8,"required":false,"default":"yes","choices":[],"values":{"x":null},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"string-number","kind":"integer","min":0,"max":9,"required":false,"default":null,"choices":[],"values":{"x":"1"},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"boolean-number","kind":"boolean","min":0,"max":1,"required":false,"default":null,"choices":[],"values":{"x":0},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"integer-fraction","kind":"integer","min":0,"max":9,"required":false,"default":null,"choices":[],"values":{"x":1.5},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"integer-range","kind":"integer","min":0,"max":9,"required":false,"default":null,"choices":[],"values":{"x":10},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"utf8-equal","kind":"string","min":2,"max":2,"required":true,"default":null,"choices":[],"values":{"x":"é"},"expected":{"x":"é"},"expected_code":"ok"},
+    {"id":"utf8-over","kind":"string","min":0,"max":1,"required":true,"default":null,"choices":[],"values":{"x":"é"},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"unknown-key","kind":"string","min":0,"max":8,"required":false,"default":null,"choices":[],"values":{"y":"x"},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"duplicate-choice","kind":"integer","min":0,"max":9,"required":false,"default":null,"choices":[1,1],"values":{"x":1},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"default-not-choice","kind":"integer","min":0,"max":9,"required":false,"default":2,"choices":[1],"values":{},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"choice-mismatch","kind":"string","min":0,"max":8,"required":false,"default":null,"choices":["a"],"values":{"x":"b"},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"reversed-range","kind":"integer","min":2,"max":1,"required":false,"default":null,"choices":[],"values":{"x":1},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"integer-exponent","kind":"integer","min":0,"max":9,"required":false,"default":null,"choices":[],"values":{"x":1e0},"expected":{},"expected_code":"P19_SCHEMA"},
+    {"id":"integer-negative-zero","kind":"integer","min":0,"max":9,"required":false,"default":null,"choices":[],"values":{"x":-0},"expected":{},"expected_code":"P19_SCHEMA"}
+  ],
+  "matrix_cases": [
+    {"id":"matrix-none","base":"build","axes":{},"exclude":[],"include":[],"expected_code":"ok","expected_count":1,"expected_digest":"e10808d43975dc400731053386849f864f297e6c4f7519c380f3dbaf7067a840","expected_ids_digest":"4ebb81b90bcec2aa2691b63b66a47cd34479425f8574312ce71c047aa5e9e8e4"},
+    {"id":"matrix-order","base":"build","axes":{"z":[1,2],"a":["x","y"]},"exclude":[],"include":[],"expected_code":"ok","expected_count":4,"expected_digest":"0fb4de0970e634ad17d2c0082c5842775ea52f7f918e8280c620e8186cc7c187","expected_ids_digest":"1ea0efe5ff914d394cc48420162d5628cea98451b3845610fd8db547bbac1b9b"},
+    {"id":"matrix-exclude","base":"build","axes":{"a":[1,2],"b":[true,false]},"exclude":[{"b":false}],"include":[],"expected_code":"ok","expected_count":2,"expected_digest":"7b51d3f6e9fe6bc8a9a5ba1e580ea0be8de071a965143dc94052e8d546e4cd97","expected_ids_digest":"64a42465132169570c9959feadcc53a9b4dcd42f3e3eef271285daa463a7e3dc"},
+    {"id":"matrix-reinclude","base":"build","axes":{"a":[1,2]},"exclude":[{"a":1}],"include":[{"a":1}],"expected_code":"ok","expected_count":2,"expected_digest":"d806173fee9c9ec4a81916fd7eff117ef664919a66aa1c13e1bb88b9f9e8e9eb","expected_ids_digest":"64a42465132169570c9959feadcc53a9b4dcd42f3e3eef271285daa463a7e3dc"},
+    {"id":"matrix-duplicate","base":"build","axes":{"a":[1,2]},"exclude":[],"include":[{"a":1}],"expected_code":"P19_MATRIX","expected_count":0,"expected_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945","expected_ids_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"},
+    {"id":"matrix-type","base":"build","axes":{"a":[1,"1"]},"exclude":[],"include":[],"expected_code":"P19_MATRIX","expected_count":0,"expected_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945","expected_ids_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"},
+    {"id":"matrix-empty","base":"build","axes":{"a":[1]},"exclude":[{"a":1}],"include":[],"expected_code":"P19_MATRIX","expected_count":0,"expected_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945","expected_ids_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"},
+    {"id":"matrix-unknown-axis","base":"build","axes":{"a":[1]},"exclude":[{"b":1}],"include":[],"expected_code":"P19_MATRIX","expected_count":0,"expected_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945","expected_ids_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"},
+    {"id":"matrix-long-id","base":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","axes":{"v":[1]},"exclude":[],"include":[],"expected_code":"ok","expected_count":1,"expected_digest":"2f82c48b76c854095c5ff86fd0568fee6ea2cf16f807ca7d9dc73da5adff183d","expected_ids_digest":"2865eedc17479ba5e69f15d33f41459f169fc23ee7405a11e4b2dc98e244c2d2"},
+    {"id":"matrix-limit","base":"build","axes":{"a":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],"b":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]},"exclude":[],"include":[],"expected_code":"ok","expected_count":256,"expected_digest":"9c0f27e6b4da73a9f50081becbc9056ef5e2b0e6fce5d78e587d1dfdccc8a01c","expected_ids_digest":"73149acd87f27a8c1e72823e5186a35671ccda5c97095d4bfa787671b401d3e9"},
+    {"id":"matrix-over","base":"build","axes":{"a":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],"b":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]},"exclude":[],"include":[{"a":16,"b":0}],"expected_code":"P19_MATRIX","expected_count":0,"expected_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945","expected_ids_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"}
+  ],
+  "dag_cases": [
+    {"id":"dag-origin","jobs":[{"id":"c","needs":["a"],"own_match":true},{"id":"b","needs":[],"own_match":true},{"id":"a","needs":[],"own_match":true}],"expected_ids":["b","a","c"],"expected_selected":[true,true,true],"expected_code":"ok"},
+    {"id":"dag-transitive-skip","jobs":[{"id":"a","needs":[],"own_match":false},{"id":"b","needs":["a"],"own_match":true},{"id":"c","needs":["b"],"own_match":true},{"id":"d","needs":[],"own_match":true}],"expected_ids":["a","b","c","d"],"expected_selected":[false,false,false,true],"expected_code":"ok"},
+    {"id":"dag-own-skip","jobs":[{"id":"a","needs":[],"own_match":true},{"id":"b","needs":["a"],"own_match":false}],"expected_ids":["a","b"],"expected_selected":[true,false],"expected_code":"ok"},
+    {"id":"dag-unknown","jobs":[{"id":"a","needs":["x"],"own_match":true}],"expected_ids":[],"expected_selected":[],"expected_code":"P19_DAG"},
+    {"id":"dag-cycle","jobs":[{"id":"a","needs":["b"],"own_match":true},{"id":"b","needs":["a"],"own_match":true}],"expected_ids":[],"expected_selected":[],"expected_code":"P19_DAG"},
+    {"id":"dag-duplicate-edge","jobs":[{"id":"a","needs":[],"own_match":true},{"id":"b","needs":["a","a"],"own_match":true}],"expected_ids":[],"expected_selected":[],"expected_code":"P19_DAG"},
+    {"id":"dag-duplicate-id","jobs":[{"id":"a","needs":[],"own_match":true},{"id":"a","needs":[],"own_match":false}],"expected_ids":[],"expected_selected":[],"expected_code":"P19_DAG"}
+  ],
+  "selector_cases": [
+    {"id":"selector-tag-only-branch","kind":"branch","branches":[],"tags":["v1"],"paths":[],"changed":[],"equals":{},"values":{},"expected":false},
+    {"id":"selector-branch-only-tag","kind":"tag","branches":["main"],"tags":[],"paths":[],"changed":[],"equals":{},"values":{},"expected":false},
+    {"id":"selector-both-empty","kind":"branch","branches":[],"tags":[],"paths":[],"changed":[],"equals":{},"values":{},"expected":true},
+    {"id":"selector-branch-match","kind":"branch","branches":["main"],"tags":["v1"],"paths":["docs/a"],"changed":["docs/a"],"equals":{"release":true},"values":{"release":true},"expected":true},
+    {"id":"selector-typed-input","kind":"branch","branches":["main"],"tags":[],"paths":[],"changed":[],"equals":{"release":true},"values":{"release":1},"expected":false},
+    {"id":"selector-deleted-path","kind":"branch","branches":[],"tags":[],"paths":["gone"],"changed":["gone"],"equals":{},"values":{},"expected":true},
+    {"id":"selector-empty-source","kind":"branch","branches":[],"tags":[],"paths":["docs/a"],"changed":[],"equals":{},"values":{},"expected":false}
+  ],
+  "event_cases": [
+    {"id":"event-base","input":{"project_id":"alpha","definition_id":"build","definition_revision":1,"kind":"watch","trigger_id":"main","source_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","due":null},"expected_digest":"86fa405be62506c2b3ce18b8722ef745a472aea17799c1970f3feaa3271a0fdb"},
+    {"id":"event-definition","input":{"project_id":"alpha","definition_id":"other","definition_revision":1,"kind":"watch","trigger_id":"main","source_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","due":null},"expected_digest":"af1006cee4b232869d0ecfed636abb655bccf7b95cf6dbc0f0bc8805c9f63159"},
+    {"id":"event-revision","input":{"project_id":"alpha","definition_id":"build","definition_revision":2,"kind":"watch","trigger_id":"main","source_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","due":null},"expected_digest":"52547868d5927261d69b1ef0c97346b2db28115cca1350db5579f940994cff2a"}
+  ]
+}
+```
+
+assertionはrunner.plan-spec.<case>.result、schema負例はrunner.plan-spec.schema-<case>.reject。registry checkerのselected欠落/PlannedTask差替/展開IdのJobId化/cursor revision型差替も必須負例とする。実source変異は型付きdefault・明示false/0/空・UTF-8長・matrix順/上限・条件/依存伝播・Definitionを含むevent key・registry必須fieldの緩和を検出し、隔離copyの復元を確認する。
+
+将来P19-PLAN/EVENT/DAG/RETRY/ACCESS/LOG-UIでは、この固定入力を実際のDefinition/Template/Project/Runへ接続し、Plan.selectedとdigestの保存/restart、48文字baseからの51文字deploy参照、template origin順、matrix単一/複数artifact参照、削除path、別Definition/同revision cursor、新revision切替中の取得、required入力付き自動trigger拒否、manual=falseのpreview/start分離、systemのAPI認証拒否、retry/resumeでbranchが移動しても旧Plan保持、旧attempt/active/recovery拒否、pin取得失敗で再実行、終端Runのartifactが正規GC済みなら履歴成功を維持しresumeは再実行、active/環境current参照の不在はSTATE_CORRUPT、stale confirmation/遅延responseをnormal/fault/restart/concurrentへ展開する。現在は実runtime root未作成のままであり、doc oracle合格から製品完了を宣言しない。
+
+<a id="phase-19-content-vectors"></a>
+**artifact/cacheの文書入力：** 処理の正本は [docs/details/archive.md 詳細本文責務 envelope](archive.md#phase-19-archive-envelope)、[read/GC](archive.md#phase-19-artifact-read-gc)、[docs/details/runner.md 詳細本文責務 cache lifecycle](runner.md#phase-19-cache-lifecycle)、[docs/details/api.md 詳細本文責務 download](api.md#phase-19-artifact-download)。TestPhase19ContentSpecificationVectorsは以下の固定入力を読む純粋なdocument oracleであり、実際の製品API/Filesystem/lockを検証した証跡ではない。全key必須、unknown/duplicate/null拒否、IDは全配列で一意、key hashは独立したRuby標準JSON/sha256で固定してからcheckerを作成する。大小文字や環境値の変更を同じkeyへ丸めない。
+
+```json
+{
+  "schema_version": 1,
+  "chunk_cases": [
+    {
+      "id": "chunk-one",
+      "total_bytes": 1,
+      "offset": 0,
+      "expected_bytes": 1,
+      "expected_next": 1,
+      "expected_final": true,
+      "expected_code": "ok"
+    },
+    {
+      "id": "chunk-exact",
+      "total_bytes": 12288,
+      "offset": 0,
+      "expected_bytes": 12288,
+      "expected_next": 12288,
+      "expected_final": true,
+      "expected_code": "ok"
+    },
+    {
+      "id": "chunk-first",
+      "total_bytes": 12289,
+      "offset": 0,
+      "expected_bytes": 12288,
+      "expected_next": 12288,
+      "expected_final": false,
+      "expected_code": "ok"
+    },
+    {
+      "id": "chunk-last",
+      "total_bytes": 12289,
+      "offset": 12288,
+      "expected_bytes": 1,
+      "expected_next": 12289,
+      "expected_final": true,
+      "expected_code": "ok"
+    },
+    {
+      "id": "chunk-unaligned",
+      "total_bytes": 12289,
+      "offset": 1,
+      "expected_bytes": 12288,
+      "expected_next": 12289,
+      "expected_final": true,
+      "expected_code": "ok"
+    },
+    {
+      "id": "chunk-tail",
+      "total_bytes": 12289,
+      "offset": 12289,
+      "expected_bytes": 0,
+      "expected_next": 12289,
+      "expected_final": true,
+      "expected_code": "ok"
+    },
+    {
+      "id": "chunk-future",
+      "total_bytes": 1,
+      "offset": 2,
+      "expected_bytes": 0,
+      "expected_next": 0,
+      "expected_final": false,
+      "expected_code": "P19_SCHEMA"
+    },
+    {
+      "id": "chunk-negative",
+      "total_bytes": 1,
+      "offset": -1,
+      "expected_bytes": 0,
+      "expected_next": 0,
+      "expected_final": false,
+      "expected_code": "P19_SCHEMA"
+    },
+    {
+      "id": "chunk-empty-metadata",
+      "total_bytes": 0,
+      "offset": 0,
+      "expected_bytes": 0,
+      "expected_next": 0,
+      "expected_final": false,
+      "expected_code": "P19_STATE_CORRUPT"
+    },
+    {
+      "id": "chunk-max",
+      "total_bytes": 1073741824,
+      "offset": 1073741820,
+      "expected_bytes": 4,
+      "expected_next": 1073741824,
+      "expected_final": true,
+      "expected_code": "ok"
+    },
+    {
+      "id": "chunk-large-metadata",
+      "total_bytes": 1073741825,
+      "offset": 0,
+      "expected_bytes": 0,
+      "expected_next": 0,
+      "expected_final": false,
+      "expected_code": "P19_STATE_CORRUPT"
+    }
+  ],
+  "query_cases": [
+    {
+      "id": "query-zero",
+      "offset": "0",
+      "expected_code": "ok"
+    },
+    {
+      "id": "query-max",
+      "offset": "1073741824",
+      "expected_code": "ok"
+    },
+    {
+      "id": "query-large",
+      "offset": "1073741825",
+      "expected_code": "P19_SCHEMA"
+    },
+    {
+      "id": "query-leading-zero",
+      "offset": "01",
+      "expected_code": "P19_INPUT"
+    },
+    {
+      "id": "query-sign",
+      "offset": "-1",
+      "expected_code": "P19_INPUT"
+    },
+    {
+      "id": "query-space",
+      "offset": " 1",
+      "expected_code": "P19_INPUT"
+    },
+    {
+      "id": "query-exponent",
+      "offset": "1e2",
+      "expected_code": "P19_INPUT"
+    },
+    {
+      "id": "query-overflow",
+      "offset": "999999999999999999999999",
+      "expected_code": "P19_SCHEMA"
+    }
+  ],
+  "wire_cases": [
+    {
+      "id": "receive-one",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YQ==",
+        "next_offset": 1,
+        "total_bytes": 1,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "ok"
+    },
+    {
+      "id": "receive-tail",
+      "requested_offset": 1,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 1,
+        "data": "",
+        "next_offset": 1,
+        "total_bytes": 1,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "ok"
+    },
+    {
+      "id": "receive-padding",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YQ",
+        "next_offset": 1,
+        "total_bytes": 1,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-digest",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YQ==",
+        "next_offset": 1,
+        "total_bytes": 1,
+        "digest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "final": true
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-offset",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 1,
+        "data": "",
+        "next_offset": 1,
+        "total_bytes": 1,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-short",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YQ==",
+        "next_offset": 2,
+        "total_bytes": 2,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-final",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YWE=",
+        "next_offset": 2,
+        "total_bytes": 2,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": false
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-empty",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "",
+        "next_offset": 0,
+        "total_bytes": 1,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": false
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-gap",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YWE=",
+        "next_offset": 3,
+        "total_bytes": 2,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-zero",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "",
+        "next_offset": 0,
+        "total_bytes": 0,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-overlong",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YWE=",
+        "next_offset": 2,
+        "total_bytes": 1,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-whitespace",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YQ==\n",
+        "next_offset": 1,
+        "total_bytes": 1,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "protocol"
+    }
+  ],
+  "cache_cases": [
+    {
+      "id": "cache-hit",
+      "metadata": true,
+      "matching_key": true,
+      "published": true,
+      "deleting": false,
+      "quota_mb": 1,
+      "now": 99,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "hit"
+    },
+    {
+      "id": "cache-no-metadata",
+      "metadata": false,
+      "matching_key": true,
+      "published": true,
+      "deleting": false,
+      "quota_mb": 1,
+      "now": 99,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "miss"
+    },
+    {
+      "id": "cache-no-payload",
+      "metadata": true,
+      "matching_key": true,
+      "published": false,
+      "deleting": false,
+      "quota_mb": 1,
+      "now": 99,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "invalidate"
+    },
+    {
+      "id": "cache-corrupt",
+      "metadata": true,
+      "matching_key": true,
+      "published": true,
+      "deleting": false,
+      "quota_mb": 1,
+      "now": 99,
+      "expires_at": 100,
+      "verified": false,
+      "expected": "invalidate"
+    },
+    {
+      "id": "cache-other-key",
+      "metadata": true,
+      "matching_key": false,
+      "published": true,
+      "deleting": false,
+      "quota_mb": 1,
+      "now": 99,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "miss"
+    },
+    {
+      "id": "cache-deleting",
+      "metadata": true,
+      "matching_key": true,
+      "published": true,
+      "deleting": true,
+      "quota_mb": 1,
+      "now": 99,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "miss"
+    },
+    {
+      "id": "cache-disabled-quota",
+      "metadata": true,
+      "matching_key": true,
+      "published": true,
+      "deleting": false,
+      "quota_mb": 0,
+      "now": 99,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "miss"
+    },
+    {
+      "id": "cache-at-expiry",
+      "metadata": true,
+      "matching_key": true,
+      "published": true,
+      "deleting": false,
+      "quota_mb": 1,
+      "now": 100,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "miss"
+    },
+    {
+      "id": "cache-after-expiry",
+      "metadata": true,
+      "matching_key": true,
+      "published": true,
+      "deleting": false,
+      "quota_mb": 1,
+      "now": 101,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "miss"
+    }
+  ],
+  "key_cases": [
+    {
+      "id": "key-alpha",
+      "input": {
+        "project_id": "alpha",
+        "trust": "registered",
+        "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "job_id": "build",
+        "source_tree_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "toolchain_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+        "os": "linux",
+        "arch": "amd64",
+        "env": {
+          "A": "x",
+          "Z": "y"
+        }
+      },
+      "expected_sha256": "ca2976169a805db6e49878c6a1076cf7ab4f4a72b2cc7aa38f0937f232dad1c2"
+    },
+    {
+      "id": "key-beta",
+      "input": {
+        "project_id": "beta",
+        "trust": "registered",
+        "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "job_id": "build",
+        "source_tree_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "toolchain_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+        "os": "linux",
+        "arch": "amd64",
+        "env": {
+          "A": "x",
+          "Z": "y"
+        }
+      },
+      "expected_sha256": "9c4d03c161118ca17f279ef0607e740e8e3486063c559e3bdfaa1b09168caa0a"
+    },
+    {
+      "id": "key-env",
+      "input": {
+        "project_id": "alpha",
+        "trust": "registered",
+        "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "job_id": "build",
+        "source_tree_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "toolchain_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+        "os": "linux",
+        "arch": "amd64",
+        "env": {
+          "A": "x",
+          "Z": "z"
+        }
+      },
+      "expected_sha256": "dc6983c1d2f9bdbb4eb49a005807d37e0e5aa98ba1f60521c75eb9115b3c755c"
+    }
+  ],
+  "envelope_cases": [
+    {
+      "id": "envelope-empty-file",
+      "sizes": [
+        0
+      ],
+      "mutation": "none",
+      "expected_code": "ok"
+    },
+    {
+      "id": "envelope-one",
+      "sizes": [
+        1
+      ],
+      "mutation": "none",
+      "expected_code": "ok"
+    },
+    {
+      "id": "envelope-block",
+      "sizes": [
+        512
+      ],
+      "mutation": "none",
+      "expected_code": "ok"
+    },
+    {
+      "id": "envelope-split",
+      "sizes": [
+        513,
+        0
+      ],
+      "mutation": "none",
+      "expected_code": "ok"
+    },
+    {
+      "id": "envelope-extra-member",
+      "sizes": [
+        1
+      ],
+      "mutation": "gzip-empty-member",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-gzip-zero",
+      "sizes": [
+        1
+      ],
+      "mutation": "gzip-trailing-zero",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-gzip-byte",
+      "sizes": [
+        1
+      ],
+      "mutation": "gzip-trailing-byte",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-crc",
+      "sizes": [
+        1
+      ],
+      "mutation": "gzip-crc",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-truncated",
+      "sizes": [
+        1
+      ],
+      "mutation": "gzip-truncated",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-tar-zero",
+      "sizes": [
+        1
+      ],
+      "mutation": "tar-extra-zero",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-short-end",
+      "sizes": [
+        1
+      ],
+      "mutation": "tar-short-terminator",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-padding",
+      "sizes": [
+        1
+      ],
+      "mutation": "tar-data-padding",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-pax",
+      "sizes": [
+        1
+      ],
+      "mutation": "tar-pax-prefix",
+      "expected_code": "P19_ARCHIVE"
+    }
+  ]
+}
+```
+
+chunk_casesはoffset/length/next/finalの算術、query_casesはquery grammar、wire_casesはSDK/CLIが観測するbase64と応答整合、cache_casesはmetadata先行拒否/namespace/容量/期限/破損の判断を検査する。envelope入力は各sizesのfileをpath a,b順、本文ASCII aのsize回反復、mode0644、UID/GID0・mtime0・USTARで構築し、BestCompressionのgzipにする。正規raw tar長はowner式から求め、gzip-empty-memberは空gzip memberを追加、gzip-trailing-zero/byteは1byte 00/01を追加、gzip-crcはtrailer先頭1bit反転、gzip-truncatedは末尾1byte削除、tar-extra-zero/short-terminatorは512zero追加/削除、tar-data-paddingは最初のfile直後paddingを01へ変更する。tar-pax-prefixはcomment=xのPAX前置header付き同fileで、正常tarへ自動変換して受理しない。
+
+schema負例はmissing/unknown/duplicate/null/trailing/invalid UTF-8の6種。assertion IDはapi.content-spec.<case>.result / runner.content-spec.<case>.result / archive.content-spec.<case>.result / statefile.content-spec.schema-<case>.reject。mutationはquery先頭0、chunk上限/終端、wire長検査、cache期限/metadata/破損、keyのproject除去、gzip member/trailing、tar padding、Audit.target_id型の適用可能な代表を隔離sourceで実行する。生成payloadはtest memory内だけで、実repoのfixture/expectedを書き換えない。
+
+将来P19-CACHEはpublish/親fsync/Root commit各停止点、同keyの同bytes/異bytes競合、未参照公開directoryの再起動回収、in_use中のinvalidate/GC、quota0、TTL一致とlast_used_at逆行をnormal/fault/restart/concurrentへ接続する。P19-ARTIFACTはread先行/GC先行をbarrier制御し、metadata/payload不在・差替/symlink/nlink/short-read、guard取得失敗、response中lock保持0、current pin保護、quota evict順を比較する。P19-ACCESSはdigest targetのOperation/Audit一致を検査する。P19-LOG-UIはchunk不整合/404/遅延view/途中取消/hash不一致/Blob失敗で未完了bufferとobject URLを破棄し、最終hash前のdownload成功0を観測する。cache-kindをartifact登録/API/site配備へ流用する負例も必須とする。これらの実runtime検証は未実装で、文書oracle合格では閉じない。
+
+<a id="phase-19-operation-vectors"></a>
+**operation文書入力：** 受付は [docs/details/api.md 詳細本文責務](api.md#phase-19-operation-admission)、保存進行・GCは [docs/details/statefile.md 詳細本文責務](statefile.md#phase-19-operation-lifecycle)、対象処理の完了は [docs/details/runner.md 詳細本文責務](runner.md#phase-19-operation-completion) を正本とする。以下はTestPhase19OperationSpecificationVectorsの純粋なdocument oracleであり、製品のlock/認可/通信/復旧を実行した証跡ではない。全key必須、unknown/duplicate/null拒否、case IDは全配列で一意。admissionは認可済みscopeの最新検査をauthorizedで、既存keyのsubject/digest一致と新規revisionをbooleanで与える。transitionのsame_resultはstateだけでなくcode/対象結果/不変fieldが完全一致する場合だけtrue。GCの時刻はcreated_atからの秒数。期待値は固定であり製品出力から生成しない。
+
+```json
+{
+  "schema_version": 1,
+  "admission_cases": [
+    {
+      "id": "new-create",
+      "authorized": true,
+      "existing": false,
+      "same_subject": true,
+      "same_digest": true,
+      "revision_matches": true,
+      "expected": "create"
+    },
+    {
+      "id": "new-denied",
+      "authorized": false,
+      "existing": false,
+      "same_subject": true,
+      "same_digest": true,
+      "revision_matches": true,
+      "expected": "forbidden"
+    },
+    {
+      "id": "replay-denied",
+      "authorized": false,
+      "existing": true,
+      "same_subject": true,
+      "same_digest": true,
+      "revision_matches": true,
+      "expected": "forbidden"
+    },
+    {
+      "id": "replay-stale-revision",
+      "authorized": true,
+      "existing": true,
+      "same_subject": true,
+      "same_digest": true,
+      "revision_matches": false,
+      "expected": "replay"
+    },
+    {
+      "id": "replay-current",
+      "authorized": true,
+      "existing": true,
+      "same_subject": true,
+      "same_digest": true,
+      "revision_matches": true,
+      "expected": "replay"
+    },
+    {
+      "id": "digest-conflict",
+      "authorized": true,
+      "existing": true,
+      "same_subject": true,
+      "same_digest": false,
+      "revision_matches": false,
+      "expected": "idempotency"
+    },
+    {
+      "id": "subject-conflict",
+      "authorized": true,
+      "existing": true,
+      "same_subject": false,
+      "same_digest": true,
+      "revision_matches": true,
+      "expected": "idempotency"
+    },
+    {
+      "id": "new-stale",
+      "authorized": true,
+      "existing": false,
+      "same_subject": true,
+      "same_digest": true,
+      "revision_matches": false,
+      "expected": "revision"
+    }
+  ],
+  "transition_cases": [
+    {
+      "id": "accept-success",
+      "from": "accepted",
+      "to": "succeeded",
+      "same_result": false,
+      "expected": "advance"
+    },
+    {
+      "id": "accept-failure",
+      "from": "accepted",
+      "to": "failed",
+      "same_result": false,
+      "expected": "advance"
+    },
+    {
+      "id": "accept-uncertain",
+      "from": "accepted",
+      "to": "recovery_required",
+      "same_result": false,
+      "expected": "advance"
+    },
+    {
+      "id": "recover-success",
+      "from": "recovery_required",
+      "to": "succeeded",
+      "same_result": false,
+      "expected": "advance"
+    },
+    {
+      "id": "recover-failure",
+      "from": "recovery_required",
+      "to": "failed",
+      "same_result": false,
+      "expected": "advance"
+    },
+    {
+      "id": "accept-noop",
+      "from": "accepted",
+      "to": "accepted",
+      "same_result": true,
+      "expected": "unchanged"
+    },
+    {
+      "id": "recover-noop",
+      "from": "recovery_required",
+      "to": "recovery_required",
+      "same_result": true,
+      "expected": "unchanged"
+    },
+    {
+      "id": "success-noop",
+      "from": "succeeded",
+      "to": "succeeded",
+      "same_result": true,
+      "expected": "unchanged"
+    },
+    {
+      "id": "failure-noop",
+      "from": "failed",
+      "to": "failed",
+      "same_result": true,
+      "expected": "unchanged"
+    },
+    {
+      "id": "terminal-reverse",
+      "from": "succeeded",
+      "to": "failed",
+      "same_result": false,
+      "expected": "stale"
+    },
+    {
+      "id": "terminal-change",
+      "from": "failed",
+      "to": "failed",
+      "same_result": false,
+      "expected": "stale"
+    },
+    {
+      "id": "recover-reaccept",
+      "from": "recovery_required",
+      "to": "accepted",
+      "same_result": false,
+      "expected": "stale"
+    }
+  ],
+  "gc_cases": [
+    {
+      "id": "gc-before",
+      "state": "succeeded",
+      "now": 2591999,
+      "expires_at": 2592000,
+      "protected_reference": false,
+      "expected_collect": false
+    },
+    {
+      "id": "gc-at",
+      "state": "succeeded",
+      "now": 2592000,
+      "expires_at": 2592000,
+      "protected_reference": false,
+      "expected_collect": true
+    },
+    {
+      "id": "gc-after",
+      "state": "succeeded",
+      "now": 2592001,
+      "expires_at": 2592000,
+      "protected_reference": false,
+      "expected_collect": true
+    },
+    {
+      "id": "gc-failure",
+      "state": "failed",
+      "now": 2592000,
+      "expires_at": 2592000,
+      "protected_reference": false,
+      "expected_collect": true
+    },
+    {
+      "id": "gc-accepted",
+      "state": "accepted",
+      "now": 3000000,
+      "expires_at": 2592000,
+      "protected_reference": false,
+      "expected_collect": false
+    },
+    {
+      "id": "gc-recovery",
+      "state": "recovery_required",
+      "now": 3000000,
+      "expires_at": 2592000,
+      "protected_reference": false,
+      "expected_collect": false
+    },
+    {
+      "id": "gc-protected",
+      "state": "succeeded",
+      "now": 3000000,
+      "expires_at": 2592000,
+      "protected_reference": true,
+      "expected_collect": false
+    },
+    {
+      "id": "gc-protected-failure",
+      "state": "failed",
+      "now": 3000000,
+      "expires_at": 2592000,
+      "protected_reference": true,
+      "expected_collect": false
+    }
+  ]
+}
+```
+
+schema negative controlはmissing/unknown/duplicate/null/trailing/invalid UTF-8の6種を個別に拒否する。API catalogのmutation全25件を受付HTTP分類へ1対1結合し、wrong-status/missing-kind/duplicate-kind/read-kindの4負例を拒否する。Operation.target_idのDigest許可とtarget_attemptの型はregistry checkerでも検査する。assertion IDはapi.operation-spec.<case>.result / statefile.operation-spec.<case>.result、schema負例はstatefile.operation-spec.schema-<case>.reject、HTTP分類負例はapi.operation-spec.http-<case>.rejectとする。
+
+将来のP19-ACCESSには同一keyの並行2要求・異subject・失効後再送・body key順差・配列順差・古いrevisionの再送・変更入力同key・一度だけのcredential生成・result消失・202終端応答を追加し、各応答/Root/監査/外部call数を比較する。P19-DURABILITYには期限前/一致/後、active/recovery/保護参照、operationとAuditの同commit GC、容量満杯、Head不確定と再照会を追加する。P19-RETRY/CANCEL/DEPLOYにはtarget_attempt固定、旧attempt遅延、自然終了との競合、承認操作と配備成否の分離、復旧前のOperation終端禁止を追加する。P19-LOG-UIにはsubmit応答消失/404/秘密値破棄/新key自動再送0を追加し、SDK/CLIはkey/kind/attempt不一致をprotocol errorにする。これらの実runtimeケースは正式root実装時の必須条件であり、文書oracle成功でclosedとしない。
+
+<a id="phase-19-log-boundary-vectors"></a>
+**streaming log・page境界の文書入力：** 生成処理は [docs/details/runner.md 詳細本文責務](runner.md#phase-19-streaming-log-contract)、保存invariantは [docs/details/statefile.md 詳細本文責務](statefile.md#phase-19-log-invariants)、wireは [docs/details/api.md 詳細本文責務](api.md#phase-19-log-page-contract) を正本とする。次のJSONは現在のmain_test.goのTestPhase19LogSpecificationVectorsで読む純粋な文書oracleであり、製品のpipe/停止/復旧/実diskを検証した証拠ではない。各objectの列挙keyは全必須/unknown・duplicate・null禁止、page_cases.cursor_offsetだけnullを許可する。hexはlowercase偶数桁、空byte列だけ空文字を許可する。patternは既にsecurityで作成済みの合成pattern byte列として与え、secret登録のUTF-8入力条件や本物のsecretではない。
+
+mask_casesは各chunk後の確定済み全prefixをcommitted_hex、EOF後をexpected_hexで比較する。さらに同じjoined入力の全2分割位置と1byte分割でも最終byte同値を検査する。page_casesのexpected_code=ok以外ではdata空/offset0/terminal=false/cursor未更新をoracleの拒否値とする。成功時はfirst/next/data byte長、終端とringのtruncated/gap投影、末尾の入力cursor不変を検査する。budget_casesは実MiB単位の両stream合計境界を検査し、上限一致を拒否しない。保存容量caseはNULを1048576byte生成し有効Log envelopeへ入れ、JSON escape後が6 MiBを超えるがpath上限内であることを独立計算する。goldenを実装から上書きしない。
+
+```json
+{
+  "schema_version": 1,
+  "mask_cases": [
+    {
+      "id": "split-secret",
+      "patterns_hex": [
+        "544f4b454e"
+      ],
+      "chunks_hex": [
+        "54",
+        "4f4b",
+        "454e"
+      ],
+      "committed_hex": [
+        "",
+        "",
+        "5b52454441435445445d"
+      ],
+      "expected_hex": "5b52454441435445445d"
+    },
+    {
+      "id": "longest-overlap",
+      "patterns_hex": [
+        "6162",
+        "616261"
+      ],
+      "chunks_hex": [
+        "6162616261"
+      ],
+      "committed_hex": [
+        "5b52454441435445445d"
+      ],
+      "expected_hex": "5b52454441435445445d6261"
+    },
+    {
+      "id": "single-byte",
+      "patterns_hex": [
+        "78"
+      ],
+      "chunks_hex": [
+        "787879"
+      ],
+      "committed_hex": [
+        "5b52454441435445445d5b52454441435445445d79"
+      ],
+      "expected_hex": "5b52454441435445445d5b52454441435445445d79"
+    },
+    {
+      "id": "partial-at-eof",
+      "patterns_hex": [
+        "544f4b454e"
+      ],
+      "chunks_hex": [
+        "544f4b"
+      ],
+      "committed_hex": [
+        ""
+      ],
+      "expected_hex": "544f4b"
+    },
+    {
+      "id": "invalid-tail",
+      "patterns_hex": [],
+      "chunks_hex": [
+        "ffc3"
+      ],
+      "committed_hex": [
+        "efbfbd"
+      ],
+      "expected_hex": "efbfbdefbfbd"
+    },
+    {
+      "id": "replacement-not-rescanned",
+      "patterns_hex": [
+        "5b",
+        "78"
+      ],
+      "chunks_hex": [
+        "78"
+      ],
+      "committed_hex": [
+        "5b52454441435445445d"
+      ],
+      "expected_hex": "5b52454441435445445d"
+    },
+    {
+      "id": "unicode-split",
+      "patterns_hex": [],
+      "chunks_hex": [
+        "e3",
+        "81",
+        "82"
+      ],
+      "committed_hex": [
+        "",
+        "",
+        "e38182"
+      ],
+      "expected_hex": "e38182"
+    },
+    {
+      "id": "unicode-secret",
+      "patterns_hex": [
+        "e38182"
+      ],
+      "chunks_hex": [
+        "e3",
+        "8182"
+      ],
+      "committed_hex": [
+        "",
+        "5b52454441435445445d"
+      ],
+      "expected_hex": "5b52454441435445445d"
+    },
+    {
+      "id": "mask-before-decode",
+      "patterns_hex": [
+        "ff"
+      ],
+      "chunks_hex": [
+        "ff"
+      ],
+      "committed_hex": [
+        "5b52454441435445445d"
+      ],
+      "expected_hex": "5b52454441435445445d"
+    },
+    {
+      "id": "short-pattern-at-eof",
+      "patterns_hex": [
+        "6162",
+        "616263"
+      ],
+      "chunks_hex": [
+        "6162"
+      ],
+      "committed_hex": [
+        ""
+      ],
+      "expected_hex": "5b52454441435445445d"
+    },
+    {
+      "id": "invalid-run",
+      "patterns_hex": [],
+      "chunks_hex": [
+        "fffe"
+      ],
+      "committed_hex": [
+        "efbfbdefbfbd"
+      ],
+      "expected_hex": "efbfbdefbfbd"
+    },
+    {
+      "id": "empty",
+      "patterns_hex": [],
+      "chunks_hex": [
+        ""
+      ],
+      "committed_hex": [
+        ""
+      ],
+      "expected_hex": ""
+    }
+  ],
+  "page_cases": [
+    {
+      "id": "empty-page",
+      "data_hex": "",
+      "first_offset": 0,
+      "cursor_offset": null,
+      "limit_bytes": 1,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "ok",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": true,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "ascii-page",
+      "data_hex": "616263",
+      "first_offset": 7,
+      "cursor_offset": 7,
+      "limit_bytes": 2,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "ok",
+      "expected_hex": "6162",
+      "expected_first": 7,
+      "expected_next": 9,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "tail",
+      "data_hex": "616263",
+      "first_offset": 7,
+      "cursor_offset": 10,
+      "limit_bytes": 2,
+      "stored_terminal": true,
+      "stored_gap": true,
+      "expected_code": "ok",
+      "expected_hex": "",
+      "expected_first": 10,
+      "expected_next": 10,
+      "expected_terminal": true,
+      "expected_cursor_unchanged": true
+    },
+    {
+      "id": "stale",
+      "data_hex": "616263",
+      "first_offset": 7,
+      "cursor_offset": 6,
+      "limit_bytes": 2,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "P19_CURSOR",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "future",
+      "data_hex": "616263",
+      "first_offset": 7,
+      "cursor_offset": 11,
+      "limit_bytes": 2,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "P19_CURSOR",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "middle-of-scalar",
+      "data_hex": "61e3818262",
+      "first_offset": 10,
+      "cursor_offset": 12,
+      "limit_bytes": 4,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "P19_CURSOR",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "too-small",
+      "data_hex": "61e3818262",
+      "first_offset": 10,
+      "cursor_offset": 11,
+      "limit_bytes": 2,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "P19_SCHEMA",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "unicode-exact",
+      "data_hex": "61e3818262",
+      "first_offset": 10,
+      "cursor_offset": 11,
+      "limit_bytes": 3,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "ok",
+      "expected_hex": "e38182",
+      "expected_first": 11,
+      "expected_next": 14,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "unread-terminal",
+      "data_hex": "61e3818262",
+      "first_offset": 10,
+      "cursor_offset": null,
+      "limit_bytes": 1,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "ok",
+      "expected_hex": "61",
+      "expected_first": 10,
+      "expected_next": 11,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "emoji",
+      "data_hex": "f09f9880",
+      "first_offset": 0,
+      "cursor_offset": 0,
+      "limit_bytes": 4,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "ok",
+      "expected_hex": "f09f9880",
+      "expected_first": 0,
+      "expected_next": 4,
+      "expected_terminal": true,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "corrupt-utf8",
+      "data_hex": "ff",
+      "first_offset": 0,
+      "cursor_offset": null,
+      "limit_bytes": 1,
+      "stored_terminal": true,
+      "stored_gap": false,
+      "expected_code": "P19_STATE_CORRUPT",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "limit-zero",
+      "data_hex": "61",
+      "first_offset": 0,
+      "cursor_offset": null,
+      "limit_bytes": 0,
+      "stored_terminal": false,
+      "stored_gap": false,
+      "expected_code": "P19_SCHEMA",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    },
+    {
+      "id": "limit-large",
+      "data_hex": "61",
+      "first_offset": 0,
+      "cursor_offset": null,
+      "limit_bytes": 65537,
+      "stored_terminal": false,
+      "stored_gap": false,
+      "expected_code": "P19_SCHEMA",
+      "expected_hex": "",
+      "expected_first": 0,
+      "expected_next": 0,
+      "expected_terminal": false,
+      "expected_cursor_unchanged": false
+    }
+  ],
+  "budget_cases": [
+    {
+      "id": "below",
+      "output_mb": 1,
+      "stdout_bytes": 1048574,
+      "stderr_bytes": 1,
+      "expected_code": "ok"
+    },
+    {
+      "id": "exact",
+      "output_mb": 1,
+      "stdout_bytes": 1048575,
+      "stderr_bytes": 1,
+      "expected_code": "ok"
+    },
+    {
+      "id": "combined-over",
+      "output_mb": 1,
+      "stdout_bytes": 1048575,
+      "stderr_bytes": 2,
+      "expected_code": "P19_OUTPUT"
+    },
+    {
+      "id": "one-stream-over",
+      "output_mb": 1,
+      "stdout_bytes": 1048577,
+      "stderr_bytes": 0,
+      "expected_code": "P19_OUTPUT"
+    }
+  ]
+}
+```
+
+ring固定入力はring-exact=ASCII aを1048576byte（offset0..1048576/残1048576）、ring-scalar-prefix=UTF-8のあ3byte+ASCII aを1048575byte（offset3..1048578/残1048575）、ring-unicode=UTF-8のあを349526個（offset3..1048578/残1048575）とし、各raw入力から1 MiB以内の最新scalar suffixを比較する。
+
+assertion IDはrunner.log-spec.<case>.result、api.log-spec.<case>.result、statefile.log-spec.escape-capacity.result。診断は責務anchor、expected/actual codeまたはhex、再現commandだけを持ち、入力patternやraw出力を失敗messageへ転載しない。document oracleのmutationはpending保持/最長一致/置換再走査禁止/mask後decode/合算出力上限/UTF-8 page境界/空成功禁止/終端最終page限定/保存容量をそれぞれ選定する。
+
+将来のP19-LOG-UIには同じ境界入力に加え、偽clockの200ms前後、65536確定byte前後、stdout/stderr同時pipe満杯、TERM無視→KILL/Wait、flush/fsync/rename失敗、crash再接続のgap保持、複数try/compile stageの連続offsetと途中terminal禁止、terminal封印後の更新/保存重複byte差替拒否、stream別terminal/410後の利用者再読込をnormal/fault/restart/concurrentの該当variantへ接続する。未知clock/timer/process呼出は失敗、raw/pending/carryのdisk/log/diagnosticへの漏えい0、必須保存失敗を成功へ反転0、全child残存0を比較する。文書oracleの成功でこれらの製品検証や既存legacy log不備をclosedにしない。
+
+<a id="phase-19-checker-entry"></a>
+**checker / workflow：**
+
+<a id="specification-reference-checker"></a>
+全仕様文書の参照検査は `TestSpecificationReferenceIntegrity` とし、AGENTS/README/CONTRIBUTING/SECURITYとdocs配下全Markdownの説明文linkを対象に、実在path、固定anchor、同一file内anchor一意性を検査する。fenced/inline code内の構文例は参照と混同しない。missing-path/missing-anchor/duplicate-anchorの3負例と構文例を除外する正例でcheckerを検証する。assertion IDは `statefile.spec-reference.positive.accept`、`statefile.spec-reference.<case>.reject`、`statefile.spec-reference.examples.accept`、失敗診断は検出path/line/anchorへ接続する。同じrootでROADMAPのPhase行を唯一の登録集合として、現在のPhase1〜21の欠落/重複/未登録行を拒否し、全対象文書のPhase番号参照を照合する。単独番号だけでなくslash/comma/rangeの連記、path表記、英字大小、フェーズ表記も対象にし、番号末尾と日本語本文の間にword boundaryを要求しない。syntheticな次の未登録番号は最大登録番号+1で作り、joined-list/comma-list/range/spaced/path/japanese/leading-zero/zero/unregistered-row/duplicate-rowの10負例を実行する。assertion IDはstatefile.spec-phase.positive.acceptとstatefile.spec-phase.<case>.reject、負例を通すchecker-source mutationは検証失敗とする。同じrootはSPEC内の既知の責務逸脱を限定したregression guardも実行する。入力は現行SPEC全体で、(1)責務原則に実装artifact不在を断定しない、(2)標準配置本文に現在の実在化済み状態を置かない、(3)凍結対応表が全詳細節/Phase19 owner/Phase20入口へ参照する、(4)Actionsの形式判断を技術方針へ接続し別本文で再定義しない、の4対象を比較する。負例は各sectionのmemory copyへ旧不在断定/実在化済み/部分表参照/形式正本参照消去/形式再定義を1件ずつ注入し、固定reason `artifact-absence / layout-current-state / freeze-route / format-source / format-restatement` と一致させる。assertion IDは `statefile.spec-governance.positive.accept`、`statefile.spec-governance.<case>.reject`、入力位置欠落は `.fixture`。5 guardの削除を各1source mutationとして隔離copyでコンパイル・実行し、負例assertionによる失敗と復元cmp0を要求する。これは既知の文言/参照境界の回帰検査であり、自然言語一般の意味上の重複・機能完全性を証明しない。同じrootは [test artifact traceability](#test-artifact-traceability-contract) と [assertion id](#test-assertion-id-contract) も照合する。owner表の14件とassertion owner集合を一致させ、12Go ownerのlocal testとroot main/SDK/UIの計15pathをrouting表へ要求し、旧root配置globを拒否する。負例はObsidian owner消去/未知owner追加/専用commitstatus test消去/Obsidian test消去/旧globで、固定reason assertion-owner/test-routing/test-glob、assertion IDはstatefile.spec-routing.positive.acceptとstatefile.spec-routing.<case>.reject、前提不足は.fixtureとする。
+
+現時点の文書checker `TestPhase19SpecificationContracts` はregistry85型のstrict JSON/型式arity/range/参照cycle/環境map/atomic SiteState構造/保持時刻/観測record/通知attempt結合、53操作のSDK/UI/CLI接続、状態表の一致を検査する。negative controlは未知型、arity不足、逆転range、未知関数、duplicate JSON key/enum、型cycle、環境map差替、SiteState counter欠落、SiteOperation保持時刻型差替、Operation対象Digest型/attempt型差替、Audit対象Digest型差替、PlannedJob.selected欠落/PlannedTask差替/PlannedDeployTask参照型差替/TriggerCursor版型差替、Deployment観測数差替、Notification対象attempt上限差替、状態逆戻り、SDK/UI/CLI欠落、route/anchor重複。これらは文書入力の負例であり、製品runtimeのmutation成功件数へ加算しない。checker自体の常時成功化も隔離copyでコンパイル・実行し、負例testが失敗することを確認する。現在のdocument assertionは `runner.phase19-spec.positive.accept` と `runner.phase19-spec.<negative-case>.reject`、fixture前提不足は `runner.phase19-spec.<negative-case>.fixture`。display用subtest名/行番号とは別の安定IDで期待値/実値を診断する。
+
+実装時のchecker入口は `go test ./... -run TestPhase19InhouseCICDEvidence -count=1`。内部subtest名はcase ID/variant/assertion、全384 assertionを実体観測し、件数定数だけでpassを出さない。mutationは表の各制御を1つずつ除去して同じ入口を走らせ、oracleがfailすること、未適用/compile failureをkilled扱いしない。isolation propertyは各property1mutation、最低16ではなく実selection件数を記録しsurvived=0を要求する。
+
+race triggerは同run cancel/terminal、lease renew/expiry/result、pin/GC、cache publish、environment CAS、approve/revoke、Head update、log read/trimの8組。各組のbarrier全順列を `TestPhase19InhouseCICDRace` で実行し、`go test -race ./... -run TestPhase19InhouseCICDRace -count=10`、race detectorなしで代用しない。test自身も乱数seed/clock/env/tempdirをcaseごと独立、network fakeへ隔離、全process cleanupをt.Cleanupで確認する。
+
+将来のworkflow pathは `.github/workflows/phase19-inhouse-cicd.yml`、workflow名phase19-inhouse-cicd、pull_request opened/synchronize/reopened/ready_for_review + main push + workflow_dispatch。contents:readのみ、secret不要、外部Action0、Node0、既存development-ci.shのverified Go/Deno bootstrapを使用する。PR concurrencyはworkflow+PRでcancel-in-progress=true。checkoutは既存workflowと同じsource/base/tested SHA検証付きnative Git、最後にalways cleanup。
+
+jobsは `spec`（ubuntu-24.04、10分、TestPhase19SpecificationContracts）、`unit`（30分、go test ./... -count=1）、`fixture`（30分、上記Evidence入口）、`race`（30分、上記race入口）、`sandbox`（承認済self-hosted Linux amd64専用一時環境、30分、TestPhase19SandboxAcceptance）、`required-gate`（ubuntu-24.04、10分、always/needs全5job、skip含め全successのみ成功）。sandbox runnerはfork/untrusted PRへ割当禁止、scope不足は正式未実行。Deno testはunit内で実行し欠落時skipでgateを通さない。これは将来の定義契約で、今回workflowを作成・実行・required protection設定しない。
+
+証跡は既存 [`docs/details/fixture.md` fixture証跡責務 test evidence package](#test-evidence-package-record-location-contract)、[`docs/details/fixture.md` fixture証跡責務 gap inventory](#test-gap-inventory-record-contract)、[`docs/details/fixture.md` fixture証跡責務 18 record closure set](#test-verification-closure-record-set-contract)、[`docs/details/fixture.md` fixture証跡責務 開発Actions証跡](#development-actions-evidence-contract) のschemaへ接続する。Phase19用package idは `phase19-inhouse-cicd`、recordはPR VerificationとActions job log、runtime巨大出力はworkflow temporary外部成果物へ保存しrepo履歴artifactを追加しない。gap_idは `gap-<owner>-phase19-<case>-<variant>-<number>`（case/variant lowercase、numberは同一case内1始まり連続）、mutation selection/race trigger/skip/能力不足も同packageへ接続する。
+
+Phase実装完了は全16case/96variant/384assertion、mutation survived0、race open0、required job未実行0、production-validation必須session成功、全API/SDK/UI/CLI対応、実装状態索引一致、未解消0が揃った場合だけ。本仕様策定PRの検査成功をこの機能実装証跡へ代用しない。既存handleHistoryPath rollbackの実体復元前成功、runPipelineの終了後trimはP19-DEPLOY/P19-LOG-UIの修正対象として実装時に再検証し、今回は修正済みと報告しない。
+
 [`docs/details/fixture.md`](fixture.md) は、[`docs/SPEC.md` 責務文書構成](../SPEC.md#document-responsibility-map) で割り当てられた fixture 証跡責務として、fixture 入力、expected、fake、effects、assertion、実装検証証跡、acceptance checklist、差し戻し条件だけを扱う。owner / collaborator 境界は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) を参照し、owner component 別詳細本文を再定義しない。
 
 ---
@@ -206,7 +2189,7 @@ Phase 12 の CI required check は、GitHub workflow が作成されていない
 | `phase12-go-test` | Go stable toolchain で `go test ./... -count=1`。 | exit code `0`、skip / 未実行 record なし、対象 owner と fixture root が closure record set に接続済み。 |
 | `phase12-go-race` | Go stable toolchain で `go test -race ./... -count=1`。 | exit code `0`、race trigger open `0`、goroutine / listener / timer / worker leak の対象外理由または証跡あり。 |
 | `phase12-go-vet` | Go stable toolchain で `go vet ./...`。 | exit code `0`。外部 linter、npm、Node.js、Marketplace action で代替しない。 |
-| `phase12-deno-check-sdk` | Deno stable runtime で `deno check admin/adlaire-ci-sdk.js`。 | SDK artifact が存在する限り exit code `0`。Deno 不在、JS 未変更、または Node.js 代替を完了扱いにしない。 |
+| `phase12-deno-check-sdk` | Deno stable runtime で `deno check --no-config --no-npm admin/adlaire-ci-sdk.js`。 | SDK artifact が存在する限り exit code `0`。Deno 不在、JS 未変更、または Node.js 代替を完了扱いにしない。 |
 | `phase12-fixture-harness` | Phase 12 で実在化した production entrypoint 実行型 fixture harness。 | `testdata/phase12/quality-gate-reconstruction/` または PR evidence package の closure record set に `phase12_fixture_harness_open_count=0` を記録する。 |
 | `phase12-mutation` | production code、harness、assertion、expected 比較、security assertion、state diff assertion を対象にした mutation selection と mutation evidence。 | `phase12_mutation_survived_count=0`、`equivalent` / `invalid` は責務正本 anchor 付き。 |
 
@@ -363,7 +2346,7 @@ Phase 13 の CI required check は以下とする。GitHub workflow は YAML 禁
 | `phase13-stdlib-static-analysis` | Go 標準 toolchain と本リポジトリ内の内製検査だけで静的解析を実行する。 | exit code `0`、外部解析 tool 未使用、owner package 5 ファイル固定、unreachable fixture / obsolete path open `0`。 |
 | `phase13-dependency-inventory` | `go.mod`、Go import、JavaScript / HTML artifact、workflow を検査し、production 外部依存が 0 であることを確認する。 | exit code `0`、`go.mod` の外部 `require`、`golang.org/x/*`、third party import、npm / bundler / polyfill 依存 open `0`。 |
 | `phase13-secret-boundary-scan` | Go 標準 toolchain と内製検査だけで token argv、secret 出力、fixture / log / release notes secret 漏えい境界を検査する。 | exit code `0`、secret / file safety / command execution finding open `0`、外部 secret scan service 未使用。 |
-| `phase13-deno-check-sdk` | Deno stable runtime で `deno check admin/adlaire-ci-sdk.js`。 | exit code `0`。Node.js 代替禁止。 |
+| `phase13-deno-check-sdk` | Deno stable runtime で `deno check --no-config --no-npm admin/adlaire-ci-sdk.js`。 | exit code `0`。Node.js 代替禁止。 |
 | `phase13-owner-shape` | owner package inventory、5 ファイル固定、旧 root path、空 file、dummy / no-op success の検査。 | `phase13_owner_file_violation_count=0`、`phase13_dummy_or_empty_file_count=0`、`phase13_document_drift_open_count=0`。 |
 | `phase13-contract-parity` | API、Admin、SDK、UI、MCP、setup stdout、credential 初期化の契約自動照合。 | `phase13_contract_mismatch_count=0`、`phase13_mcp_unimplemented_success_count=0`。 |
 | `phase13-state-safety` | statefile 直接更新禁止、process lock、atomic write、JSON Lines safety、migration、recovery の検査。 | `phase13_direct_state_mutation_count=0`、`phase13_state_safety_open_count=0`、`phase13_jsonl_corruption_open_count=0`。 |
@@ -1154,7 +3137,7 @@ Phase 11 root coverage closure record は次のとおりとする。
 | [`testdata/commitstatus/`](../../testdata/commitstatus/) | `commitstatus` | `実在` | `formal_fixture` | [`success-commitstatus-phase11-root-coverage`](../../testdata/commitstatus/success-commitstatus-phase11-root-coverage/) | `[]` |
 | [`testdata/security/`](../../testdata/security/) | `security` | `実在` | `formal_fixture` | [`success-security-phase11-root-coverage`](../../testdata/security/success-security-phase11-root-coverage/) | `[]` |
 
-Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*_test.go`、`sdk_contract_test.go`、`ui_contract_test.go` を fixture 証跡の補助 source として扱う。これらの test / contract assertion は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry)、owner 詳細本文、fixture catalog、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、または [`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) の対象外理由へ到達できなければならない。test file 自体を仕様正本として扱ってはならず、fixture catalog と owner 詳細本文へ到達しない assertion は Phase 11 の未解消 drift とする。mutation test 証跡は [mutation test 証跡固定契約](#mutation-test-evidence-contract) に従い、Phase 11 では `survived=0` を満たすまで完了扱いにしない。
+Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*/*_test.go`、`sdk_contract_test.go`、`ui_contract_test.go` を fixture 証跡の補助 source として扱う。これらの test / contract assertion は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry)、owner 詳細本文、fixture catalog、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、または [`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) の対象外理由へ到達できなければならない。test file 自体を仕様正本として扱ってはならず、fixture catalog と owner 詳細本文へ到達しない assertion は Phase 11 の未解消 drift とする。mutation test 証跡は [mutation test 証跡固定契約](#mutation-test-evidence-contract) に従い、Phase 11 では `survived=0` を満たすまで完了扱いにしない。
 
 <a id="test-artifact-traceability-contract"></a>
 **test artifact traceability 固定契約：**
@@ -1163,7 +3146,7 @@ Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*
 
 | test artifact | owner / collaborator 接続 | fixture / 証跡接続 | drift 判定 |
 |---------------|---------------------------|---------------------|------------|
-| [`main_test.go`](../../main_test.go) | 起動入口 artifact と `builder`、`runner`、`api`、`admin`、`setup`、`release`、`mcp` の CLI 起動境界。owner 選択は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) の `main dispatch / binary version regression gate` を参照する。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract)、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | 起動名、`--help`、`--version`、未知 basename、binary version、dispatch 副作用なしの assertion が owner 詳細本文または共通固定契約へ到達できない場合は [test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) の孤立 test とする。 |
+| [`main_test.go`](../../main_test.go) | 起動入口 artifact と `builder`、`runner`、`api`、`admin`、`setup`、`release`、`mcp`、`obsidian` の CLI 起動境界。owner 選択は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) の `main dispatch / binary version regression gate` を参照する。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract)、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | 起動名、`--help`、`--version`、未知 basename、binary version、dispatch 副作用なしの assertion が owner 詳細本文または共通固定契約へ到達できない場合は [test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) の孤立 test とする。 |
 | [`components/builder/builder_test.go`](../../components/builder/builder_test.go) | `builder` owner。詳細本文は [`docs/details/builder.md` 詳細本文責務](builder.md) を参照する。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約)、[`§28-F`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)、[`testdata/builder/`](../../testdata/builder/)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | Markdown、HTML / CSS / JavaScript 生成、atomic output、URL safety、runtime fixture、manifest / expected 接続が `builder` 詳細本文または fixture catalog へ到達できない場合は未解消 drift とする。 |
 | [`components/runner/runner_test.go`](../../components/runner/runner_test.go) | `runner` owner、必要に応じて `statefile`、`archive`、`commitstatus`、`security` collaborator。詳細本文は [`docs/details/runner.md` 詳細本文責務](runner.md) を参照する。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約)、[`§27-F`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、`testdata/runner/`、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | GitHub / local target、pipeline、deploy、queue、lock、secret mask、state write、notification、Commit Status の assertion が owner 詳細本文、collaborator 詳細本文、または fixture catalog へ到達できない場合は未解消 drift とする。 |
 | [`components/api/api_test.go`](../../components/api/api_test.go) | `api` owner、必要に応じて `security`、`statefile`、`runner`、`archive` collaborator。詳細本文は [`docs/details/api.md` 詳細本文責務](api.md) を参照する。 | [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-api-fixture-契約)、`testdata/api/`、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | endpoint、HTTP status、response schema、認証・認可、rate limit、状態 read/write、audit / access log、副作用なしの assertion が API 詳細本文または fixture catalog へ到達できない場合は未解消 drift とする。 |
@@ -1173,20 +3156,21 @@ Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*
 | [`components/mcp/mcp_test.go`](../../components/mcp/mcp_test.go) | `mcp` owner、必要に応じて `api`、`security`、`statefile` collaborator。詳細本文は [`docs/details/mcp.md` 詳細本文責務](mcp.md) を参照する。 | [`docs/details/fixture.md` fixture 証跡責務 MCP fixture 固定契約](fixture.md#mcp-fixture-contract)、[`testdata/mcp/`](../../testdata/mcp/)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | CLI、HTTP、JSON-RPC、tools、resources、prompts、sampling、SSE、auth、scope、confirmation、audit、metrics の assertion が `mcp` 詳細本文または MCP fixture catalog へ到達できない場合は未解消 drift とする。 |
 | [`sdk_contract_test.go`](../../sdk_contract_test.go) | `sdk` owner、`api` collaborator。詳細本文は [`docs/details/sdk.md` 詳細本文責務](sdk.md) を参照する。 | [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-api-fixture-契約)、`testdata/sdk/`、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | public method、request shape、query encoding、error class、timeout、stream、binary response、禁止 API の assertion が `sdk` 詳細本文、API 詳細本文、または fixture catalog へ到達できない場合は未解消 drift とする。 |
 | [`ui_contract_test.go`](../../ui_contract_test.go) | `ui` owner、`sdk`、`api`、`security` collaborator。詳細本文は [`docs/details/ui.md` 詳細本文責務](ui.md) を参照する。 | [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-api-fixture-契約)、`testdata/ui/`、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)。 | DOM 固定値、SDK 境界、base URL、one-time secret 消去、stream terminal、主要操作、status 別 error handling の assertion が `ui` 詳細本文、SDK / API 詳細本文、または fixture catalog へ到達できない場合は未解消 drift とする。 |
+| [`components/obsidian/obsidian_test.go`](../../components/obsidian/obsidian_test.go) | `obsidian` owner、`builder` / `statefile` collaborator。[docs/details/obsidian.md 詳細本文責務](obsidian.md)を参照する。 | [docs/details/fixture.md fixture証跡責務 Phase 14証跡](#phase-14-obsidian-vault-integration-evidence)、[Phase 15証跡](#phase-15-obsidian-local-sync-evidence)、`testdata/phase14/obsidian-vault-integration/`、`testdata/phase15/obsidian-local-sync/`。 | vault読取・正規化・plan/apply/rollbackのassertionとowner/fixtureの未接続をdriftとする。 |
 
 <a id="non-dedicated-owner-test-routing-contract"></a>
 **non-dedicated owner test routing 固定契約：**
 
-[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、単独 test artifact を持たない owner component の検証接続だけを固定する。owner component の責務本文、状態、入出力、異常系、完了可否は各 owner 詳細本文を正とし、本項では再定義しない。
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、cross-cutting owner のlocal testと呼出し元integration testの接続だけを固定する。既存anchor名は参照互換のため保持し、専用packageが存在しないという意味には使用しない。owner component の責務本文、状態、入出力、異常系、完了可否は各 owner 詳細本文を正とし、本項では再定義しない。
 
-単独 Go artifact を持たない owner component について、専用 `components/<owner>_test.go` が存在しないことだけを未検証または仕様不足として扱ってはならない。ただし、その owner の runtime assertion は、下表の routing test artifact、owner 詳細本文、fixture root、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、[mutation test 証跡固定契約](#mutation-test-evidence-contract) のすべてへ到達できなければならない。下表の routing test artifact 以外に同 owner の assertion を追加する場合は、本項の routing 表を同時に更新する。routing 表に存在しない assertion は孤立 test として扱う。
+標準Go ownerのlocal testは `components/<owner>/<owner>_test.go` に配置する。実在所在は [docs/DOCUMENT_INDEX.md 索引責務](../DOCUMENT_INDEX.md#実装ファイル一覧)、配置方針は [docs/SPEC.md 方針責務 §4.3](../SPEC.md#sec-4-3) を参照する。cross-owner integration testはlocal testの代替ではなく、下表の呼出し元境界を検証する。その owner の runtime assertion は、下表の routing test artifact、owner 詳細本文、fixture root、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、[mutation test 証跡固定契約](#mutation-test-evidence-contract) のすべてへ到達できなければならない。下表の routing test artifact 以外に同 owner の assertion を追加する場合は、本項の routing 表を同時に更新する。routing 表に存在しない assertion は孤立 test として扱う。
 
 | owner component | 実装包含 artifact | routing test artifact | fixture / 証跡接続 | drift 判定 |
 |-----------------|--------------------|-----------------------|---------------------|------------|
-| `statefile` | [`components/runner/`](../../components/runner/)、[`components/api/`](../../components/api/)。詳細本文は [`docs/details/statefile.md` 詳細本文責務](statefile.md) を参照する。 | [`components/runner/runner_test.go`](../../components/runner/runner_test.go)、[`components/api/api_test.go`](../../components/api/api_test.go)、[`components/mcp/mcp_test.go`](../../components/mcp/mcp_test.go)。 | `testdata/statefile/`、`testdata/runner/`、`testdata/api/`、`testdata/mcp/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | lock、atomic write、JSON object wrapper、direct runtime state write 禁止、state side effect order、read-only no-write、MCP state bridge の assertion が `statefile` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
-| `archive` | [`components/runner/`](../../components/runner/)、[`components/api/`](../../components/api/)。詳細本文は [`docs/details/archive.md` 詳細本文責務](archive.md) を参照する。 | [`components/runner/runner_test.go`](../../components/runner/runner_test.go)、[`components/api/api_test.go`](../../components/api/api_test.go)。 | `testdata/archive/`、`testdata/runner/`、`testdata/api/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | snapshot 作成、保存済み archive 検証、download、delete、rollback / diff 連携、破損 archive、状態不変の assertion が `archive` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
-| `commitstatus` | [`components/runner/`](../../components/runner/)。詳細本文は [`docs/details/commitstatus.md` 詳細本文責務](commitstatus.md) を参照する。 | [`components/runner/runner_test.go`](../../components/runner/runner_test.go)。 | `testdata/commitstatus/`、`testdata/runner/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | GitHub Commit Status request、state mapping、target URL、retry / rate-limit / failure handling、secret mask、副作用順序の assertion が `commitstatus` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
-| `security` | [`components/api/`](../../components/api/)、必要に応じて [`components/runner/`](../../components/runner/)、[`components/admin/`](../../components/admin/)、[`components/setup/`](../../components/setup/)、[`components/release/`](../../components/release/)、[`components/mcp/`](../../components/mcp/)、[`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js)、[`admin/index.html`](../../admin/index.html)。詳細本文は [`docs/details/security.md` 詳細本文責務](security.md) を参照する。 | [`components/api/api_test.go`](../../components/api/api_test.go)、[`components/runner/runner_test.go`](../../components/runner/runner_test.go)、[`components/admin/admin_test.go`](../../components/admin/admin_test.go)、[`components/setup/setup_test.go`](../../components/setup/setup_test.go)、[`components/release/release_test.go`](../../components/release/release_test.go)、[`components/mcp/mcp_test.go`](../../components/mcp/mcp_test.go)、[`sdk_contract_test.go`](../../sdk_contract_test.go)、[`ui_contract_test.go`](../../ui_contract_test.go)。 | `testdata/security/`、`testdata/api/`、`testdata/runner/`、`testdata/admin/cli/`、`testdata/setup/`、`testdata/release/`、`testdata/mcp/`、`testdata/sdk/`、`testdata/ui/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | authentication、authorization、session、TOTP、token、secret redaction、rate limit、audit / access log、credential file、external boundary、one-time secret の assertion が `security` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
+| `statefile` | [`components/statefile/`](../../components/statefile/) がowner実装。呼出し元境界は [`components/runner/`](../../components/runner/)、[`components/api/`](../../components/api/)。詳細本文は [`docs/details/statefile.md` 詳細本文責務](statefile.md) を参照する。 | [`components/statefile/statefile_test.go`](../../components/statefile/statefile_test.go)、[`components/runner/runner_test.go`](../../components/runner/runner_test.go)、[`components/api/api_test.go`](../../components/api/api_test.go)、[`components/mcp/mcp_test.go`](../../components/mcp/mcp_test.go)。 | `testdata/statefile/`、`testdata/runner/`、`testdata/api/`、`testdata/mcp/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | lock、atomic write、JSON object wrapper、direct runtime state write 禁止、state side effect order、read-only no-write、MCP state bridge の assertion が `statefile` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
+| `archive` | [`components/archive/`](../../components/archive/) がowner実装。呼出し元境界は [`components/runner/`](../../components/runner/)、[`components/api/`](../../components/api/)。詳細本文は [`docs/details/archive.md` 詳細本文責務](archive.md) を参照する。 | [`components/archive/archive_test.go`](../../components/archive/archive_test.go)、[`components/runner/runner_test.go`](../../components/runner/runner_test.go)、[`components/api/api_test.go`](../../components/api/api_test.go)。 | `testdata/archive/`、`testdata/runner/`、`testdata/api/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | snapshot 作成、保存済み archive 検証、download、delete、rollback / diff 連携、破損 archive、状態不変の assertion が `archive` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
+| `commitstatus` | [`components/commitstatus/`](../../components/commitstatus/) がowner実装。呼出し元境界は [`components/runner/`](../../components/runner/)。詳細本文は [`docs/details/commitstatus.md` 詳細本文責務](commitstatus.md) を参照する。 | [`components/commitstatus/commitstatus_test.go`](../../components/commitstatus/commitstatus_test.go)、[`components/runner/runner_test.go`](../../components/runner/runner_test.go)。 | `testdata/commitstatus/`、`testdata/runner/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | GitHub Commit Status request、state mapping、target URL、retry / rate-limit / failure handling、secret mask、副作用順序の assertion が `commitstatus` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
+| `security` | [`components/security/`](../../components/security/) がowner実装。呼出し元境界は [`components/api/`](../../components/api/)、必要に応じて [`components/runner/`](../../components/runner/)、[`components/admin/`](../../components/admin/)、[`components/setup/`](../../components/setup/)、[`components/release/`](../../components/release/)、[`components/mcp/`](../../components/mcp/)、[`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js)、[`admin/index.html`](../../admin/index.html)。詳細本文は [`docs/details/security.md` 詳細本文責務](security.md) を参照する。 | [`components/security/security_test.go`](../../components/security/security_test.go)、[`components/api/api_test.go`](../../components/api/api_test.go)、[`components/runner/runner_test.go`](../../components/runner/runner_test.go)、[`components/admin/admin_test.go`](../../components/admin/admin_test.go)、[`components/setup/setup_test.go`](../../components/setup/setup_test.go)、[`components/release/release_test.go`](../../components/release/release_test.go)、[`components/mcp/mcp_test.go`](../../components/mcp/mcp_test.go)、[`sdk_contract_test.go`](../../sdk_contract_test.go)、[`ui_contract_test.go`](../../ui_contract_test.go)。 | `testdata/security/`、`testdata/api/`、`testdata/runner/`、`testdata/admin/cli/`、`testdata/setup/`、`testdata/release/`、`testdata/mcp/`、`testdata/sdk/`、`testdata/ui/`、[Phase 11 fixture harness 参照](#phase-11-fixture-harness-reference)。 | authentication、authorization、session、TOTP、token、secret redaction、rate limit、audit / access log、credential file、external boundary、one-time secret の assertion が `security` 詳細本文または対象 fixture catalog へ到達できない場合は未解消 drift とする。 |
 
 以下は実在する実装 artifact と owner component 詳細本文を照合した、現行実装整合の追加検証候補である。Phase 2 runner、Phase 3 api request lifecycle、Phase 4 api operations、Phase 5 sdk、Phase 6 ui、Phase 7 admin CLI、Phase 8 setup、Phase 9 release、および Phase 10 mcp の実装済み状態を取り消す一覧ではない。本表は [Phase 11 完了 closure](#phase-11-quality-gate-closure) の open item ではなく、将来計画または改訂予定へ分類する場合に使う追加検証候補だけを記録する。
 
@@ -1381,7 +3365,7 @@ race trigger matrix は、変更 artifact が並行処理へ影響しない場�
 
 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、test、subtest、contract assertion、fixture assertion、expected 比較、security assertion、state diff assertion を安定識別する assertion id の形式だけを固定する。assertion id がない test の完了禁止は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、failure diagnostics evidence set は [test assertion identity / failure diagnostics evidence set 固定契約](#test-assertion-failure-diagnostics-evidence-set-contract) を参照する。
 
-assertion id は `owner.feature.case.assertion` を最小 4 segment とする lowercase dot notation に固定する。各 segment は `^[a-z][a-z0-9-]*$` とし、owner segment は `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`release`、`security`、`mcp` のいずれかにする。必要な場合だけ 5 segment 目以降に field、boundary、mutation class を追加できる。最大 segment 数は 7 とする。
+assertion id は `owner.feature.case.assertion` を最小 4 segment とする lowercase dot notation に固定する。各 segment は `^[a-z][a-z0-9-]*$` とし、owner segment は `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`release`、`security`、`mcp`、`obsidian` の14件のいずれかにする。必要な場合だけ 5 segment 目以降に field、boundary、mutation class を追加できる。最大 segment 数は 7 とする。
 
 | 対象 | assertion id の条件 | 禁止形式 |
 |------|---------------------|----------|
@@ -1438,6 +3422,37 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
 
 実行証跡の照合 case は、定義済み全必須 job 成功・同一 SHA の positive case と、必須 job 欠落、skip / neutral / cancel / timeout、終了 code 隠蔽、旧 SHA、head / base 更新、artifact digest 不一致、未信頼 ref の self-hosted 選択、secret / 権限境界違反、Action の tag 参照、timeout 欠落、cleanup 失敗の negative case を識別する。各 case の入力、期待拒否理由、actual、assertion、実行証跡を対象 workflow の検証 package へ接続する。run URL のみ、全体の緑表示のみ、架空 job URL、未取得の環境情報、到達不能な証跡、または負例を実行せず拒否済みと記載した record は完全な実行証跡にしない。
 
+<a id="development-actions-node-free-contract"></a>
+**Node 非依存開発検証契約：**
+
+本節は [`docs/SPEC.md` ポリシー責務 §4a Node 全面禁止契約](../SPEC.md#policy-node-runtime-ban) の検証入力、expected、fake、準備 script の境界を所有する。禁止条件は再定義しない。開発基盤の管理責任者は repository maintainer、検証 artifact は `main_test.go`、準備 artifact は `.github/scripts/development-ci.sh` とする。製品実装、Phase 状態、VPS、公開・配備、self-hosted 導入を変更しない。
+
+| 固定対象 | 入力・expected・異常系 |
+|----------|----------------------|
+| 取得・準備 | 全73 job は下記 JSON の checkout command を bash で実行後、`bash .github/scripts/development-ci.sh go\|deno` を実行する。checkout は空の実 workspace、固定の公開 HTTPS repository、40文字 lowercase SHA、Git hook / global config / credential 非使用を確認し、SHA不合格はBash 3.2を含む環境で明示的にexit 1とし、depth 1 fetch と detached checkout 後の実 HEAD を照合する。token と secret は渡さない。既存の全 job / gate / check 名、permissions、timeout、concurrency を保持し、step と job の `uses` は 0 件とする。 |
+| 固定 runtime | 下記 JSON は公式 Go download catalog と公式 Deno Release asset digest で確認した Linux amd64 archive の固定版・SHA-256 とする。URL は Go `https://go.dev/dl/go<go_version>.linux-amd64.tar.gz`、Deno `https://github.com/denoland/deno/releases/download/v<deno_version>/deno-x86_64-unknown-linux-gnu.zip` だけ。helper 全 byte の SHA-256 は `helper_sha256` と完全一致させ、helper の version / URL / archive SHA-256 定数行も同じ JSON field と照合する。既存 Deno check の引数へ `--no-config --no-npm` を追加する。 |
+| helper 入出力 | 引数は `go`、`deno`、`cleanup` の exactly 1 件。実行 platform は Linux / x86_64。`RUNNER_TEMP` は既存 absolute directory、`GITHUB_PATH` / `GITHUB_ENV` は既存 absolute regular file とし、symlink、CR / LF / backslash を拒否する。fresh `adlaire-tools.<8 alphanumeric>` root を mode 0700 で確保する。helper はローカル cache / package manager / remote installer script を使用しない。 |
+| download / digest | curl config を無効化し、HTTPS のみ、redirect も HTTPS、接続15秒・1 attemptの取得50秒・最大3 attempt・上限200000000 byte とする。取得先は private staging。curlのretryは0で、exit code 5/6/7/18/28/35/52/55/56/92、またはexit 22かつHTTP 408/429/500..599だけを再試行する。attempt間に1秒待ち、前attemptのpartial archiveを削除する。HTTP 200かつexit 0だけを取得成功とし、HTTP不正・未知code・404・TLS検証失敗は即停止する。診断は `ci-download:runtime=<go|deno> attempt=<1..3> curl_exit=<0..255> http_status=<000..999>` の固定1行/attemptだけで、curl stdoutがexact 3 ASCII digitでなければ000へ置換する。raw stderr、URL、header、response body、proxy情報は出力しない。SHA-256 不一致、取得・digest command 失敗は、展開・実行・file-command公開前に停止する。archive/digest/version検査失敗では再downloadしない。child の raw download / version error は出力しない。 |
+| archive / version | Go の一覧は GNU tar の `--quoting-style=literal` で非ASCII名を含む実名を取得し、表示用escapeをpathと誤認しない。一覧非空、全 entry が `go/` 配下、dot / dot-dot / absolute / backslash / empty segment なし、regular file / directory のみ、`go/bin/go` 必須とする。Deno zip は entry が `deno` exactly 1 件。展開前に一覧を検証し、展開後の binary は通常 file・非symlink。Go version exact `go version go1.22.12 linux/amd64`、Deno先頭行 exact `deno 2.9.7 (stable, release, x86_64-unknown-linux-gnu)` を確認する。 |
+| 公開・cleanup | 検証後だけ bin path を `GITHUB_PATH`、root と cache path / Go local-only設定 / Deno package無効設定を `GITHUB_ENV` へ渡し、bootstrap JSON を1件出す。Goは `GOENV=off GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off`。Denoは `DENO_NO_PACKAGE_JSON=1 DENO_NO_UPDATE_CHECK=1 DENO_NO_PROMPT=1`。失敗はnonzero、固定 `ci-setup:<reason>`、stage削除、成功markerなし。file-command部分書込後の失敗もstage削除とjob失敗とし、残るpathを後続成功へ流用しない。各job末尾の `if=always()` cleanup が同じhelperを呼び、mintしたrootだけを削除する。範囲外root、symlink、削除失敗は拒否する。 |
+| reason / 副作用 | 固定理由は `arguments / temp-boundary / cleanup-boundary / cleanup / runtime / platform / output-boundary / staging / download / digest-read / digest / archive-list / archive-entry / archive-type / extract / executable / version / publish`。repository、home、system toolchain、GitHub設定へ書かず、secretを取得しない。許可書込はstageとrunner file-commandのみ。成功後のroot以外の取得物を消し、job cleanup後の残留stageは0。 |
+| 検査境界 | repository walk は `.git` metadata だけを除き、hidden pathを含む全実在pathを調べる。Node系manifest / lock / 設定 / `node_modules`、Node runtime名のbinary、`.cjs / .cts`、symlinkを拒否する。`.github/workflows` は定義7件だけ、全workflowはcanonical bytes一致、helperは固定digest一致。Go sourceは標準ASTで `os/exec` / `os` / `syscall` の直接・shell経由のNode系commandを拒否する。JavaScript / HTML / shellとproduction Go文字列は Node import / Node専用API / Node commandを検査する。bare import、Deno process command、shebang、workflow内の直接commandと未確認container経路も負例へ接続する。禁止説明と非実行負例をruntimeと誤分類しない。既存scopeの探索除外で禁止pathを隠さない。 |
+| 正例・負例 | `TestDevelopmentActionsNodeFreeControls` は空rootと標準web APIを正例、各禁止path、hidden / nested / symlink、各Node系command、Node import / CommonJS、Go command、未知workflow / Action / reusable workflow、helper改変を負例にする。同じvalidatorへ入力し固定reasonを比較する。負例データを保存・解析するだけで、禁止runtimeを実行しない。 |
+| 実行型control | `TestDevelopmentActionsBootstrapControls` は実helperと実checkout commandを固定fake git / curl / checksum / archive / runtimeへ接続する。Go/Deno成功、各I/O失敗、digest改変、unsafe entry / link、version不一致、出力境界、cleanup逸脱を実行し、exit / transcript順 / marker / file-command / stage残留 / secret canary非露出を比較する。fake切替のproduction envは作らず、テスト専用PATHとtemp rootに隔離する。downloadの28→成功、503→成功、3回上限、404/証明書/未知exitの即停止、不正HTTP診断のmask、partial除去、curl引数の時間/byte/HTTPS境界を固定fakeで比較する。 |
+| 正式入口・mutation | 既存3 gate rootに加え上記2 rootのPASS記録をgate shellが確認する。正式入口は全workflow、helper、repository境界を検証してからgate JSONを出し、setup definition digest / helper digest / `external_action_count=0` を接続する。条件除去、digest比較緩和、unsafe entry許可、cleanup逸脱許可、Node guard無効化、canonical比較無効化を同じcontrolsで検出し `survived=0` を既存PR packageへ記録する。 |
+| 証跡・対象外 | directory fixture root は `not_applicable` と本anchorを記録する。定義は下記JSON、fake / expectedはroot tests内で完結し、正式fixture件数は増やさない。公式取得資料・digest、実run / job / SHA、準備log、正例・負例、mutation、race、18-record closureを同一PRへ接続する。プラットフォーム管理外の未使用binaryの不存在や他環境の全processは、この証跡から推定しない。 |
+
+```json
+{
+  "go_version": "1.22.12",
+  "go_sha256": "4fa4f869b0f7fc6bb1eb2660e74657fbf04cdd290b5aef905585c86051b34d43",
+  "deno_version": "2.9.7",
+  "deno_sha256": "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490",
+  "helper_sha256": "3e05589391fd1df04090dd682edb93f35f158cf35b19d2aefe9cd0adbacac25d",
+  "checkout": "test \"$GITHUB_REPOSITORY\" = fqwink/Build-Scripts\ntest \"$GITHUB_SERVER_URL\" = https://github.com\n[[ \"$GITHUB_SHA\" =~ ^[0-9a-f]{40}$ ]] || exit 1\nworkspace=$(pwd -P)\nexpected_workspace=$(cd \"$GITHUB_WORKSPACE\" && pwd -P)\ntest \"$workspace\" = \"$expected_workspace\"\nworkspace_entry=$(find . -mindepth 1 -maxdepth 1 -print -quit)\ntest -z \"$workspace_entry\"\nexport GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0\ngit -c core.hooksPath=/dev/null init --quiet --template= .\ngit -c core.hooksPath=/dev/null remote add origin https://github.com/fqwink/Build-Scripts.git\ngit -c core.hooksPath=/dev/null fetch --quiet --no-tags --depth=1 origin \"$GITHUB_SHA\"\ngit -c core.hooksPath=/dev/null checkout --quiet --detach \"$GITHUB_SHA\"\ntested_sha=$(git rev-parse HEAD)\ntest \"$tested_sha\" = \"$GITHUB_SHA\""
+}
+```
+
 <a id="development-actions-required-gate-contract"></a>
 **開発 Actions required gate 固定契約：**
 
@@ -1445,10 +3460,10 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
 
 | 固定対象 | 入力・expected・検証接続 |
 |----------|-------------------------|
-| 定義単位 | 下記 JSON は Phase 12〜18 の既存 workflow 名と既存 66 job の `id / timeout / runtime / command` を順序付きで固定する。path は `.github/workflows/<name>.yml`、管理責任者は repository maintainer、全既存 job は必須、matrix・対象外 job・secret・公開出力はなしとする。runtime は Go `1.22` または Deno `v2.x`、runner は `ubuntu-24.04` とする。 |
+| 定義単位 | 下記 JSON は Phase 12〜18 の既存 workflow 名と既存 66 job の `id / timeout / runtime / command` を順序付きで固定する。path は `.github/workflows/<name>.yml`、管理責任者は repository maintainer、全既存 job は必須、matrix・対象外 job・secret・公開出力はなしとする。runtime の固定版と導入は [Node 非依存開発検証契約](#development-actions-node-free-contract)、runner は `ubuntu-24.04` とする。 |
 | 共通 envelope | trigger は `pull_request.types=[opened,synchronize,reopened,ready_for_review]` と `push.branches=[main]`、Phase 18 だけ既存 `workflow_dispatch` を保持する。`permissions.contents=read`、既定 shell は bash。concurrency group は `github.workflow` と `github.event.pull_request.number \|\| github.run_id` の連結、取消条件は `github.event_name == 'pull_request'` とし、main / 手動 run を相互取消しない。 |
-| Action / checkout | checkout は `actions/checkout@11d5960a326750d5838078e36cf38b85af677262`、Go は `actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff`、Deno は `denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed` を保持する。全 checkout の `ref=github.sha`、`persist-credentials=false` を固定する。新規 Action・外部 library は追加しない。 |
-| gate job | workflow ごとに `phase<N>-required-gate` を 1 件追加し、既存全 job を `needs` に列挙する。`if=always()`、timeout 10 分、同じ runner / checkout / Go runtime を使用する。gate の `ADLAIRE_ACTIONS_GATE=required` と `ADLAIRE_ACTIONS_NEEDS=toJSON(needs)` は env 経由で渡す。script は両 env の存在確認後、`go test . -run '^TestDevelopmentActions(RequiredGate\|WorkflowContract\|GateControls)$' -count=1 -v` を実行する。bash pipefail と `tee` で失敗を伝播し、`RUNNER_TEMP/development-actions-gate.log` の3 root test の `--- PASS:` と照合 JSON marker を `grep -Fq` で確認する。test 不在・no tests to run・記録欠損・log 保存失敗を合格にしない。temporary log は実行診断であり、repository file / history artifact / 配布 artifact へ保存しない。 |
+| 取得・runtime 準備 | [Node 非依存開発検証契約](#development-actions-node-free-contract) の checkout command、準備helper、cleanupと固定archiveを使用する。 |
+| gate job | workflow ごとに `phase<N>-required-gate` を 1 件追加し、既存全 job を `needs` に列挙する。`if=always()`、timeout 10 分、同じ runner / checkout / Go runtime を使用する。gate の `ADLAIRE_ACTIONS_GATE=required` と `ADLAIRE_ACTIONS_NEEDS=toJSON(needs)` は env 経由で渡す。script は両 env の存在確認後、`go test . -run '^TestDevelopmentActions(RequiredGate\|WorkflowContract\|GateControls\|NodeFreeControls\|BootstrapControls)$' -count=1 -v` を実行する。bash pipefail と `tee` で失敗を伝播し、`RUNNER_TEMP/development-actions-gate.log` の5 root test の `--- PASS:` と照合 JSON marker を `grep -Fq` で確認する。test 不在・no tests to run・記録欠損・log 保存失敗を合格にしない。temporary log は実行診断であり、repository file / history artifact / 配布 artifact へ保存しない。 |
 | canonical workflow oracle | [`main_test.go`](../../main_test.go) の `TestDevelopmentActionsWorkflowContract` は、本定義の固定 envelope / job / gate を LF・2 space・固定 field 順の YAML へ展開した expected bytes と実在 7 file を完全比較する。一般 YAML parser として扱わず、追加 key、alias、未知 job、job 条件、continue-on-error、pin / 権限 / timeout / ref の改変、gate の迂回を契約外として拒否する。既存 command の存在だけ、件数だけでは判定しない。 |
 | gate 入力 | `TestDevelopmentActionsRequiredGate` は GitHub 既定の event / workflow / workflow ref・SHA / repository / run id・attempt / job / runner 情報、event JSON、実際の `git rev-parse HEAD` と `git cat-file -p HEAD` の親 commit、および needs JSON を入力にする。event / 定義 JSON は 2 MiB 以下、needs JSON は 256 KiB 以下、UTF-8、単一 JSON 値、重複 key なし。標準 JSON 構文検査を重複 key の再帰検査より先に実行し、過剰な nesting を拒否する。needs は既存 job id の exact set、各値は `result / outputs` だけを持ち、`result=success`、`outputs={}` の場合だけ合格する。 |
 | SHA / event oracle | tested SHA と workflow SHA は `GITHUB_SHA` と一致する 40 文字 lowercase hex。PR は event の number / head.sha / base.sha と `refs/pull/<number>/merge` を照合し、実 merge commit の親が base、head の順で exactly 2 件であることを確認する。push は event.after と target SHA、event.ref と `refs/heads/main` を照合する。手動実行は Phase 18 の branch / tag ref のみ。最新 PR head / base への対応は GitHub の check 接続と strict required checks でも確認する。 |
@@ -1457,7 +3472,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
 | local / unit mode | gate env がない通常 Go suite は、gate 入力欠損が拒否される assertion を実行し、正式合格 JSON を出さない。正式 workflow は env 必須 script と canonical workflow oracle の両方を通す。skip や空 test による代用はしない。 |
 | context reader fake / failure oracle | env 取得、file 読取、Git command を境界 adapter とする。固定 fake は event file、Ubuntu os-release、target SHA の rev-parse、base / head 親を持つ commit header を順に返す。各境界の I/O 失敗を exactly 1 回ずつ注入し、その境界で停止、後続呼出しなし、固定診断 code、raw error / secret canary 非露出を比較する。正式 gate は実 adapter だけを使用し、env による fake 切替を持たない。 |
 | format command oracle | 既存 5 format job の検証対象 file は維持し、command を `format_output=$(gofmt -l ...)` と `test -z "$format_output"` の 2 行に固定する。bash の失敗終了で assignment 失敗を伝播させる。固定 fake formatter の成功・整形差分・終了 code 7 の 3 case を実 command に通し、成功だけ exit 0、他は nonzero を比較する。 |
-| gate script oracle | 正式 entry は入力照合前に全7実在 workflow の canonical 比較を行う。script の固定 fake Go は3 root PASS行と照合 marker を返す正例、空実行、root欠損、marker欠損、正しい表示後の exit 7、mode欠損、needs欠損の負例を持つ。同一 script を bash で実行し exit code を比較し、temporary root は case ごとに隔離・cleanup する。 |
+| gate script oracle | 正式 entry は入力照合前に全7実在 workflow の canonical 比較を行う。script の固定 fake Go は5 root PASS行と照合 marker を返す正例、空実行、root欠損、marker欠損、正しい表示後の exit 7、mode欠損、needs欠損の負例を持つ。同一 script を bash で実行し exit code を比較し、temporary root は case ごとに隔離・cleanup する。 |
 | self-verification / mutation | `TestDevelopmentActionsGateControls` は下記定義全件の成功、PR / main push / Phase 18 手動の正例を実行する。負例は job 欠損・余分・各非 success 値・null / 型不正 / 未知 key / 重複 key / trailing JSON / 上限超過、旧 tested / workflow SHA、head / base / 親順序 / ref / event 不一致、run identity 不正、self-hosted / runner 不一致、canonical workflow 改変を含む。判定条件除去・比較緩和・oracle 常時成功 mutation を同じ controls で kill し、選定台帳と `survived=0` を既存 PR の package へ記録する。 |
 | 設定・closure | 新 gate 7 件の実行成功後に、main の required checks をこれらの安定名、GitHub Actions app id `15368`、`strict=true` へ設定し、他の既存保護値を保持する。実 API 再取得、最新 SHA の 73 job 成功、負例拒否、mutation、既存 18-record closure を同一 PR へ接続する。公開・配備・self-hosted 証跡は本適用範囲外とし、それらを適用済みとは記録しない。 |
 
@@ -1497,7 +3512,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
         "id": "phase12-deno-check-sdk",
         "timeout": 10,
         "runtime": "deno",
-        "command": "deno check admin/adlaire-ci-sdk.js"
+        "command": "deno check --no-config --no-npm admin/adlaire-ci-sdk.js"
       },
       {
         "id": "phase12-fixture-harness",
@@ -1563,7 +3578,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
         "id": "phase13-deno-check-sdk",
         "timeout": 10,
         "runtime": "deno",
-        "command": "deno check admin/adlaire-ci-sdk.js"
+        "command": "deno check --no-config --no-npm admin/adlaire-ci-sdk.js"
       },
       {
         "id": "phase13-owner-shape",
@@ -1641,7 +3656,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
         "id": "phase13-browser",
         "timeout": 15,
         "runtime": "deno",
-        "command": "deno check admin/adlaire-ci-sdk.js"
+        "command": "deno check --no-config --no-npm admin/adlaire-ci-sdk.js"
       },
       {
         "id": "phase13-integration-e2e",
@@ -1779,7 +3794,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
         "id": "phase16-deno-check",
         "timeout": 10,
         "runtime": "deno",
-        "command": "deno check admin/adlaire-ci-sdk.js"
+        "command": "deno check --no-config --no-npm admin/adlaire-ci-sdk.js"
       },
       {
         "id": "phase16-race",
@@ -2271,7 +4286,7 @@ test / contract drift report は、`resolution=open` が 1 件でも残る場合
 | Archive | `testdata/archive/log/`、`snapshot/`、`download/`、`delete/`、`rollback/`、各 fixture の `input/`、`expected/`。 | archive entry、checksum、圧縮・展開結果、stream、削除・rollback 境界、元 file 維持。 | unsafe entry、未検証展開、build 成否反転、元 build log 改変を許可してはならない。 |
 | Commit status | `testdata/commitstatus/pending/`、`final/`、`disabled/`、`failure/`、各 fixture の `input/`、`expected/`。 | GitHub Status request、送信順、payload、失敗理由、build 成否非反転、secret mask。 | 実 GitHub write、Authorization 値保存、status 失敗による build 成否反転を含めてはならない。 |
 | Security | `testdata/security/auth/`、`session/`、`token/`、`totp/`、`audit/`、`rate-limit/`、各 fixture の `input/`、`expected/`。 | memory-only state、hash-only state、scope、rate count、audit、one-time response、forbidden leak / write / call。 | password、token、ticket、TOTP secret、Authorization header の平文を expected に保存してはならない。 |
-| Setup | `testdata/setup/<fixture-name>/`、各 fixture の `input/`、`expected/`。具体 fixture 名は [fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture 固定契約](#sec-27-f-19) の catalog を正本とする。 | Release asset、checksum、binary / admin 配置、systemd 操作、Go `net/http` health、既存 state / secret 保持、rollback。 | 実Release、実systemd、実network、release生成・公開処理そのものに依存してはならない。 |
+| Setup | `testdata/setup/<fixture-name>/`、各 fixture の `input/`、`expected/`。具体 fixture 名は [fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture 固定契約](#sec-27-f-19) の catalog を正本とする。test用temp rootは既存rootだけをEvalSymlinksで正規化してから入力を作り、製品ValidatePathは緩和しない。root内部のsymlinkとその不在childを拒否する負例を同時に実行する。 | Release asset、checksum、binary / admin 配置、systemd 操作、Go `net/http` health、既存 state / secret 保持、rollback。 | 実Release、実systemd、実network、release生成・公開処理そのものに依存してはならない。 |
 | Release | `testdata/release/<fixture-name>/`、各fixtureの`input/`、`expected/`。 | clean checkout、tag / commit、Go build、再現性、admin archive、checksum、GitHub draft / asset / publish / cleanup、token mask。 | 実GitHub write、実tag変更、checkout変更、secret平文、host固有pathを含めてはならない。 |
 
 <a id="sec-0g-8-f-2"></a>
@@ -2284,7 +4299,7 @@ test / contract drift report は、`resolution=open` が 1 件でも残る場合
 | fake notifier | runner / API 運用 | fixture 指定の HTTP status、response body、timeout を返す。通知先へ送信しない。 | URL の host 部分、payload schema、mask 後 payload、retry 回数、最終結果。 |
 | fake filesystem | builder / runner / API | atomic write 失敗、sync 失敗、lock 競合、JSON 破損、permission error を fixture 単位で再現する。通常 file I/O の代替にはしない。 | 対象 path、操作種別、注入した失敗、復旧後の状態。 |
 | fake fetch | builder / SDK | `status`、`headers`、`body`、network error、timeout、abort、stream chunk を fixture どおり返す。実 network は使用しない。 | method、URL、query、headers、body 有無、abort 発生有無、呼び出し順。token 値は `***` に置換する。 |
-| fake browser runtime | builder | fixture の DOM tree、event、`matchMedia`、localStorage、Clipboard API、`execCommand`、timer、IntersectionObserver、scroll geometry、console を決定的に再現する。実 browser、実 storage、実 clipboard を使用しない。fetch は `fake fetch` を使用する。 | listener の target / type / options / 登録順、API 呼出しと引数、DOM の class / attribute / text / tree、storage read / write、timer 登録 / 発火、console warning を呼出し順で記録する。 |
+| fake browser runtime | builder / UI | fixture の DOM tree、event、`matchMedia`、localStorage、Clipboard API、`execCommand`、timer、IntersectionObserver、scroll geometry、console を決定的に再現する。実 browser、実 storage、実 clipboard を使用しない。fetch は `fake fetch` を使用する。 | listener の target / type / options / 登録順、API 呼出しと引数、DOM の class / attribute / text / tree、storage read / write、timer 登録 / 発火、console warning を呼出し順で記録する。 |
 | fake SDK | UI | SDK method ごとに固定 return、固定 throw、固定 stream event を返す。UI からの直接 API 呼び出しは受け付けない。 | method 名、引数、呼び出し順、throw した error code、stream unsubscribe 実行有無。 |
 
 <a id="sec-0g-8-f-3"></a>
@@ -2339,6 +4354,10 @@ Fixture A〜V は fixture ごとに `manifest.json`、`expected/stdout.txt`、`e
 **15a-F runner 初期受け入れ fixture 契約：**
 
 [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) は、[`docs/details/runner.md` 詳細本文責務 §15a](runner.md#15a-runner-受け入れ検証条件) の runner 初期受け入れ fixture、入力状態、expected、fake GitHub / fake ssh / fake notifier / fake filesystem、実装検証証跡を扱う正本である。[`docs/details/runner.md` 詳細本文責務 §15a](runner.md#15a-runner-受け入れ検証条件) は検証観点だけを持ち、fixture 本文を再定義しない。
+
+runner R3/R4とpipeline config引数/環境/maskのbuilder fakeは現在のGo test executableを再実行し、テスト専用環境でversion/exit/stdout/stderrを固定する。Bash起動、PATH検索、shell startup fileを正例の成功条件にしない。versionとbuildの実process境界、呼出順、出力assetは維持する。version異常controlも同じnative childを使用し、stderr/空go token/余剰token/期限超過を個別に比較する。期限短縮はtimeout caseだけとし、他caseの期待失敗を偶発timeoutで満たさない。R3/R4失敗時はbuild logのtarget status/failure category/固定precheck errorを診断へ接続する。異常controlは内部precheckを直接呼び出して詳細causeを照合し、別の実行入口では公開logが固定 `precheck failed` のままであることを確認する。pipeline fakeは受領argvを保存し、PIPELINE_ENV=pipeline/BRANCH_VALUE=pipeline-wins/BRANCH_ONLY=branch-onlyを検査する。実行中にpipeline configをMUTATEDだけのobjectへ置換し、実file変更と実行環境の元key集合の両方を照合して単回読取を証明する。stdoutは実際のPIPELINE_SECRETを出し、logではsecret=***だけとなる。version/buildの順序一致、BASH_ENV起動拒否を注入した正例成功、3環境値を各1件誤らせた子processのexit6/stdout空/固定stderrとargs/output未作成を比較する。assertion IDはrunner.pipeline-env.native.order/result/snapshot/args/mask/env-keys、負例はrunner.pipeline-env.native.<env-key>.rejectとrunner.pipeline-env.native.<env-key>.<args-or-out>.no-write。env-keyはpipeline-env/branch-value/branch-onlyでsubtestと1対1にし、異なる負例のIDを共有しない。shell起動失敗や負荷下の偶発precheck timeoutを正例の合否へ混在させず、製品timeout値は変えない。
+
+`TestRunnerPhase2PipelineConfigInvalidDoesNotStartBuild` のreserved arg / reserved env / unknown keyも上記native childを使い、BASH_ENV起動拒否を各caseへ注入する。traceは `version\n` だけ、build呼出しと出力directory作成は0件とする。終了code、旧SHA、config errorのlog/evidenceは既存owner契約と比較し、version確認の失敗でconfig拒否を代用しない。assertion IDは `runner.pipeline-config-invalid.<case>.result/native-trace/no-output/sha-unchanged/log/category/evidence`、caseはreserved-arg/reserved-env/unknown-keyとする。result失敗ではtarget status/failure category/固定errorも診断し、secretやconfig原文は再掲しない。shell拒否下の3caseと反復/race、config受付bypass・誤ったversion/build trace・出力作成・旧SHA更新の隔離source mutationを照合する。製品処理とtimeout値は変更しない。
 
 **runner fixture 共通 expected：**
 
@@ -4826,6 +6845,593 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 
 追加管理 API fixture の `manifest.json` は [fixture 証跡責務共通 manifest schema 固定契約](#sec-27-f-8) に従う。`section` は対象 [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70)、[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8)、[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8)、または [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) のいずれかを固定文字列で持つ。複数責務を横断する fixture は主 owner を 1 件だけ `owner_component` に置き、残りを `collaborator_components`、`components`、`references` に記録する。`assertions` は実在する expected file と 1 対 1 で対応させ、fixture 実行時に使わない expected file は作成せず、`not_applicable` に理由を置く。ただし `expected/events.json` は protocol event evidence として fixture 名別 expected 固定表で要求し、`manifest.json.assertions` の値としては追加しない。
 
+<a id="oidc-fixed-vector"></a>
+**OIDC固定暗号vector：** 下記JSONはtest専用の公開RSA鍵と固定署名tokenであり、実credentialではない。秘密鍵は保存せず、署名生成に使ったGo標準rsa実装から独立したverify結果とPKCE期待値を `TestAdditionalSpecificationVectors` で確認する。PKCE値は [RFC7636 Appendix B](https://www.rfc-editor.org/rfc/rfc7636#appendix-B) と照合する。JWK/claimsは [security詳細本文責務](security.md#oidc-code-flow-contract) の入力として固定する。暗号vector成功はHTTP flow/user lookup/TOTP完了の実装証跡ではない。
+
+checkerは固定JSONのunknown key/duplicate key/invalid UTF-8/trailing JSONを拒否し、positive vectorとPKCE/key/signature/algorithm/expiryの5負例を比較する。assertion IDは `security.spec-vector.presence`、`security.spec-vector.schema`、`security.spec-vector.positive`、`security.spec-vector.negative.<case>`。checker実変異はPKCE照合skip/RSA検証skip/expiry境界変更/unknown key許可/alg検証skip/duplicate key許可/invalid UTF-8許可の7件を隔離copyへ1件ずつ適用し、コンパイル成功と該当assertion failureを確認する。常時失敗・compile errorをkillに数えない。各変異復元後のbaselineと元source hash一致を必須とする。
+
+```json
+{"challenge":"E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUta2V5LTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.X2W2K6he5sffLcJcpNervh9Wi9iWKu_dOFG93-rGQHYimNvlP70GSbb6kplAcYFZW-PgHyvPt5wvBQPZSbop4FOdX62tQ5Gm2E0FUb0sZi41QQ19P7LoJaXEWzLv65-uoXOL4SMsWx1_O1Weiji8Stjjp_mJXAL3uGYebdXKwD6-MG18a7w-rusuFlczGC-M_TSZ3UoxSOO9lMkDRvZDt6IYdZdbHOQwoIuoIM0rzMVWJuGF85rSsEhw27Fc50Dwu1U0nC0_pAvUwNJW6110kLSCLaVc0l04tTf5aIikYp1YhdDz9H671CsiHZ09IZhw8UGkuAd3Jg29mOR3mdOxGQ","jwk":{"alg":"RS256","e":"AQAB","kid":"fixture-key-1","kty":"RSA","n":"shqEww903XVwbq-GRoFm3JHFSfCtXB60fO44g52dnhggYLIw7N-5AXIz0HoE_7Oh140kNa687X8Wc7FvtUtLaG1Ecb_ug8b4HbjWDTuBgxzPG0mjDdqqFRGUG-RJ-C3k6_7i-dnjcPpmVXnTCxzVmIY8sX23pjdW03ClS_hbAtNmLrzVE07dW_YJCEBTBxRTRZwSgVUEqcf17XXHK3UJduJbRELlMwp0h8N-j3fcOvxhFp0GS-sJaJiuYXLC8F4hwiWVCHi5qspQcGAyihtVyC8Nzp04dDMty9287UxZaGhB2hTtrUW6aYkEzht_-WvWfB0RdA6JSe-pXTEd9S2ePQ","use":"sig"},"now":"2026-01-02T00:00:00Z","verifier":"dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"}
+```
+
+HTTP fixtureはissuer=`https://id.example.test`、client_id=`adlaire-ci-test`、redirect_uri=`https://admin.example.test/`、provider_id=`fixture`、flow開始/now=上記now、nonceはtoken内の値、subject=`subject-1`を使用する。DNS/HTTPSはin-process fake adapterで公開IP `192.0.2.1` へ写像し、実DNS/HTTPを実行しない（test addressの許可はfake内だけ）。discoveryは同originの `/authorize`、`/token`、`/jwks`、code/S256/RS256対応を返す。token fakeは200 `{"id_token":<上記固定token>,"token_type":"Bearer","access_token":"fixture-unused"}`、JWKSは上記key1件。user/state/entropyと成功後更新は [HTTP具体oracle](#oidc-http-concrete-oracles) を使用し、credential=nullと非null、TOTP有無を混同しない。外部call順はdiscovery→jwks→token各1回を比較する。
+
+| 具体variant | 入力差分 / expected |
+|---|---|
+| PKCE | verifier固定→challenge完全一致。SHA256省略/plain/SHA512変異をreject。 |
+| signature | JWTのsignature先頭byteをxor1、またはpayloadのsubject-1をsubject-2へ変更して再署名なし→401/session0。 |
+| binding | 完了cookieを別の32byte値→401/token call0、正しいcookieで再完了は成功。stateは有効値の末尾1文字変更→401/token call0。 |
+| expiry/replay | now=flow開始+300秒→401/token call0。成功後同じstate/codeで再完了→401/token call1のまま。 |
+| claims/key | issuer末尾slash・aud違い・nonce違い・kid違い・alg=noneを各独立に投入→401。[再署名固定vector](#oidc-signed-claim-vectors) を使用し、署名不正とclaim不正を混同しない。 |
+| upstream | token fake503/timeout/262145byte/redirect→502、flow消費済み、session0、secret/raw body非露出。 |
+
+<a id="oidc-signed-claim-vectors"></a>
+**OIDC再署名claim・header固定vector：** 下記50件は共通のtest専用RSA公開鍵に対し、各header/payloadを別々にRS256で署名した固定入力である。秘密鍵は保存しない。 `claims_base64` はJWT第2segmentの完全なbyte表現であり、invalid-utf8 caseもreplacement characterへ変換せず保持する。 `header` は第1segmentの復号byte、`now` はclaim oracleだけの時刻、flow.started_atは共通値。expiry-before-boundary/expiry-boundaryはJWT単独の境界検査であり、TTL300秒のHTTP flow成功を意味しない。
+
+`TestAdditionalOIDCSignedClaimVectors` は全caseでRSA署名成功を先に独立確認し、その後に [security詳細本文責務](security.md#oidc-code-flow-contract) のclaim/header判定を比較する。case集合と期待理由はchecker側にも独立固定し、文書側wantの変更だけで期待結果を追認しない。`ok` は暗号入力の受理だけ、それ以外はHTTP fixtureで401/session0へ対応する内部assertion分類であり、API response/logへ理由を出さない。
+
+| 固定case ID群 | 独立expected |
+|---|---|
+| baseline / audience-single-array / audience-multi-valid / subject-255 / iat-future-boundary / iat-start-boundary / lifetime-boundary / nbf-boundary / unknown-claim / expiry-before-boundary | ok。unknown-claimのemailをuser属性へcopyしない。subject-255はclaimとして有効でも対応user未登録ならHTTP401。 |
+| issuer-slash / issuer-wrong / issuer-missing | issuer |
+| audience-wrong / audience-empty / audience-duplicate / audience-non-string / audience-missing / audience-no-client | audience |
+| audience-multi-no-azp / audience-multi-wrong-azp / azp-single-wrong | azp |
+| nonce-wrong / nonce-missing | nonce |
+| subject-empty / subject-cr / subject-256 / subject-null | subject |
+| iat-future-outside / iat-start-outside / iat-fraction / iat-exponent / iat-null | issued |
+| exp-missing / exp-equals-iat / exp-before-iat / lifetime-outside / exp-fraction / exp-overflow / expiry-boundary | expires |
+| nbf-outside / nbf-null | not-before |
+| duplicate-claim / invalid-utf8 / trailing-json | json |
+| algorithm-none / kid-unknown / header-jku / header-crit / header-duplicate | header。拒否headerでもtest専用keyによる実署名は有効。 |
+
+assertion IDは `security.signed-vector.presence/schema/coverage/input/signature` と `security.signed-vector.claim.<id>`。必須実変異はissuer exact省略、aud membership省略、重複aud許可、azp判定省略、nonce省略、sub上限256許可、iat未来境界31秒許可、iat開始前31秒許可、exp=iat許可、lifetime3601許可、expiry同秒許可、nbf31秒許可、claim duplicate/UTF-8/trailing許可、禁止header許可とする。各変異のコンパイル成功・対象assertion失敗・復元後baselineを同一PR証跡へ接続する。文書checkerは製品HTTP/状態更新の実行証跡ではない。
+
+```json
+{"flow_started_at":"2026-01-02T00:00:00Z","jwk":{"alg":"RS256","e":"AQAB","kid":"fixture-signed-1","kty":"RSA","n":"uVp_6jnA5tOfmYYEMeLxMZtWYtUVielCV_p6FeMxOWzreNpQ3_mDq63CGwOX3m8_22PSJ4d5Ksp39slx0zoWNsB8aJ0kYPxfdSa-mL_oNxSzpsAsyTGD8ueFT9Ev3Iu1W-9dW-l-CgpZ1RFJB_Qr7Wf6UyfrKKGqUojpjovG2cuAXzHN0OrlGAPIhDHkaWrBEhw7V9rOojthVHlmApYMlR2ukLxy77DT1Xs0DUKdsV4h867eq7mopquRcxElZ-4OXdFmlL12v6Rx4Oe5GcgWCfNTAf3qsGR4O2d3DMvm3d46esP9brtSyioI95FXn_hG9Vxeunl-2Qot0-iOzjgqVw","use":"sig"},"cases":[
+{"id":"baseline","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"ok","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.Gy93RGF9sDiSWdv3d8UKtqQ63L6vS1fKe969Dq8ORZKD0qfxfnfetK4O8HRnp5_W_Gb6WFtXnxmxb8BWiAiWrM-_A0mhPxUeE94byYKFilqb5DjWXJmei4Dggyrquuyk_D0QO6mLs7t0aoC715fQwvbDWjztvrnrUfOSfx4qu9fu3s6qgdOpZdj7BFTPuZIfXn_W9cApgnxQauF5eGg0mFUmdzpSc1G6PNyR_zlI-DTBP56lBPw2L1fC5YRu8jl8Fuyy92W-PfsT6IHUhHtymwMjBkjbFa50lMBbX4nk00H8lBPLNndT4EMTDLq9d9a3b6T9oQmV-qeTQLhwVYA04A"},
+{"id":"issuer-slash","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdC8iLCJhdWQiOiJhZGxhaXJlLWNpLXRlc3QiLCJzdWIiOiJzdWJqZWN0LTEiLCJub25jZSI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3NjczMTIwMDAsImV4cCI6MTc2NzMxMjMwMH0","now":"2026-01-02T00:00:00Z","want":"issuer","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdC8iLCJhdWQiOiJhZGxhaXJlLWNpLXRlc3QiLCJzdWIiOiJzdWJqZWN0LTEiLCJub25jZSI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3NjczMTIwMDAsImV4cCI6MTc2NzMxMjMwMH0.CKYBETdnPzZJqaRGrHpMfvE-rc0a2Ja9c3a-PnX2v1Dy8D_IMgL_8-1Cxvq6xRE1oDlgR7_9hbCkUyF31_x2rI6svCd2Zd5zhIjGdJ0CTzIF6AkrENkbg0SHJXkxrY1_K6p4fraCQCC9dwleHas8jJHOFVykQ6OgW_bI-7jLHAIDDE_ftnTb7R_jfwFic3VBQG9o7IIacnaHBitRTnBXcE5M4yeRpvmjCgIX53WhUN-U7pEvgkdNELdEzmhi6xLdw4EinMOt8RBemhw-Ys0vBZ3VR4nYLT15lWCfZV5whVJPJl-kpbI6W42y7gW1eK_O_HK7HpNYxnNs6qSm4PKHew"},
+{"id":"issuer-wrong","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL290aGVyLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"issuer","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL290aGVyLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.m0doJUAPQQ6K4ZC9WW1cRwOrPNLBc_Uvv9c21GcuLayEm3UMYh2eohhRM5uELEma0BMyNPYzv4_7EqKc7haaIDt0YEaV9kBvllx_TglxcgQHBhIT_ObqJaN94L2WO7LU2AkR8hihwDLsp-Fv7DUsKXUQAPrVS2N75hm5dLWML-xGdgr1k1pGJo93-bE7zDhT_huMVEKSAV6DER6mCboZ-CLSovGrS-xK7x7u3i4m80qGUwN7G1IpmqUlJTxrswVvR2SkFBSp8Gcpvnk4bLoCrMNIiS2Z4j_XDeIAx8sO23vPsR-vzdCxm1iNpIXIRpb-X3NZCcAGC5_gOIKg9JAOqA"},
+{"id":"issuer-missing","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJhdWQiOiJhZGxhaXJlLWNpLXRlc3QiLCJzdWIiOiJzdWJqZWN0LTEiLCJub25jZSI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3NjczMTIwMDAsImV4cCI6MTc2NzMxMjMwMH0","now":"2026-01-02T00:00:00Z","want":"issuer","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJhdWQiOiJhZGxhaXJlLWNpLXRlc3QiLCJzdWIiOiJzdWJqZWN0LTEiLCJub25jZSI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3NjczMTIwMDAsImV4cCI6MTc2NzMxMjMwMH0.mR61zs0jrbzF1zH3RuP22txdP_-LRUL_YHStdkCz0rb1oFm9i84IqwRjIGJ--sl9MtOcVcHv_LCBW1EccAGda4Cf12E76a-h7fuAvmsJGUTPDLox3mXU1wmMl0orp4Zp6krWGXVbyRcBdCKQEtoHHYe-IUDLPIPecFv-_eJ43PTNDUx-RWI6zZF8PYtCoSI0ra6uPaRb3RC0qzhV5CU-pZCJlm6viBrq8O2SSXv5U5G1GfddoJuG5CtjyAprzyjbrLz321wZklzoCI9wPAcDYTackDH_OUyfGZIXrOwA4hdVieUO5rz36mLPm2nwEgm8Zz58r_3OYHHnKT5htNFSgw"},
+{"id":"audience-wrong","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6Im90aGVyLWNsaWVudCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"audience","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6Im90aGVyLWNsaWVudCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.X9XVT8ZsbCAiWyVrckcxeV5sZcFosjNAvrrjrcf9bmfoo1dj5pZ_m05M8OYjFoChqGXdDHeUU61lec5YcHRpbcftIDkyoTbVCreEM0r0DvPdRdxwVOJmd791nZiKcVBiHBkGLZ8iL4t_l9bcAGDi63-LtdaDLLLD3QjdOr9S96gTX3ayN4guOE5yuLuvqZgybZHKfl0Pjz0xQYmE2g0Yj_cIMACNKptIeucfTb4FNGgZeGAu3RLEgeVD7zSuxdbMn9dDSka_7h4kF2mK9mBeLhXGtE30e2mnnvESGuswQFI8pHbkSJEgjAFLNniNPNy2JjkrxO4WlcdxGkz-t6_R3Q"},
+{"id":"audience-empty","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6W10sInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"audience","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6W10sInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.PQagjcJJhhmp4oOtmcyvLK7aEwxH4X0yibERtMVOdzuVu8luLcuR3FGepe9sURrc_XKYHkQKBAosRtb1iAwPDWYoMYGSiRIiVjPkyetXFzVrydQNqdjyshsunbfxGEuZEFTAZocRpry0Ut9S88xH7qGYpDaxXVqzuQcDLX2RQavTwMk3zzE8s8N6wjQN84GHq1MAAm6SEAyLzp39xbwEsZ6_Z3Xp0NpOr3Kd-Dqu6CWMs2yWjl1UgHF4sNiykgu2JxSlFG-TVy4KOLnO4KfuF-bpcSomGKBoq43CAb9KLHtIqq-8o7JlplO-RnAcQbPvjm7mj26J2xmYtXuFPtJ8Jg"},
+{"id":"audience-duplicate","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6WyJhZGxhaXJlLWNpLXRlc3QiLCJhZGxhaXJlLWNpLXRlc3QiXSwic3ViIjoic3ViamVjdC0xIiwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9","now":"2026-01-02T00:00:00Z","want":"audience","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6WyJhZGxhaXJlLWNpLXRlc3QiLCJhZGxhaXJlLWNpLXRlc3QiXSwic3ViIjoic3ViamVjdC0xIiwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9.fQZbjGNtkAylqgCTP7b-FblU9w_nVmpB1XVoHPPA1LzNcKpYJcbSYl4fIWWX11ujo9fq6gZrPVLJVUWGaAKFcZx_i83e6TzTDRzspy2OLtAwISmZ1tbXgQetRrHA-riefKy53_N1vKgcDEkDoSG5OyJmKyTC8kSIj37Wg8VLznpsF5DsngQNbl7IwuFNruCDl7V1D7Fei5yvG3bE-3lDJgyfq4ABlS_MsWdlUr8AktqK6DlT3MfoAK-3528Eji3yVCEfPwustG55Ddc-TTRAHbbCQSMDTBa5d9YZebEsyjxT-JyitJxmypuxLKlNDvSayaEUC6X0X-dhh-rRji1Nfw"},
+{"id":"audience-non-string","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6WyJhZGxhaXJlLWNpLXRlc3QiLDFdLCJzdWIiOiJzdWJqZWN0LTEiLCJub25jZSI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3NjczMTIwMDAsImV4cCI6MTc2NzMxMjMwMH0","now":"2026-01-02T00:00:00Z","want":"audience","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6WyJhZGxhaXJlLWNpLXRlc3QiLDFdLCJzdWIiOiJzdWJqZWN0LTEiLCJub25jZSI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3NjczMTIwMDAsImV4cCI6MTc2NzMxMjMwMH0.ohEfqa2W98deRKvW7VdwLF9m_Z8WwEHbE1sJ7MMZw7JJWMU0iPq3pAUJzBtKW-diyr62ORoHpferOrTHyOynAwKgBon0ZJgrOm61WcM7gYbhqhv7W2BmiibS9fHAKpKMQVIP07c9UJMSHcrcqJD0hMEA2S-v9FRy6H91gKP-ZkFiXYsKzI011qR1-Otrg2tFVugXXEWuhG5h0F2pM8PYtQuwSHCUyVnXXDl2wqjPstu1_xKrZf_VitpaDt0HrSbtU9a1GggYOjBAJOi9D-LnfNpfzJzaV8j-76VSOY4rhbZOh5LMUTvlJTuNf9KniUA8d42h3yORikAM-1sAaDwO5g"},
+{"id":"audience-missing","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"audience","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.Xjk-OXCt6AsqWUAG-mlArBc5KZvTJawinAF-eefKw5QPEwKNw8k-bHOZM_-HZbblp8JOlkyZHLOsMBf6-eviN3757-JR0YMq_uvdDhSR2CrGcPVLFCuE2jDbo_6R1PovW6DMPUj-NsFykyLaTqrTJz5lUnBtIEte33JGXqZbORHGwA3EqhbccGBKD0GaC-Lh-H_05EiaKVuZp6vEBZqseVCsJFkWGXXAGHphMMtcBUVUHMLfN_CtaywKfU4tuq2d7AV1wk2Lsi6QCqiW0bYDb6zMohaVhJKH2xaTDstI7tTcN-9b1gHvJtkYTx1bte9O0KtJ7d9e__OuyjJE-7X-VQ"},
+{"id":"audience-single-array","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6WyJhZGxhaXJlLWNpLXRlc3QiXSwic3ViIjoic3ViamVjdC0xIiwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9","now":"2026-01-02T00:00:00Z","want":"ok","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6WyJhZGxhaXJlLWNpLXRlc3QiXSwic3ViIjoic3ViamVjdC0xIiwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9.JybjAvQM1vp1WtLAfjJuNqL6eLyrKow2zAvZ0rQ1MM5Z6Zc76335KYfvrzAHz2TtFeBWEPxB6rIf0689wzyGDRAQicayuHM-3Q7AURrE-qf0e6oiGF0Lf-ohUORLdYZiSzkCAEReI65NKpGYE0C3VAmIUp9kb7RahGkbRVQIo6ETuv0nbdjAhnW-9gel47ehPwSdG0SfXmVYgWkg6NEj-rZJaIeKxvYxpMnZhLsPVwlKBOthdtcA0uCrPVl5m-zU_TPq6Ugw1hQ5kFpA-uod-N74eSRqqcaB9L9AC0SOXFRGG5MRvza4Sn3dKX__s8BYmS8TkXq6-HI_VdPeRw8egA"},
+{"id":"audience-multi-no-azp","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6WyJhZGxhaXJlLWNpLXRlc3QiLCJvdGhlci1jbGllbnQiXSwic3ViIjoic3ViamVjdC0xIiwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9","now":"2026-01-02T00:00:00Z","want":"azp","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6WyJhZGxhaXJlLWNpLXRlc3QiLCJvdGhlci1jbGllbnQiXSwic3ViIjoic3ViamVjdC0xIiwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9.NvEy0sKx0AqxAAtHbZ4-jYMJY8J4pHxCJ1sMlNBYQ5g5DXgOl_P1nxEVPmo14KmZmhvcJ3Z3WmAP8R1gS5vdJtWwUfd6PCwxnXFjMy-DFx3khKbh1oQQDdWZnIhUF6GJ569d4R83cWscNWaE7L9zna0wg6P2s7E5jGAcpOv__MBfONgMJld5n7EaPR9NzN7NZPL93qJUI7iSD2vbpGQAiARzMhfJBKC0ToV7XjWigWQ4ZbGWYd6cqVlIQ6iE36fI0XeqlpNU6RYCV8oxxE5uMbOPTtHvXtWp8w7SCQXKTBwR2ohz1EfPoyfZ32iuaUWuBqlmnIbVS8h6537hvpqUfQ"},
+{"id":"audience-multi-wrong-azp","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6WyJhZGxhaXJlLWNpLXRlc3QiLCJvdGhlci1jbGllbnQiXSwiYXpwIjoib3RoZXItY2xpZW50Iiwic3ViIjoic3ViamVjdC0xIiwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9","now":"2026-01-02T00:00:00Z","want":"azp","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6WyJhZGxhaXJlLWNpLXRlc3QiLCJvdGhlci1jbGllbnQiXSwiYXpwIjoib3RoZXItY2xpZW50Iiwic3ViIjoic3ViamVjdC0xIiwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9.WtBCZmhANUGdAwDZRQjIDL_6r9FvVjo96YwE0yF3QqIwKy9p5XVrxavWvHmUdYnjN16devafLmMt_SINJ-g6uaPiStIwWOCi9mTk6EnnIRVLlgZ5cnHK8Cas1tKQ6aIEt3mIWoSZ5U7XsCUXgcZpM_gACwg6HbrkKA-8nmXpgb5Xgps2c6MjQydS_nH-jHedKK7tC4v_kaUwvL7lQkllrV31kDiptysFzlXKD3YO6yaOJW6q_LveY4um5H6iVF16e89-Eou5FKLQT_P7wV0PzXijl4jjCCQlg9D811qpS1XtnwyBOqpKDwEiQ7PlB_yQ6-nVVuLzVR-c3hpXkDL3Lw"},
+{"id":"audience-multi-valid","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6WyJhZGxhaXJlLWNpLXRlc3QiLCJvdGhlci1jbGllbnQiXSwiYXpwIjoiYWRsYWlyZS1jaS10ZXN0Iiwic3ViIjoic3ViamVjdC0xIiwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9","now":"2026-01-02T00:00:00Z","want":"ok","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6WyJhZGxhaXJlLWNpLXRlc3QiLCJvdGhlci1jbGllbnQiXSwiYXpwIjoiYWRsYWlyZS1jaS10ZXN0Iiwic3ViIjoic3ViamVjdC0xIiwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9.EnqCE6pRrksOuN95_mzxKhtwrP58jTLqJtI80CFXvHrasdjp6JX5ukRlrNeFQ1tzwsHBpTsCQzYfPrNzglMDzi6yPHs94X-cphrlnxk1yrg0DslpMga6_vBYDjkg7yC76x4JRQTLqMLo74RzXGvsJXWaiOC1LD0su31CLFDlisOfFO4dJCccHL_bKPZMF2LYs-IL8eE2dFNUwouxW46n6yvYpjY6V772liZFU8g6ziKWH7GHPcmj2IVfY_zkRppNFS473nqmZR1GH-FCU9LQ1WmoISyTzLL4x6A0qCFQkmZSzh5Fml_gj4qRZpWZq7hFVlih2uujrMi6RKzuTCPycw"},
+{"id":"audience-no-client","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6WyJvdGhlci1jbGllbnQiXSwiYXpwIjoiYWRsYWlyZS1jaS10ZXN0Iiwic3ViIjoic3ViamVjdC0xIiwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9","now":"2026-01-02T00:00:00Z","want":"audience","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6WyJvdGhlci1jbGllbnQiXSwiYXpwIjoiYWRsYWlyZS1jaS10ZXN0Iiwic3ViIjoic3ViamVjdC0xIiwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9.mTVYvqD7X-ViSrBgpDG5Xo1JpkW0wEtOvOGifesKU-vVuPSjbpvlwJXqA7_vYMeHHiF3N01OcI7Ejoh_W8VjSufoCj32ArZXshpW6HNCGMS8NtRkbmzN--Hz4644EXHITeHPRQJZ2nF4NfFBTNP7bWARCXdYmLH_vlBppwGF9PJ8Xkop5DBv46Oql2Ft1a8p1JQ12NTXeEXuWZ-IHsSYpGvF4dZsBwzz7jKYuBv-DDwRb_A4MUQSabFaLo_KK-mfFpdeWoOzJ0IqNv03dmvu7QprwkvzDJgbM659cOnZC5SzoJu-OYIxUvf4FGMoXmKS3kTLW47LQEUogeG_ldyvgg"},
+{"id":"azp-single-wrong","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsImF6cCI6Im90aGVyLWNsaWVudCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"azp","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsImF6cCI6Im90aGVyLWNsaWVudCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.eYYYqcObVIBwUUQYGDpEGJknNVyzJtF6_oWZvQOD6vhfl2TceAJjnO0SRBIKDogMzTdWnfWkkwGN-SkicfcJg_-pQFT5QCS6rs33HCEAsgagnOFpol6v-4riaoN0s2n7VYn6X9x2JsP5exzfu1IoHoXQTfVkBSQ6UH1jMBpypEGo-FojCh0JXCod5phZPp4FNTXIMAVgPlxrT2bMMBxL0VilolBb9rUasrIcNlQzkf_EU0icUu4jH0G1m6VgTfNCkm2qTlWM8aGqVuPF9lWKaGg-4iFfBEfv9ti00jkWS5ciPlfDylBtITjPXQlU9f3Lto_nzDlYscNqGyNIMGj9Sw"},
+{"id":"nonce-wrong","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQiIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"nonce","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQiIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.MlfNgg8xkqMmHtNBF6Ajdrem6lFKe60rjyDpuXIAxP7ZDwlDiVuSnAJmYC9BK1wB1wIiFWm60rCzjn-cspJ9Yky0AaO-8GmFY1BGvEBNg75fvHGytDZIu3okIj4U6k9CG0BkSuT3H9DCIGJc8wRQF1sfVm1ZM9lwXtT2Ow1md2JpebmJdyI1e38ppTuR69a4N99WUufxmB8A2WZ7-Ubw0RgOcPv5bFO34qBh9Qw-QTaxRqE7Zy9VTuEC-fOIAYS_lcSTxphPbrb7zRnO89PrpI4KKYJMXii_0mV9-E-K41nQhzMq1cchtawzbFNF4iu30nQ1ePTD6oalnXxcV1grWA"},
+{"id":"nonce-missing","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"nonce","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.VLn3QXcTx0wgwTrj04lRUurgAuEAcp_uBj28WvQkNoGwwnLTCc7Ut0i4xW14ETuGCSVVlkTrdxxFD0WGe1hsQUTzuxDF6HI2cmQghPCSVTyj403NNMdvzK5wMnnmND68XfvPxquLGna4QohlkMZxMm0bBsF_CCNNPHoQuA4EYhxDe9aNUdFQW_Ny5yiedN_8TO8YXNJwhD3ZnphnaXjYZ0Lksgf87XdBivW46xa6jXjzqz3Z864wnO8FwOu565rfTb8F1bnLOoKwcZD0MnAkwHBSOdUz1aYFMuvOD9-a8zRk1RNXyhSm3JTajZoB6W7h9oeoPi8yTPgqjI-p8_c6YQ"},
+{"id":"subject-empty","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6IiIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"subject","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6IiIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.AA5gcXSkdHQV4mcY6TudsznA0KKLAO19L4eVTRgfxVvGPuB2CFncRUfvnAXobvtewotSPV65NKlYV2ZlnigwyZWWlidoVxc3hijVG7IrQXaV4DMOip4nAf5C9oRkBn2jWXJqor9IUBz2cJDnN6ooCJaWIALVCpFV2uDXladsaF-O_V2LoLd5AmyLPldfGBaWaeEB0VsyByu3xCPd5T2uL_6Ys-KFtfcR9olUb4kmqw0SJcGhlgC8ZXLAoPx0Da6dZGgDFV9zjkSEOVJyQ1aOhJAwGw5JocK5VSLJVI_WY_ZZGJhSk1JCWt_Aiz3wyOCxR1aGQQLASfEUJM5bK7dybQ"},
+{"id":"subject-cr","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6ImJhZFxyc3ViamVjdCIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"subject","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6ImJhZFxyc3ViamVjdCIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.Tby-trqjyjkinc9uiRCpGnt-mq97KHSg_T-0WEo8GZr-A5Sb2dXNccUf0L_v0MqxBZxYPpmhwkcnv3SiCM4krEB9hO6NcB-I264IQ-zaYtbKXuGGqwukJ191aBGAROBBpLIwMbw0D2ijv2h7RYUY0490-k_FZtwYZwYZNL4YegqmZW7v3ndyogxlTfw02lGyAXw7egKyJFIdk5AcdxKmzENX_IsBEyVs9F59ntGsdT6vCDzaZi12J5TqOnAy-Go1YVsjkan8urxaH89q3BLkNtKxGtrOZkdh09CziceVeznZkgHjUn_1bdLvNeWjvr10McNOi0B9Rd5taxyoBEiFDQ"},
+{"id":"subject-255","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3NzcyIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"ok","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3NzcyIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.a2zZ86uzewyMRM0knSkUkG5NZb4YSVVWU5uem3smSRi0Yvjrs3N3eGxVRa05hQAjxXHuw3pxm6X5zDgNvXXffPZQmkkIPhEnTlSQXKDIEWhbp0GQLuJVSisDkVw6MRYtm1AC8_1HjkSNRIWSAMuo8CsjZJyAAyr2VyzZTKFN9aQJIR8inBu5I4cC2LfZNwF-uVSskE-jplNOrPw34zswnYKR3OSKNpkg2yhe5RmbX599AUtIal6JvNjuIpfkQzgDFFS3ipsrW01h2QEq3zUBTH6uWOjMEb02acASiq1Ze7CG5A_uBE23tUnYsJOB1OQxdKGGbrf1w9kGmnMC9ujGjQ"},
+{"id":"subject-256","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3MiLCJub25jZSI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3NjczMTIwMDAsImV4cCI6MTc2NzMxMjMwMH0","now":"2026-01-02T00:00:00Z","want":"subject","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3MiLCJub25jZSI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3NjczMTIwMDAsImV4cCI6MTc2NzMxMjMwMH0.mroujuJBnSx42LMhOIaE8Vj0kH_8pl6fE0KD2l7W8eNDLaoFqXE5Tl8uLQUxeS1mG17KDurTtzl0DYZjYDaNt_zzz8l-X5y5uLBFvZOU68cn8S1YqrXjeguXtOUxBQMzai3Ucr4pr3XvpDK69GleRPX48aQh85SoROYcCcbgyZZZ0FXp521vQQMWtIRHy3YRectEgVldMF3iyl03n9kDiNzMNkTVmCpRSfQMw5DfPreUOnzNK2VARgkPcmjigf03ETDecVotUquQ3F144W112r0bSR-lLP0k58rLWVtnSMLRUdSiOuUrtNnVatAaCeZ8j3IIVcjbotYJWLH-A9ZcnA"},
+{"id":"subject-null","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6bnVsbCwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9","now":"2026-01-02T00:00:00Z","want":"subject","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6bnVsbCwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9.ltJZs0K68htnKZP2jAGkRgIUAW9HFWyOX_fY_G40QTMS0o3Aq5wvaw7Ov42hgsXApid6GTACupqGKNgZa51i-2M2khSZX5ifBiHuzZgvqll34C0VGuSuLDNmGlxnqmFttN8ZABglPQ11BLGjsgpecpE8St9_imJREwmNO1EBBeGD_fdUbwuR1Na-t4m-kpXarfj21c2AV0mQqimZ3t86PE0xEL20jdCqoqbMkv0TRJ8UoWXjTIL8YWd6xdrjQoy1ltdDKkMBF-IqDRMWAuwyoUI1G968lwNzYBYYmpN7Dcwe5XF0RsxfHaYdExYu83M2IDSXkht5oQvMRqd2Zruaog"},
+{"id":"iat-future-boundary","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAzMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"ok","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAzMCwiZXhwIjoxNzY3MzEyMzAwfQ.iqR4JRJbAf3PkySxL2l-Q6BiNu0jxE474v0IeDP6ZKuIwmBkgpdKgDcZTyTuap5JRYToHzV1xvdYldJWgnMZOUtK1fS2zy5cZGFksLcUSwVOQaK66CscAXxcI5DIooX5koNtoKMdmQlrNRQIc093iCkcwOxLe1z7eMf4QDFCNHdIbeUDjy2NHmImtmQn4LfTUDdC6C8ULGMYhORwEPLvtdNAHlgocA2QpO6sn2lP-_1gVBLzfaxof2dHifjII_cA3byH8x_J3IwzQueGqaMIEbnlqHdzF3FwqN3v2r38hMvCB_DhxS-KmhCNOq6otE1dGUmpz47Xf5BR3MxU7GWiwg"},
+{"id":"iat-future-outside","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAzMSwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"issued","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAzMSwiZXhwIjoxNzY3MzEyMzAwfQ.owcMd5QE2PWVNZqu6Kzwjz7mmCyEi0489ayhA0oQR8zzRwe3sNbK3_WY8bQnbK0OlJlZNXwWV4c8BP5a6P--WtryNlrnhzpW7u1LlZPRBY14hfB7eGKEOYwiaQRAQvYZ4WSUvSHJ1lyxJYG4y7piT-beETqyz6kqDijpG4KOjyHBdYu3QLGdXw_1bxj4gulLi7w0nwXKSRJnMCdIkqMBnsBOg3yCOAIv8q9m3XQCTrK_5wNKDS2PgjDUBnzw6A3L9w1WpMMDLKNg9WJIuAHWpf-IYClADzsI0iLqj52hYpJqxgEd9b_ML0CimDCcYDcbibnejIspv_LkvCucBteszQ"},
+{"id":"iat-start-boundary","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMTk3MCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"ok","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMTk3MCwiZXhwIjoxNzY3MzEyMzAwfQ.VT7Ou0TSz1pt0mPJRD1DFrVXnlVwSfHczC4yKR1SapiTqcYGPka6mCkeWYP3cHVCZ3MKKhSZX12yN7hNMyCghpij6FQ1c6Fzm7rHWb8AoYfQUqid0KuKesZSKx7Szaoc3dDzBOU--wgndWH9MpSth6aDIayk4j53-ysjf-No8m_v2wEgGD-wLmWpcAEkcHQYGORsxOSmSWtbXlfm5wPfyMRkeh2-T4i1x6DdNVF5hF6zg0KUsCRC4quWErrifQDIKvDUVA716WFk5GDEgIrmHtUjccFV11hI48RvGZ2CHeiCgAp8oJPZWcvjkgP6ICRmHb4deupXNYQsDSmzCKV1dA"},
+{"id":"iat-start-outside","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMTk2OSwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"issued","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMTk2OSwiZXhwIjoxNzY3MzEyMzAwfQ.JY-Hr2OQE_uAviQL_iaHd7WrsDUF4gtItekROhuNWcVb06DD0insTaEIh6gMek_EpxKM2oqYcKL6FcOvgMAyKCZ2dOedu0MZHSA3dUufUvCDnsvlh5sbDYK2TIEy4nMdDj9nQgW_eEP_CRhlfHYmtT7NAco-orgGH6o7TcO3-boXBrjOu72zWql2xYNglDZbuZyQi5y-mQtUjaD8tK0aDu3O8xpFfTv9YGNaSCCUqJT1LUI_0XimkGLF88mhQP_ZPJL-frr0361oyTK4ubLyHjmq7KzAIglOXJgVUy--fxmbYizmbxcNJ5USrrtKLrmM-L49_hPfm_1om5qy1FOouA"},
+{"id":"iat-fraction","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMC41LCJleHAiOjE3NjczMTIzMDB9","now":"2026-01-02T00:00:00Z","want":"issued","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMC41LCJleHAiOjE3NjczMTIzMDB9.rk1TKPzf1I1pDN5qA1y-6aej5S_TauWelpcNpOhuod9TFFytETSl1osyw6UdEzxuTtYW74L0e0pyBwU5wbv00MFVJ4PR559QAX9Rfl7tK64C_4-GtltJPiHgDXJ7ED2R-xprwXIiOtAgASQ17JW6YEz4QOFsIfqH1cpHgZZ3NjEL-M7y79JUEEc6JIJ4_9FDlaUhrm70hBYWSDtXBwd6MBFnnc_mCrvCrljUdK43X-H9DJy4T7ewk0tgTEwmCiiIkPhNWoVAK1AlWomG7JePYDuxvoT1iREHz_9dqG-jTxt9_PlCYjUi5lwh5nF60Iex7zLUBg-x-8F4JJbxN9ZBYg"},
+{"id":"iat-exponent","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MS43NjczMTJlOSwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"issued","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MS43NjczMTJlOSwiZXhwIjoxNzY3MzEyMzAwfQ.MmXbi6Xi2ra6nJVCtPGk-pqL_S-zVqYluVa_LGVcZlz1qawrsnANjKWH244xsLGo9w8KAhHZgqfKVeYtEEmxXz-g14FzBE9keFlEc7iBLmSpXxdvbJkB2qLgjC0weTRDLIl15LX_649nkr9GO_6AROgyqMlGI9WkPQHt5c_LVxhdr2qDQ4VcwgafiiOxTHyYOO89gg5eRQ34geupm_nCnpFclDa_9xRNjVulX3XupAIvOK6gSYa-tZ4lxefiC8rCgadOt3nuiY23m-V6qTQfLsOi1uPbuOdBUwFZe1NlNt5o04T04ybd4O1uyaJr57MLadHvhYJbIYYjw6SuUKAK1A"},
+{"id":"iat-null","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6bnVsbCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"issued","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6bnVsbCwiZXhwIjoxNzY3MzEyMzAwfQ.gzRsXjPVuoHd4uq1nwADbaus54os-HMydHyQLEuE2uIlpFSEbHa-PJcdhC7t0eGMkpF9AnJ-dzmaR7sOMsWzRA7Y7RUgtzCmud5S_s-kTGLNdclN9m2oMZaCpwV_Cqxkfw2cPt3Iz5dLoOEOz95cN1kShvHNrp_dOCdSPzNwJwOxLPQTh3murri0SBXPMC9vlPMxPO9VZzW5jF5dtXRVA44jCDQoqDTvr1-gKdr8XvXaGVqnhxqxI-2Ly9lurjevJCXd70LErXWaxykYuoWj2K0XP0Nv64DD-sDC39iHKy3_98WX_SOhiDnSPh4b02G3FIPsrBVdb9KpAGW7BIjdhw"},
+{"id":"exp-missing","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMH0","now":"2026-01-02T00:00:00Z","want":"expires","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMH0.MITuS16LkPNiiJAwUyuYJDSHs5ciFbPoJXTxnWkFT9QKvQBAEEANRnehimadRvDg-XbOm_1fHg--zM4tmZJxkTLL6j7m19D-KiWDW5Y5il7fX0nGCuq7A1g7PR5h-YPbNeFWhLPhiw4evj0LPXgCAxIWs7wam4Z3XX7pul7q4upcX_vRPvwSunvcr6o__B6AfHARLQF6xggD87wrTdaNDjBwYYImAAqpb3R3-ZCjPCLVgXBW4mLQKvqy-Vg0eAuFzIgznXjW406BP9iwtJrqae_8c31pqAtxix7p2pEV5eYAzZIoETVtvAiemrmQlvgnQcRSd3BRgVcabUNaVSJnZw"},
+{"id":"exp-equals-iat","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMDAwfQ","now":"2026-01-02T00:00:00Z","want":"expires","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMDAwfQ.IK6TnstByQDI4JJJxdepiTZAj0JL9n_MUe_mTEKLJwnq4izwmMecdmNwwfiu13tfK01D6gfN10AiQ_TeWVLOR63LXYxfv534uJZI9TyneO0bGYkme3BVdjThsVk0bpX7bOYDjHAdlmzZkOqSnuyn5-T5g1VjsvPakVqV0SaGaRQgCTTrJPUycdWAmb6NexaXUEFvKs9TF6yuAe2uU73G4OCWBVJu4260IDQRGXEziM86eVlCfIoC4SYyu85E9iw2B4ADYGnAaLq5B0yuitjsM0UjjQE-ukjSsm43plcyE80OVR_8u_6-umg_6v1XkmKxEQQS9uwzgL74bA5O8uJd7Q"},
+{"id":"exp-before-iat","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzExOTk5fQ","now":"2026-01-02T00:00:00Z","want":"expires","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzExOTk5fQ.j3-jY7LV-JWZorSrYLY90UvdQC5uHlh-8eyH36HCx-1zFZCt210Ziy-CqckgS7f5a347FiufDQOA7AoiUSoIHkNzr359QyUzYuOtxcqvUDGIVbNLLQD9SHvC76okmQk9PrmaMhRGUlcsusuiWWi7LRblIazb8TS10264EFq-eyQ2OuVBmOSdPAVnvExroztaF-7DCx9KsIXsGJ_MkqDbBCjLN_8Ehg6UtV4bmSZz33InWWnH3ccWjc0I3V622V3ssQZCMpJAhYeh8QIQ8qD77H8ptdlU12tRGD7kRDJXbPSyQQfMK8o15LeOktCoMOffgcufxJlpyJS8yhM7yjCAbA"},
+{"id":"lifetime-boundary","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzE1NjAwfQ","now":"2026-01-02T00:00:00Z","want":"ok","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzE1NjAwfQ.WchfK9TIxCFAefXHrGHRXvOoDPEh-BalYix1jt-ymAG44XSt8nn0TvShZqkZkr94pyIZWXKW1-VaeEmxnHWB8XQp67_Z726gURTBpPsA81HojH_l7YPBBYA59cysUCgq-9rkRTymsLmPltj7SEQ77r9Io7rHYXtHNVtIvsir3tMMzh-ogipuxwVRZtydt6CRwyvsYRbYa_CbhD6nRSGANm0D9WALiJlEeMbd3VW1cPIr9CtiRf5fRC7ip26XGHNNucs2EDjUIGY3UeBLnCdxtI8wlCIz45oSacJxzQyhOLZXWpDbCYjntvA7gbwWGebXzdRBxqtXXyz94wV5ROH96Q"},
+{"id":"lifetime-outside","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzE1NjAxfQ","now":"2026-01-02T00:00:00Z","want":"expires","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzE1NjAxfQ.QWHoQIkI-MlZOASepHtGZOBGSjpcDkk3ItcZFG27YuLNNx3ngeSFNoK2km_8PFo75ZNbEoqX7O6sFciD9cpfyCo_yhQ-rk2s3k6owMnKyJNtzwLlYqwJMDH-5iuvWPXQ6O6hV-x2f8axu-wL3hrPBLCVDb85Gh0zFTX-6uMoes4_rrytPtpm440GB1O_DvTXCYmzypuMdN7AgEC8HIOma0EtJkFgAFVloio9V-D6BmLqFH-qC8l9aWjnp55-ainuwjyGS0Ay-cWzxpICwlHMjVjh9v3dSedkO_WsRrDIR0HTttFhDu1X5D3lGgWxW6HAwHmmgtgTV-jEPyOZ6374aw"},
+{"id":"exp-fraction","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwLjV9","now":"2026-01-02T00:00:00Z","want":"expires","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwLjV9.DUzG0eUhByv-HbmzHm0_DN78o2l8RKsaCvUxYpWtWX33XJlMHKDGqR4L8TOHJU-rwSobkwWIlFt-FBMDX_vsFCqLIAgI1qXDBbHaPDnQJwRsvVB-pDDHogysuKxa_WoN1wY5SSczuTqYOQOgHSEC0x6usjpTbB3-DlD5uNCqSocyoMRBuwQ2wuEtEoL-0cxlYE2_S9kF569hNZuXuPdCO5AJ6v2pGa96RpeF3x3JaCnTEPkuE2ZDwPkxoi7KJtklfE4K25fIb6qLuOuKRzxyTRgu5B6QY8RQzQ98TsExBEqM5Bepiu648yr7aX7nhYgwRuyU76sOAP4U0o8Cu8RItg"},
+{"id":"exp-overflow","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjo5MjIzMzcyMDM2ODU0Nzc1ODA3fQ","now":"2026-01-02T00:00:00Z","want":"expires","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjo5MjIzMzcyMDM2ODU0Nzc1ODA3fQ.XxxUM8Za1LT1UALigvxCNJQGXUe7qf410NCHVu1ZfhpQK9ILekZ84h3Of7zn7LtGjxr1_jAJYpWJdWk88INJmP08swavdvLAyQQpzqBreVSNcChEeTce6soufWcSV-gS9-UMhewGhiBCDDe_tmyuI78s3QarjDQJeNAvHixvWNZEA8qW2BpIbE6yhVwXD_bI-FwPBavk1myKEU8wzwfWTwKekRWB2_Rny91XXDQuoet5XGmQtoJlMDmnQxMmQ9WZvZYvArfR6OEtyLTixbDA5emt1WeKgSNobaMpcS1WaFC0-Jb_Lxqxqz1V1UDn8F9Rfpvrm6LnwqFi47fx0RIicg"},
+{"id":"nbf-boundary","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwLCJuYmYiOjE3NjczMTIwMzB9","now":"2026-01-02T00:00:00Z","want":"ok","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwLCJuYmYiOjE3NjczMTIwMzB9.orTnjuiCEcqbMmwPF133lDP11kzoqDP47pV0LT-dHLQLiwzSxvI3rknTB_nb0iDbEgGBevXh_9nU23MGeNPLhQMsyx5Gh4BKt5u-ZyFaO86g9_NQ9xPUgwsoh97MwiWOVcPz3FegAvWHuZjiImlMwPU6zHE96ourIfBzV-U3W9CqH1F9yAXhhjcOwaUONmZIpuS7M98Z2gojTF8AQyvncSBJvxcLMa5_uUhgTbtUx83p-DWmq_V4IhLXLDLMBjovSnIraCCI4rmuUVv_IBkk4l5GkP_oD86sNU9AiexCKHIs6MrmEOxhRHN3qFE3CkZav3nG0ZlW5VjKv7eWHnm7tA"},
+{"id":"nbf-outside","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwLCJuYmYiOjE3NjczMTIwMzF9","now":"2026-01-02T00:00:00Z","want":"not-before","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwLCJuYmYiOjE3NjczMTIwMzF9.d4z8XkKAXZwn05V58v5rWyDxaGmzw1k37vcLBWBGvmF0yFGppcCAOvip8kodY18zIRMwC_3Hb5yG9tSHHpu2j5U7CVB8CkSxta-4lGQsN7zyy7MMskS19cV8SgmIFcdVlD49VQOVzGZkvUgZcIsGhekBuwjbOBq2pgWZze3oYVZbHzOm1dNi0LBdMx4IxdU69wSN62ZFFDUBau06TVXsbNqjqZZKZewfH_jtzsOm5_YTT34xavlROA9EP80EmIhAvq8XPrOB_UGWBAbemjJ0nHyBRrV4G-Cir5W93bwMJAx03R7UJ5CRAwrfL5bZXW9aTIG_gdNnbrJb8mAoiKTOKw"},
+{"id":"nbf-null","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwLCJuYmYiOm51bGx9","now":"2026-01-02T00:00:00Z","want":"not-before","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwLCJuYmYiOm51bGx9.jNhTKJyuZfJKckIcczlsIOQh-e9S9UOcZXgwDHTlOtbSp-ZZ0wrhG1JZ1tG6tOSNYrRBS-5c_1Jzk0VJe_eSVRlC0i92qjT8LaMWgF4MYTDKacmPwYG6gX_5LRZdM7LYL7z7sSbyvqlj_mgrbCeucSDXFndiqGvC_uXKRjFTIx0YCCUckY1CR2B3s6OCon_Wsnk6OJBbuYazpsdwnK9IBKYQEVsWEXXc-A4s0h-ooDNzj5uIOsM69LMb9nT02fXvlE9dtiN0bH29JGt6RmP8FkkBaCu_L4XgnZIVoH7Uej5Fss3QcSmF7ZptB9Tly_yHi9FI5doznGgJuXrGWd2VtQ"},
+{"id":"unknown-claim","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwLCJlbWFpbCI6ImRvLW5vdC1jb3B5QGV4YW1wbGUudGVzdCJ9","now":"2026-01-02T00:00:00Z","want":"ok","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwLCJlbWFpbCI6ImRvLW5vdC1jb3B5QGV4YW1wbGUudGVzdCJ9.jPGrSQPHTxc65KwSanG9DuDw-RTkhkXVGglbj60PO4okqW1SwKSNjKq9cy9qlwWswab8LdAbHQUaIDFBrUHBxk4Q9n0GOLwIPME_Zc8cwHOqcwl1986MnuagKmnnu4hHOxgA8sB80xoOJpmYfqrmky6pFXb64GwLCj5MF326kjy3G78kSbLdNETWKg_dm4yENk7Ct9NLudTgLNvyK5h5nAhrzmubIHNqG4jCW4uBRJNQG3-sYbKwws6q-lbwYPifgDcEp1v6joz6pJdWeWmPZs_bYsFVX134kCi3U60eNn5e3lAGZPbjpOlQ0AvFYMQVyM4l7Cek4jNGzedpSsYo7A"},
+{"id":"duplicate-claim","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwLCJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCJ9","now":"2026-01-02T00:00:00Z","want":"json","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwLCJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCJ9.ZDrQhexjHgYz2xVwrCpFJrr-w3Y_GILp41GPZTf0VVKbCEfR-o1JV5Ldz8GNFzZ_RJbEYqSeY6F1orVHNysBlZ_XN1URe_X0lWBts4PxsFzO0oPNN6nkAOlCGfwx1LLnBh992vtk4JBnahlv-1GgA5YtJplk-LFqqwBVJDY3ELBAnaJXhajkcTPw2Gw-2S8x8Yuw6FVk1sRFz4_sCPByMatzPYGqPldPwHFGemKSRaSNPIGNZbzO7i3acegnhsw9_8YOGwnynRmJ-7F-cxbZ6VvmC2JH43GtZ-mRKrv5i1xBnI2JSVqbAy1pwCcT-Tz635lK8V25YvBwFHMTd1bnbA"},
+{"id":"invalid-utf8","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InP_Iiwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9","now":"2026-01-02T00:00:00Z","want":"json","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InP_Iiwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiaWF0IjoxNzY3MzEyMDAwLCJleHAiOjE3NjczMTIzMDB9.MgS9nsj0Lck_XuT2A9rPQED1iZFgPR02UP3UPnAI8utAAZwsedRuUeGENMcsexMoCw0cffSWGRcTbBmnO5FGpPUUgwV9UHQ-iAVFE54tgjZGVKE369kxGOWJZK-RNQwc5iuC4XJ2N8udMB6a-JWXCFI1AHyWfLEz4ZIDDTzGz7XBk2Ac71uyI-I5edT_zw5MPuYNnXhRLB4X2Lq6z_NvMkjXR9sKhe2WRWBt2uJHjtID2RoDFud5urvRXWXIaI8qlxMAakevUlskayG-yaZuI6rtFIxaxoBAMHkU9aZEME9Xj1v7Jkk_k1cCTZsnz24NSwx1Ax4XYMZGPHwnNJ1ajA"},
+{"id":"trailing-json","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfSB7fQ","now":"2026-01-02T00:00:00Z","want":"json","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfSB7fQ.KOZ6uU35i-2WFVPNZlZxJM_2fAlppIdz0t_tgjo6acvv0Zh3j9N9g9ep1l6b2RFR-ooFmrZcyoYs478SpR5zh8hglSRbKGmhgJadBWKGDaNhrALVeCQrtmv07hAkBgu7guX7Ue_HpDWZwknuZl1Hh9zRJTvQtd3GVQkkdOYUbvCvGSeNMm0pw6P8JQQ3yGiZyLI56wXdJk5waegRQC1DPsk2Sao0Ol4DqltY36IvCkBBUjSsEho8bAzx3rEsItfXj3kxwZZm-1rrDPTU-6L0AQivJwLplHPl_5N7WAkGEe7jy0wGzOPrb8X1QL0azJ_SGT7gcer3oMzwARq1am6Qxg"},
+{"id":"expiry-before-boundary","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:05:29Z","want":"ok","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.Gy93RGF9sDiSWdv3d8UKtqQ63L6vS1fKe969Dq8ORZKD0qfxfnfetK4O8HRnp5_W_Gb6WFtXnxmxb8BWiAiWrM-_A0mhPxUeE94byYKFilqb5DjWXJmei4Dggyrquuyk_D0QO6mLs7t0aoC715fQwvbDWjztvrnrUfOSfx4qu9fu3s6qgdOpZdj7BFTPuZIfXn_W9cApgnxQauF5eGg0mFUmdzpSc1G6PNyR_zlI-DTBP56lBPw2L1fC5YRu8jl8Fuyy92W-PfsT6IHUhHtymwMjBkjbFa50lMBbX4nk00H8lBPLNndT4EMTDLq9d9a3b6T9oQmV-qeTQLhwVYA04A"},
+{"id":"expiry-boundary","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:05:30Z","want":"expires","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.Gy93RGF9sDiSWdv3d8UKtqQ63L6vS1fKe969Dq8ORZKD0qfxfnfetK4O8HRnp5_W_Gb6WFtXnxmxb8BWiAiWrM-_A0mhPxUeE94byYKFilqb5DjWXJmei4Dggyrquuyk_D0QO6mLs7t0aoC715fQwvbDWjztvrnrUfOSfx4qu9fu3s6qgdOpZdj7BFTPuZIfXn_W9cApgnxQauF5eGg0mFUmdzpSc1G6PNyR_zlI-DTBP56lBPw2L1fC5YRu8jl8Fuyy92W-PfsT6IHUhHtymwMjBkjbFa50lMBbX4nk00H8lBPLNndT4EMTDLq9d9a3b6T9oQmV-qeTQLhwVYA04A"},
+{"id":"algorithm-none","header":"{\"alg\":\"none\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"header","id_token":"eyJhbGciOiJub25lIiwia2lkIjoiZml4dHVyZS1zaWduZWQtMSIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.KbpMC_nUNHhZCZiyo8ZtQSlmczFMVReD6fDVgG9oNp73kxHrEb1iBHHnDmJBWR1rSX5IziRgQHOCOYKICPVb-EjBp-0VgCpmYgMsOIg88c8XIGdtH5Wx0IlwJLrCi2N2tXhgXQg-M3L1pVI1PAQPnj4z-wxeJaTfLKRN7D7WtTq1UgHlT950-eebZD3-iwNNnwZ5ll33YMAv1pmgLYnuve97Z61NREO895qmXz_kuDsF6qnRIhoU0msEA_6ttwiWDNEUsfjSe1SFicgKdz8M7MiesWXbYfeqvXvS28dNenUCEx-NNy9nqVAkXEcwYqpYdvLQwm1p57hyRgdrCm7uTA"},
+{"id":"kid-unknown","header":"{\"alg\":\"RS256\",\"kid\":\"unknown-key\",\"typ\":\"JWT\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"header","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6InVua25vd24ta2V5IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.Nxoa3qR8ShifYNb_rgh5fY-8ET6zoVjmSb7pmj98DPme1lRSxqikP3ILzQoX9O-IDAymZQWAgZ98fMZ3Z4C08rhrsV_5qcK8P0XaZBxHRTgmyj2r49yAqISqwLmZdcdNTgEJW6CUxkwS5WZDhvz1XyetbjC1uFcKNLgF7mH28YXAWmAfyPMuAwKBJe3Jng4ia4Gj6HkYoDZpm_i7Hi6Davu1KPZtvaPmdonZ_EYvxsQIVPvaMiqcMuSm1okAZco-5NBg3Rfeo2bdmE4RTEfQGQjTp4Yoo966ZGBPU2KH10GXLA9_gc4ReE1QDx2PsLb5oI_6wn5TvHztGyRLCguZlg"},
+{"id":"header-jku","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\",\"jku\":\"https://evil.example.test/jwks\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"header","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QiLCJqa3UiOiJodHRwczovL2V2aWwuZXhhbXBsZS50ZXN0L2p3a3MifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.IHhMv3moyqV9crUez_7GUqgGGbTXc6zfWXHh2LyOuWLGZBHr1kGLzdAcaY8tGE5rbDAavWLJGWgxjLVqtEvbAUXfs4bkt4ws5LbylB0lqwSvZEMTqb-staVgWX8FHm0nP_gwAzStE0jpUMld-lRuG0D2cmXDWyp3wj3qtskukNeJEzvGr75DNKuO7GCEyB_vknbX1G_NZo2PsPrOBO0n3T1TUglaph-z2jyqEklaWRyZnUcZNpqU5DajwtzQ0soc34GmSGYVavumOMbd_afBnMZvXqU5qFhrnj7D9W2QYVyjylEhPcWw3XrRYmm6MEkqxIuJCSz7apfNngOxBAFniw"},
+{"id":"header-crit","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\",\"crit\":[]}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"header","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QiLCJjcml0IjpbXX0.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.fJohow3G7kLwRtpFuWLVwL7YCaLLLuOPUxfFEaVT6wnT-u5gaA8vJKS1VxAU_Irj5AAyLQ03p8fxW2EDPri5Py10h5NxFfbd1QgGLloI222TlJ6O62urcD6yB2Pmq3KTyRhb6N6Pz91SPi0ORAPDIsKs_6maN4oNJIhzxTSm6CteU2u_6e8SvpNGFr9g7i411WZlgOexgJYWgJM6heHgOk0ePPWa7E83YuLB0PNVETD0VqnSn6rv9jWwakFXj1ThYnk9ZLOUlD55d_feL8Jhu3A5ie-5e3B_E0AbZNBfwm04mIUw6IGsdRNb1QABtQN4qArKcNL14tMXGJ7FZ1Z-vA"},
+{"id":"header-duplicate","header":"{\"alg\":\"RS256\",\"kid\":\"fixture-signed-1\",\"typ\":\"JWT\",\"alg\":\"RS256\"}","claims_base64":"eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ","now":"2026-01-02T00:00:00Z","want":"header","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtc2lnbmVkLTEiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.T9wSmC_eBkeErg6P48FwFZCtOeQNf9Iu0ztO-BJCn4berNSMdeB75PfJlecEzBSp5tMAgnSM2LSgZvdO-fO-91_4MQvXN0xHbYhbajAGTJMX3apEemkChYVdacfhQdrCdEcWJ5lszEBwSf1ztWXPYQRoYQAuYDVbYFI-_3nzGYKC3nF1KZJEm5vWNOrJhFuSIXckT8Zqn5PdZd3QfPWc8e5YH_Kykry740gbPRJ2aZ-hLQJ5vr9bM4FByK5Jx2fUbf1lQhCg6Kx8stlyk3g44FdjvJBdf3XxVmm4FUzGvRjykMWuV4zkB76Njeo91AedbJQjP0kHti148s6yzjucbQ"}
+]}
+```
+
+<a id="oidc-http-concrete-oracles"></a>
+**OIDC HTTP/状態/fakeの固定入力：** このJSONとcase表は [再署名vector](#oidc-signed-claim-vectors) からHTTP成功/拒否までを接続する仕様入力である。実行fixture群は成功/認可失敗を `additional-management-users-roles-success` / `additional-management-auth-permission-denied`、漏えいを `additional-management-secret-redaction`、SDK/UIを同名の既存群へ接続する。製品実装前に実行済みと記録しない。
+
+各caseはmemory flow/session/ticket/ratelimitを空に戻し、このJSONの全stateを新しいfake FSへ配置する。.auth_profileはschema_version=1/profile=multi-user-v1/admin_user_id=users先頭id/migrated_at=now、.api_tokens={tokens:[]}、.user_revocations={users:[]}、旧credential/TOTP fileは不在。server config session_timeout_seconds=3600、api_rate_limitは正本既定値、config snapshot/cache policyはdisabledのmemory既定値を使用する。.api_rate_state初期値は{windows:{}}、通常start/finishはip:192.0.2.20:loginのcountを順に1/2へ保存する。表のstate read/write禁止はendpoint業務stateが対象で、共通request log/rate stateは独立に比較する。Origin拒否はrate更新0、body不正はrateを1増加してから拒否、rate拒否はcount不変。その他の業務stateは不在かつread/write禁止。auth/access/audit logは空、request id用entropyは16byte big-endian整数1からrequestごとに増加し、X-Request-Id/関連logは00000000000000000000000000000001からの32文字lowercase hexとする。flow/session用entropyとは別の呼出しslotを使用する。KDF値はtest専用passwordと32byteの0x11 saltから独立生成した入力であり、password login検証のexpectedを実装出力から承認しない。外部接続は192.0.2.1へのin-process HTTPS/DNS fakeだけで、接続先・SNI・TLS検証・proxy不使用・timeout/body limitをcaptureする。
+
+```json
+{
+  "profile": "multi-user-v1",
+  "now": "2026-01-02T00:00:00Z",
+  "origin": "https://admin.example.test",
+  "remote_addr": "192.0.2.20",
+  "external_auth_config": {
+    "enabled": true,
+    "providers": [
+      {
+        "id": "fixture",
+        "type": "oidc",
+        "enabled": true,
+        "issuer": "https://id.example.test",
+        "client_id": "adlaire-ci-test",
+        "client_secret_ref": null,
+        "scopes": [
+          "openid"
+        ],
+        "redirect_uri": "https://admin.example.test/",
+        "created_at": "2026-01-02T00:00:00Z",
+        "updated_at": "2026-01-02T00:00:00Z"
+      }
+    ]
+  },
+  "users": {
+    "users": [
+      {
+        "id": "usr_00000000000000000000000001",
+        "username": "admin",
+        "display_name": "Fixture Admin",
+        "status": "active",
+        "role_ids": [
+          "admin"
+        ],
+        "credential": {
+          "password_hash": "1fcfc74d2c455dd9af866f75de73a4bc47e7f3f5d653b72f548b44efd1c37887",
+          "salt": "1111111111111111111111111111111111111111111111111111111111111111",
+          "algorithm": "pbkdf2_hmac_sha256_v1",
+          "iterations": 600000,
+          "must_change": false,
+          "login_count": 0,
+          "last_login_at": null,
+          "updated_at": "2026-01-02T00:00:00Z"
+        },
+        "external_subjects": [],
+        "totp": {
+          "enabled": false,
+          "secret_base32": null,
+          "confirmed_at": null,
+          "last_accepted_step": null
+        },
+        "created_at": "2026-01-02T00:00:00Z",
+        "updated_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "usr_00000000000000000000000002",
+        "username": "oidc-user",
+        "display_name": "Fixture OIDC",
+        "status": "active",
+        "role_ids": [
+          "operator"
+        ],
+        "credential": null,
+        "external_subjects": [
+          {
+            "provider_id": "fixture",
+            "subject": "subject-1"
+          }
+        ],
+        "totp": {
+          "enabled": false,
+          "secret_base32": null,
+          "confirmed_at": null,
+          "last_accepted_step": null
+        },
+        "created_at": "2026-01-02T00:00:00Z",
+        "updated_at": "2026-01-02T00:00:00Z"
+      }
+    ]
+  },
+  "roles": {
+    "roles": [
+      {
+        "id": "admin",
+        "name": "Administrator",
+        "permissions": [
+          "*"
+        ],
+        "system": true,
+        "created_at": "2026-01-02T00:00:00Z",
+        "updated_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "operator",
+        "name": "Operator",
+        "permissions": [
+          "build:write",
+          "config:read",
+          "status:read"
+        ],
+        "system": true,
+        "created_at": "2026-01-02T00:00:00Z",
+        "updated_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "viewer",
+        "name": "Viewer",
+        "permissions": [
+          "status:read"
+        ],
+        "system": true,
+        "created_at": "2026-01-02T00:00:00Z",
+        "updated_at": "2026-01-02T00:00:00Z"
+      }
+    ]
+  },
+  "entropy": {
+    "state_hex": "0101010101010101010101010101010101010101010101010101010101010101",
+    "nonce_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+    "binding_hex": "0202020202020202020202020202020202020202020202020202020202020202",
+    "verifier_hex": "7418dfb49799e0254ffa607dd8adbbba16d4254d69d6bff05b58055853848d79",
+    "session_hex": "0404040404040404040404040404040404040404040404040404040404040404",
+    "ticket_hex": "0505050505050505050505050505050505050505050505050505050505050505",
+    "session_id_hex": "07070707070707070707070707070707"
+  },
+  "state": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+  "binding": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+  "start": {
+    "method": "POST",
+    "path": "/api/auth/oidc/start",
+    "headers": {
+      "Content-Type": "application/json",
+      "Origin": "https://admin.example.test"
+    },
+    "body": {
+      "provider_id": "fixture"
+    }
+  },
+  "finish": {
+    "method": "POST",
+    "path": "/api/auth/oidc/finish",
+    "headers": {
+      "Content-Type": "application/json",
+      "Origin": "https://admin.example.test",
+      "Cookie": "__Host-adlaire-oidc=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "body": {
+      "state": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+      "code": "fixture-code-1"
+    }
+  },
+  "discovery": {
+    "issuer": "https://id.example.test",
+    "authorization_endpoint": "https://id.example.test/authorize",
+    "token_endpoint": "https://id.example.test/token",
+    "jwks_uri": "https://id.example.test/jwks",
+    "response_types_supported": [
+      "code"
+    ],
+    "code_challenge_methods_supported": [
+      "S256"
+    ],
+    "id_token_signing_alg_values_supported": [
+      "RS256"
+    ],
+    "token_endpoint_auth_methods_supported": [
+      "none",
+      "client_secret_basic"
+    ]
+  },
+  "expected_token_form": "client_id=adlaire-ci-test&code=fixture-code-1&code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk&grant_type=authorization_code&redirect_uri=https%3A%2F%2Fadmin.example.test%2F",
+  "expected_cookie": "__Host-adlaire-oidc=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI; Path=/; Max-Age=300; HttpOnly; Secure; SameSite=Lax"
+}
+```
+
+JWKS responseは [再署名vector](#oidc-signed-claim-vectors) のjwkを1件だけkeysへ入れ、token responseは同bundleのbaseline.id_tokenとtoken_type=Bearer/access_token=fixture-unusedを持つ200 JSON。request bodyはUTF-8/末尾LFなし、JSON object順は比較除外。authorization_urlはURL parse後、origin/pathがhttps://id.example.test/authorize、query集合がresponse_type=code/client_id/redirect_uri/scope=openid/state/nonce/challenge/method=S256の8件とexact一致することを比較し、queryのbyte順は比較しない。expires_at=2026-01-02T00:05:00Z、cookie属性は上記値（属性のbyte順は比較しない）。nonceは32byte 0、challenge/verifierは基準PKCE値。
+
+成功sessionのresponseはtoken/must_change=noneだけ、tokenはsession_hexのlowercase hexとmemory内で比較し、expected fileには本体を保存せずresponseのsecret field比較結果とSHA256だけを記録する。TOTP ticketもticket_hexと同じ扱い。共通failure本文は401 Unauthorized/502 Upstream unavailable、Origin403 Forbidden、schema400 Invalid request/422 Validation failed、state/entropy500 Operation failed、auth log失敗500 Internal server error。全応答no-store。消費後はcookie Max-Age=0、未消費401ではcookieを消さない。logの正確なfield/action/文言は [security認証確定責務](security.md#oidc-authentication-commit) と既存認証record表へ接続し、state/nonce/code/token/claims/secret/provider error本文は0件とする。以下の外部call数はstartからのdiscovery/jwks/tokenの順で表す。
+
+| case ID | 共通JSONからの独立入力差分・fake | 固定expected |
+|---|---|---|
+| oidc-start-finish | 上記start→finish、全I/O正常 | 200→200、外部call=1/1/1、flow0/session1/ticket0、users/roles/旧credential/TOTP byte不変、login_success access/audit各1。 |
+| oidc-local-credential | OIDC user.credentialをadminの同型値へ置換 | count=1/last_login_at=now、他credential key不変、access→audit→session、旧credential file作成0。 |
+| oidc-totp-ticket | OIDC user.totp={enabled:true,secret_base32:"GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",confirmed_at:now,last_accepted_step:null} | 200 {totp_required:true,ticket:one-time}、session0/ticket1、users byte不変、totp_required access/audit各1。 |
+| oidc-binding-mismatch | finish Cookieを32byte0x03のbase64urlへ置換、続けて正しいfinish | 最初401/token0/flow1/cookie維持、後200/token1/session1。failure→successのlog順。 |
+| oidc-totp-complete | oidc-totp-ticket後、同時刻にlogin/totpへticketとcode=726075を投入 | 200/session1/ticket0、当該user.totp.last_accepted_step=58910400、credentialはnullのまま、login_success access/audit各1。再ticketは401。 |
+| oidc-state-mismatch | finish state末尾1文字をAへ置換 | 401/1,1,0、元flow1/session0。正しいstateを推測・返却しない。 |
+| oidc-flow-expired | finish直前now=2026-01-02T00:05:00Z | 401/token0/session0、期限切れflow回収、cookie消去。 |
+| oidc-replay | 成功後同じfinishを再送 | 2回目401、累積token1/session1のまま。 |
+| oidc-finish-race | 2finishをflow mutex直前で停止し一方ずつ解放 | 200/401各1、累積token1/session1、2worker終了、flow0。 |
+| oidc-start-replace | 既存cookieを送って2回目start。2回目state entropyは32byte0x06 | 新flow1、旧state finish401/token0、新stateだけ交換可能。 |
+| oidc-capacity | memoryへ未期限切れ128flowを配置、cookieなしstart | 409 Conflict、metadata/token call0、flow128。再capacity競合caseは初回preflight127→取得中128で409、旧flow保持。 |
+| oidc-entropy-fault | state/nonce/binding/verifierの各rand readを独立失敗 | 各500 Operation failed、call1/1/0、新flow0/session0、旧flow不変、cookie未発行。 |
+| oidc-provider-disabled | 全体enabled=false/provider.enabled=false/body.provider_id="missing"を独立設定 | start422、外部call0/0/0、flow0。 |
+| oidc-provider-change | token exchangeを停止中、provider.updated_atを00:00:01Zへ更新して再開 | finish401/token1/session0、flow0、更新済config維持。 |
+| oidc-user-change | token exchange中に対応user disabled/locked/external_subjects[0].subject=subject-2を独立設定 | finish401/token1/session0、変更済users維持。 |
+| oidc-user-unlink-session | 成功session発行後、該当user.external_subjectsのsubjectをsubject-2へ変更→GET /api/status | 401/session削除、status state read0、local admin sessionは維持。 |
+| oidc-role-change | TOTP ticket発行後に当該user.role_idsを["viewer"]へ更新、login/totpへ元ticket | 401/session0、ticket消費、TOTP last_accepted_step/credential不変。 |
+| oidc-origin | start/finishのOrigin欠落/別originを独立設定 | 各403、state read/外部call/flow消費0。 |
+| oidc-body-format | 空body/[]/trailing JSON/同key2回/invalid UTF-8を独立設定 | 各400、state read/外部call/flow消費0。 |
+| oidc-body-schema | provider_id以外key、finish state/code欠落、code=""、codeにCR、code2049byte | 各422、state read/外部call/flow消費0。 |
+| oidc-body-limit | 4096byteを超えるbody | 400、state read/外部call/flow消費0。4096byte以内のschema-valid requestだけ後続へ進む。 |
+| oidc-rate-limit | 共通nowのlogin window count=10、start/finishを独立投入 | 429 Too many requests、count10不変、業務state/metadata/token call0、permission_denied audit1。audit失敗だけ500、拒否中もflow未消費。 |
+| oidc-api-token | Authorization=act_形式の有効API token、start/finish | 各401、flow/session生成0、token ownerをlogin userへ利用しない。 |
+| oidc-upstream-status | token503、token302 Location=別origin、token200 text/plainを独立投入 | 各502、call1/1/1、redirect先call0、flow0/session0、cookie消去。 |
+| oidc-upstream-size | token response262145byte、または10秒timeout | 各502、flow0/session0、body/timeout診断の外部露出0。 |
+| oidc-upstream-json | token200でid_token欠落/null/number/空string/duplicate key/trailing/invalid UTF-8を独立投入 | 各502/flow0/session0。access_tokenだけで成功しない。 |
+| oidc-signed-invalid | 再署名bundleのwant!=ok全40caseをtoken fakeへ個別投入 | 各401/flow0/session0、RSA署名自体は有効、詳細reason非露出。expiryはHTTP TTLではなく直接JWT oracleで境界検証する。 |
+| oidc-jwt-malformed | JWT署名bit反転、4segment、padding付きsegment、16385byteを独立投入 | 各401/session0、JWKS再取得0。 |
+| oidc-jwk-invalid | nの先頭bit除去で2047bit、e=3、秘密d追加、kid重複、33keyを独立投入 | start502、flow0、token0。unknownkidはfinish401/JWKS再取得0。 |
+| oidc-discovery-invalid | issuer末尾slash、別origin token endpoint、code/S256/RS256各非対応、public認証none非対応を独立投入 | start502、flow0、token0。authorization URLを返さない。 |
+| oidc-network-denied | DNS結果に127.0.0.1/10.0.0.1/169.254.1.1/224.0.0.1を各混在、TLS不一致/proxy環境も独立case | 禁止IPはdial0/502、TLS不一致502、proxy環境は無視して検証済IPだけへdial。実network0。 |
+| oidc-auth-io-fault | credential更新、access append、audit append、session entropyを各失敗 | 500/session0/ticket0、失敗後のwrite0、前段確定credential/logだけ保持、flow0。 |
+| oidc-start-response-fault | flow保存後response writerが失敗 | 新flow失効、旧flow復活0/session0、送信失敗token等を保存しない。 |
+| oidc-finish-response-fault | session/ticket追加後response writerが失敗 | 発行memory record削除、credential/log確定分保持、flow0、再finish401。 |
+| oidc-provider-revoke-session | 成功sessionでprovider無効化後にGET /api/status | 401/session削除、status state read0。local admin sessionは別caseで有効を維持。 |
+| oidc-sdk-ui | JSONのstart/finishをSDK経由、callback query code/state | SDK各1POST/credentials=same-origin/redirect=error、UIはcapture→replaceState→finish、直接fetch/trace/storage/DOM値0。 |
+| oidc-ui-invalid-callback | code2個/state2個/errorとcode混在/fragment token/未知queryを独立投入 | URL消去、finish0、一般失敗表示1、session0、再試行はstartから。 |
+
+このtableの分岐は別caseとして展開し、共通値の変更だけで入力を作る。capacityの既存flowはi=1..128としてstate=base64url(32byte big-endian整数i)、binding=base64url(32byte big-endian整数i+256)、その他provider/nonce/verifier/開始時刻は共通値とする。旧flow置換で使う2回目stateは上表の0x06固定値を使い、capacity用dataとは混ぜない。I/O faultは指定checkpointでEIOを返し、timeoutはfake clockを10秒進めてcontext deadlineを発火する。
+
+JWT4segmentはbaseline tokenへ `.x` を付加、padding例は第1segmentへ `=` を付加、署名反転はsignature byte0 xor1、過大JWTはASCII xを16385byteとする。JWK2047bit例はn復号256byteの先頭を0x7fへ置換、e=3はAw、d追加はd=AQAB、33keyは共通keyのkidだけfixture-extra-1..fixture-extra-33へ置換、重複kidは共通key2件。metadata非対応値はresponse_types_supported=["token"]、code_challenge_methods_supported=["plain"]、id_token_signing_alg_values_supported=["HS256"]、token_endpoint_auth_methods_supported=["client_secret_basic"]、別origin tokenはhttps://other.example.test/tokenとする。codeの不正control例は `bad\\rcode`、Origin不一致はhttps://other.example.test。unknown queryはx=1、callback重複はcode=a&code=b&state=共通state、error混在はcode=a&state=共通state&error=access_denied、fragment例は#access_token=x。
+
+confidential追加caseはprovider.client_secret_ref=.external_auth_secrets/fixture/00112233445566778899aabbccddeeff、当該fake file UTF-8 byte=fixture-client-secret/0600、他入力不変。token fakeはBasicの復号値をmemory内でclient_id:secretとの一致だけ比較し、header本体/secretをexpectedへ記録しない。token formは共通expected_token_formから変わらず、public caseではAuthorization不在。成功は200/session1、secret file/config byte不変。public metadataでnone省略、confidential metadataでbasic非対応はそれぞれstart502とする。
+
+各生成境界のlength fixtureは指定byte数のASCII xだけ（JSON wrapper込みbody長は空白paddingで調整）を使用し、曖昧な任意値や実時間sleepで代用しない。署名validity/claim受理と登録user lookupは別assertionとし、subject-255は対応external_subjectsも同じ255byteへ変更した場合だけHTTP成功にする。
+
+<a id="inhouse-iac-fixture-contract"></a>
+**内製IaC検証入口：** 将来rootは `testdata/setup/inhouse-iac/`、主owner setup、collaborator statefile/security、実装checkerは `components/setup/setup_test.go`。実装PRでは既存phase13 setup jobからこのcheckerへ到達させ、[開発Actions証跡](#development-actions-evidence-contract) のworkflow定義を別途承認して更新する。現在のworkflowを実行済みIaC検証とみなさない。manifest/CLI/stateは [setup詳細本文責務](setup.md#inhouse-iac-contract)、schemaは [statefile詳細本文責務](statefile.md#inhouse-iac-state)。
+
+共通入力manifestは `{"schema_version":1,"provider":"existing-vps-v1","target_id":"fixture-vps-1","resources":[{"id":"api","type":"service","unit":"adlaire-cicd-api.service","active":true,"enabled":true}]}`。clock=`2026-01-02T00:00:00Z`、identity.target_id=`fixture-vps-1`、systemctl初期観測はloaded/inactive/disabled。clock/command/lock/write/fsyncをfake順序制御し実root/systemctl/SSHを起動しない。success planのobservedは `[{"id":"api","type":"service","before":{"active":false,"enabled":false}}]`、changesは `[{"id":"api","action":"set_service","after":{"active":true,"enabled":true}}]`、期限は `2026-01-02T00:05:00Z`、digestは正本canonical algorithmで算出した固定入力値と独立再計算を比較する。
+
+| case | fake入力 / 必須expected |
+|---|---|
+| plan/apply | 観測→plan→同値再観測2回→enable→start→観測active/enabled。exit0、最終step applied/status succeeded、順序完全比較。 |
+| noop/drift | 初期active/enabled→changes=[]/drifted=false、全state byte/mtime不変、command変更0。 |
+| stale | plan後active=true/enabled=falseへ第三者変更、またはclock期限同秒→exit3/stale_plan、intent/変更command0。 |
+| rollback | success後after一致→disable→stop→inactive/disabled、rolled_back。第三者changed configは上書きせずexit5。 |
+| crash | intent確定前、enable後/start前、start後/観測前、applied保存前でそれぞれ停止→recoverはbefore/after/混在を区別、混在だけrecovery_required、command再発行0。 |
+| unsafe | type=vm、provider=terraform、unit=sshd.service、重複id、symlink、target違い、unknown key→exit2、state write/command0。 |
+
+各caseはresponse/state/effects/security/orderを共通manifestへ接続する。必須mutationはdigest照合skip、expiry<=を<へ変更、再観測skip、intent保存順反転、第三者変更上書き、未知type受理。raceは同じplanを2processでapplyするscheduleで一方だけが変更を開始すること、lock解放・全fake process終了を検証する。config-resource payloadとcrash/fault別expectedは [完全入力と中断oracle](#inhouse-iac-concrete-oracles)、時刻とplan改変は [適用受付境界入力](#inhouse-iac-admission-vectors) を参照し、製品実装の実行証跡が揃うまで完了扱いにしない。
+
+<a id="inhouse-iac-admission-vectors"></a>
+**IaC適用受付境界入力：** 正本は [`docs/details/setup.md` 詳細本文責務 plan整合と適用受付時刻](setup.md#inhouse-iac-admission)。下記は `TestIaCSpecificationAdmissionVectors` の文書入力であり、実clock/lock/systemctl/状態writeを起動しない。全key必須・null/unknown/duplicate拒否、schema_versionは整数1、modeはapply/noop/rollback/recover、残りfieldは正本Time型。4 checkpointはpreflight_at/lock_acquired_at/observations_finished_at/admission_atに対応し、execution_atはprepared開始後の観測用である。
+
+```json
+{
+  "schema_version": 1,
+  "mode": "apply",
+  "created_at": "2026-01-02T00:00:00Z",
+  "expires_at": "2026-01-02T00:05:00Z",
+  "preflight_at": "2026-01-02T00:00:01Z",
+  "lock_acquired_at": "2026-01-02T00:00:02Z",
+  "observations_finished_at": "2026-01-02T00:00:03Z",
+  "admission_at": "2026-01-02T00:00:04Z",
+  "execution_at": "2026-01-02T00:05:01Z"
+}
+```
+
+| case ID / 差分 | 文書oracleの期待結果 / 将来実行fixtureの必須観測 |
+|---|---|
+| apply-baseline / noop-baseline | baselineとmode=noopはok。applyはpreparedを1回開始、noopはjournal/snapshot0。 |
+| lower-inclusive / last-second | 4 checkpointすべてcreated_at、またはadmission_at=00:04:59Zはok。execution_atが期限後でも同一operationを継続し、新id/新apply0。 |
+| rollback-expired / recover-expired | modeを対応値、4 checkpointを00:05:01Zへ変更してok。実行fixtureは元plan期限だけの拒否0。 |
+| checkpoint-before / checkpoint-equal / checkpoint-after | 各checkpointを独立に2026-01-01T23:59:59Z / 2026-01-02T00:05:00Z / 00:05:01Zへ変更した12caseはstale_plan。prepared/resource変更/journal/snapshot0、id=null/status=failed/exit3。 |
+| ttl-short / ttl-long | expires_atを00:04:59Z / 00:05:01Zへ変更してinvalid_input/exit2。 |
+| invalid-time / offset-time / fractional-time / pre-epoch / invalid-mode | created_atをnot-time / 2026-01-02T00:00:00+00:00 / 2026-01-02T00:00:00.1Z / 1969-01-02T00:00:00Z、またはmode=resumeへ変更してinvalid_input/exit2。 |
+| schema-unknown / schema-missing / schema-null / schema-duplicate / schema-utf8 / schema-trailing | x=true追加 / execution_at削除 / mode=null / mode重複 / 末尾不正UTF-8 / 追加JSON値はschema拒否。実行0。 |
+| plan-after / plan-missing / plan-duplicate / plan-order / plan-unknown | [2resource固定plan](#inhouse-iac-concrete-oracles) のchanges先頭after.allow_http=false / 末尾削除 / 先頭複製 / 逆順 / id=otherへ変更。各々自己hashとconfirmationを再計算してもinvalid_input。変更command0。 |
+| plan-observed-missing / plan-observed-order / plan-observed-type / plan-before-key | 同planのobserved末尾削除 / 逆順 / api.type=config / api.before.extra=true。再hash後もinvalid_input。 |
+| plan-noop-extra / plan-noop-valid | api.beforeをtrue/trueへ変更。元api changeが残るとinvalid_input、api changeを除去した再hash planはok。configだけ1変更として扱う。 |
+| plan-self-hash / plan-manifest-hash / plan-target | 自己hashを0×64 / manifest_sha256を0×64 / target_idをotherへ変更して拒否。hash一致を意味整合の代替にしない。 |
+
+文書oracleのokは受付入力の整合だけを表し、実際のapply/rollback/recover成功ではない。plan caseはmanifest/before/desiredの固定ASCII入力だけを独立比較し、全production schemaの検証済み宣言にしない。実行fixtureではlockの取得まで時刻を進める場合、再観測の最終応答で進める場合、prepared直前に進める場合を別fake transcriptとし、clock errorはstate_failed/exit4・副作用0、10秒lock timeoutはbusy/exit3と比較する。時間を固定したpreflight成功だけで後段を代用しない。
+
+assertion idは `setup.iac-admission.<case-id>.result` に固定し、診断に正本anchor/期待code/実code/再現commandを含める。schema caseも固定case名を使う。必須文書oracle mutationはlock/観測完了/最終受付の各時刻判定skip、上限一致受理、changes比較skip、常時ok、常時invalid_input。全変異は隔離copyだけで行い、baselineの正例と負例で検出する。将来製品fixtureは既存のrace/cleanup証跡へ接続し、文書oracleを実OS排他・副作用の証跡へ換算しない。
+
+<a id="inhouse-iac-concrete-oracles"></a>
+**IaC config/service完全入力と中断oracle：** 次のJSONは上のservice単独caseに加える2resourceの固定入力である。各fileはcanonical JSON byte（末尾LFなし）、CLI入力はfake root所有0600、configのowner/group/modeはJSONのmetadata、config親はroot/991/0750。実OS所有権・systemctlは変更しない。toolchains=[]はjobを実行しないcoordinatorの入力として使用し、worker能力のfixtureへ転用しない。command fakeはsetupの固定argvと環境をexact比較し、未登録argvは即失敗する。下表の省略項目はこのJSONの値を保持し、表にないfile write、command、network、sleepは0件とする。
+
+```json
+{
+  "schema_version": 1,
+  "now": "2026-01-02T00:00:00Z",
+  "operation_id": "iac_00000000000000000000000001",
+  "identity": {
+    "schema_version": 1,
+    "target_id": "fixture-vps-1"
+  },
+  "config_path": "/etc/adlaire-ci/cicd/coordinator-main.json",
+  "config_metadata": {
+    "uid": 0,
+    "gid": 991,
+    "mode": "0640",
+    "nlink": 1
+  },
+  "before_config": {
+    "schema_version": 1,
+    "profile": "cicd-v1",
+    "role": "coordinator",
+    "id": "main",
+    "allowed_projects": [],
+    "allowed_environments": [],
+    "user": "adlaire-cicd",
+    "state_dir": "/var/lib/adlaire-ci/coordinator/main",
+    "release_id": "V.1.0.0",
+    "listen": "127.0.0.1:9321",
+    "tls_cert_file": null,
+    "tls_key_file": null,
+    "allow_http": false,
+    "worker_slots": 1,
+    "toolchains": [],
+    "ssh_authorized_key_file": null
+  },
+  "before_canonical_sha256": "a7dbfd1f06913f8a2bac4b1c7e1031e927a28c861196455617534e563449f0d1",
+  "after_canonical_sha256": "cb4d35943f79df39c14c5f9b2885a7437d6b189b25abf532be8390064d6ee451",
+  "manifest": {
+    "schema_version": 1,
+    "provider": "existing-vps-v1",
+    "target_id": "fixture-vps-1",
+    "resources": [
+      {
+        "id": "main",
+        "type": "config",
+        "role": "coordinator",
+        "config": {
+          "schema_version": 1,
+          "profile": "cicd-v1",
+          "role": "coordinator",
+          "id": "main",
+          "allowed_projects": [],
+          "allowed_environments": [],
+          "user": "adlaire-cicd",
+          "state_dir": "/var/lib/adlaire-ci/coordinator/main",
+          "release_id": "V.1.0.0",
+          "listen": "127.0.0.1:9321",
+          "tls_cert_file": null,
+          "tls_key_file": null,
+          "allow_http": true,
+          "worker_slots": 1,
+          "toolchains": [],
+          "ssh_authorized_key_file": null
+        }
+      },
+      {
+        "id": "api",
+        "type": "service",
+        "unit": "adlaire-cicd-api.service",
+        "active": true,
+        "enabled": true
+      }
+    ]
+  },
+  "plan": {
+    "schema_version": 1,
+    "target_id": "fixture-vps-1",
+    "manifest_sha256": "77591088e3e13b2ccff82c1b77be73cc310b262f9dd17c799a2304aad5886831",
+    "created_at": "2026-01-02T00:00:00Z",
+    "expires_at": "2026-01-02T00:05:00Z",
+    "observed": [
+      {
+        "id": "api",
+        "type": "service",
+        "before": {
+          "active": false,
+          "enabled": false
+        }
+      },
+      {
+        "id": "main",
+        "type": "config",
+        "before": {
+          "sha256": "a7dbfd1f06913f8a2bac4b1c7e1031e927a28c861196455617534e563449f0d1",
+          "uid": 0,
+          "gid": 991,
+          "mode": "0640"
+        }
+      }
+    ],
+    "changes": [
+      {
+        "id": "main",
+        "action": "replace_config",
+        "after": {
+          "schema_version": 1,
+          "profile": "cicd-v1",
+          "role": "coordinator",
+          "id": "main",
+          "allowed_projects": [],
+          "allowed_environments": [],
+          "user": "adlaire-cicd",
+          "state_dir": "/var/lib/adlaire-ci/coordinator/main",
+          "release_id": "V.1.0.0",
+          "listen": "127.0.0.1:9321",
+          "tls_cert_file": null,
+          "tls_key_file": null,
+          "allow_http": true,
+          "worker_slots": 1,
+          "toolchains": [],
+          "ssh_authorized_key_file": null
+        }
+      },
+      {
+        "id": "api",
+        "action": "set_service",
+        "after": {
+          "active": true,
+          "enabled": true
+        }
+      }
+    ],
+    "sha256": "a184604a39947060afba533395847318f9d676385f88cc5cdce9a4f1acbf2eb2"
+  },
+  "apply_confirmation": {
+    "target_id": "fixture-vps-1",
+    "plan_sha256": "a184604a39947060afba533395847318f9d676385f88cc5cdce9a4f1acbf2eb2",
+    "action": "apply"
+  },
+  "rollback_confirmation": {
+    "target_id": "fixture-vps-1",
+    "plan_sha256": "a184604a39947060afba533395847318f9d676385f88cc5cdce9a4f1acbf2eb2",
+    "action": "rollback"
+  }
+}
+```
+
+success journalはdirection=applyと上記plan/id/target/created_at=updated_at=nowを持ち、stepsはchanges順のmain/api、各before/afterはそれぞれplan.observed/changesの対応object、main.snapshot_sha256=before_canonical_sha256、api.snapshot_sha256=null。prepared時はpending/pending・step_index=0、成功時applied/applied・step_index=2/status=succeeded。snapshot fileはbefore_configのcanonical byteそのもの（同じ固定digest）、元configのuid/gid/0640はapply/rollback後とも不変。stdoutは `{"operation_id":"iac_00000000000000000000000001","status":"succeeded","code":"ok"}\n`、stderrは `ok\n`。plan/hashの独立再計算は `TestAdditionalIaCSpecificationVectors` が担い、製品applyの実行済み証跡ではない。
+
+| case ID | 具体fake停止点・入力差分 | response / journal / resource / effects expected |
+|---|---|---|
+| iac-config-plan | before_config、service=false/false | 上記planの全keyとhash。configとservice観測各1、write/変更command0、全byte/mtime不変。 |
+| iac-config-apply | before→afterをwrite、service enable→start、全readback正常 | 全resource再観測→lock→全再観測→prepared→snapshot sync→main intent→main precondition→config replace/readback→main applied→api intent→api precondition→enable→start→service readback→api applied→succeeded。stdout上記、exit0。 |
+| iac-config-noop | initial config=manifest config、service=true/true | changes=[]、drifted=false/resource_ids=[]、result operation_id=null/status=succeeded/code=noop/exit0。journal/snapshot作成0。 |
+| iac-config-drift | 共通beforeでiac-drift | drifted=true/resource_ids=["api","main"]、manifest_sha256上記、write0。 |
+| iac-config-stale | 再観測config.allow_httpが第三者によりtrue、またはnow=00:05:00Z | operation_id=null/status=failed/code=stale_plan/exit3。prepared/command0。 |
+| iac-config-snapshot-fault | prepared成功、snapshot open/write/sync/rename/parent-syncを各独立fault | 変更開始0。rename前はsnapshot不在、後は完全before byteだけ。安全にjournal failed確定ならexit4/state_failed、sync成否不明ならexit5/recovery_required。 |
+| iac-config-intent-fault | main intentをrename前に失敗 | 元config不変、api=false/false、main/api pending、status=failed/step_index=0/exit4/state_failed。 |
+| iac-config-replace-before | main intent確定、config rename前fault | 元config完全byte/metadata不変。recoverでmain pending、api pending/status=failed/index0、変更command0。fault時exit4/state_failed。 |
+| iac-config-replace-after | config rename成功、parent-sync失敗 | 新config全byte/metadata、api=false/false。fault時exit5/recovery_required。recoverでmain applied/api pending/status=failed/index1/exit0、resource変更0。 |
+| iac-config-applied-save-fault | config読戻し成功後、main applied journal rename前fault | main intent、config=after、api=false/false。recoverの結果は前行と同じ。 |
+| iac-config-third-party | main intent保存後preconditionでconfig.release_id="V.2.0.0" | 第三者byteを保持、API service変更0、recovery_required/exit5、rollbackも上書き禁止。 |
+| iac-crash-before-prepared | prepared rename前にprocessを停止 | journal/snapshot/resource全て旧値。recover対象id不在はexit2/invalid_input、apply再実行は新id。 |
+| iac-crash-prepared | prepared確定後snapshot前停止 | journal prepared/pending/pending/index0。recoverはfailed/index0/exit0/ok、config before/service=false,false、snapshot未作成を許容。 |
+| iac-crash-snapshot | snapshot sync後intent前停止 | recoverは前行と同じ。valid snapshotを保持し削除しない。 |
+| iac-crash-main-intent | main intent後config変更前停止 | recoverはmain pending/api pending/failed/index0、before byte維持。 |
+| iac-crash-main-replace | config変更後applied保存前停止 | recoverはmain applied/api pending/failed/index1、config after/service=false,false、command0。 |
+| iac-crash-api-intent | main applied、api intent直後停止 | recoverはmain applied/api pending/failed/index1、command0。 |
+| iac-crash-api-enable | service enabled=true/active=falseで停止 | before(false,false)/after(true,true)どちらでもないためrecovery_required/index1/exit5、start/disable/stopの自動発行0。 |
+| iac-crash-api-start | service=true,true、api applied保存前停止 | recoverはapplied/applied/succeeded/index2/exit0。command0。 |
+| iac-rollback-success | 成功後にrollback_confirmation | direction=rollback/rolling_back sync→api intent→disable→stop→readback→api reverted→main intent→元config復元/readback→main reverted→rolled_back/index0。exit0/ok、snapshot保持。 |
+| iac-rollback-crash | api復元後reverted保存前停止、またはmain復元後保存前停止 | 前者recoverはmain applied/api reverted/failed/index1、後者reverted/reverted/rolled_back/index0。resource変更0、明示rollbackは残appliedだけ処理。 |
+| iac-rollback-foreign | rollback前config.release_id="V.2.0.0" | preflight拒否recovery_required/exit5、serviceも変更0。 |
+| iac-rollback-repeat | rolled_back/reverted/reverted、またはfailed/pending/pendingでbefore全一致 | 同status/id・exit0/noop、journal byte/updated_at/direction不変、変更command0。 |
+| iac-rollback-unresolved | prepared/applying/rolling_back/recovery_required、または未確定intentありを独立入力 | busy/exit3、journal/resource不変。recoverでfailed/succeeded/rolled_backへ確定後にだけ明示再要求する。 |
+| iac-rollback-other-operation | 対象succeededと別idのrecovery_requiredを配置 | busy/exit3、両journal不変、変更command0。対象だけを照合して別operationを無視しない。 |
+| iac-recovery-direction | main applied/api intentのrecovery_requiredへdirection=apply、別caseはmain intent/api revertedへdirection=rollback、観測は全afterまたは全before | applyは対応forward行へ確定、rollbackは対応reverse行へ確定、resource command0。direction欠落/不正status組はschema拒否、実値から方向推測0。 |
+| iac-snapshot-raw | before_configのcanonical byteへ先頭ASCII space2byteと末尾LF1byteを付加してfile化、canonical値は不変 | plan観測hashは同じ、snapshot digestは元raw byteの独立SHA256、rollbackは元raw byteへ一致。canonical digestとraw digestの混同を検出する入力。 |
+| iac-lock-race | 2processともpreflight後、process1だけlock取得 | process2はbusy/exit3/command0/journal0。process1完了後も旧planの再使用はstale_plan。両process終了/lock解放確認。 |
+| iac-unsafe-metadata | config mode0600、uid991、nlink2、symlinkを別case | unsafe_input/exit2、全resource write/変更command0。 |
+| iac-invalid-input | type=vm/provider=terraform/unit=sshd.service/重複id/target違い/unknown keyを別case | type/provider/unknown/重複はinvalid_input、unit/metadataはunsafe_input、targetはtarget_mismatch、全exit2/write0/変更command0。 |
+
+fault caseのstdoutは同じresult型へ表のid/status/codeを代入したJSON1個+LF、stderrはcode+LFだけ。prepared前idはnull、journal確定後は固定operation id。resourceのbefore/afterは具体JSONへの参照であり未束縛symbolではない。real crashの代わりにfake checkpointで終了を注入し、再起動時はmemoryを全破棄して保存済みbyteだけから復旧する。
+
+<a id="additional-management-concrete-oracles"></a>
+**追加管理APIの具体oracle：** 次のcaseは上の既存fixture群へ含める将来の実行入力/expectedであり、現時点の文書checker成功を製品機能の合格へ換算しない。共通clockは `2026-01-02T00:00:00Z`。queue入力と集計入力は [固定具体入力](#additional-management-fixed-inputs) のJSONを使用する。各caseのtime/entropy/lock/I/Oはfakeで順序制御し、実sleepで競合を待たない。
+
+| fixture群 / case | 固定入力・interleaving | 必須expected / mutation |
+|---|---|---|
+| queue-retention-webhook / empty-reorder | queued=[],queue_order=[]。SDK reorderQueue([])→API。 | HTTP1回/bodyのqueue_ids=[]、200、全state/log byte不変。空配列TypeErrorへの変異をkill。 |
+| queue-retention-webhook / manual-priority | q20260102000000=low/created_seq1、q20260102000000-001=urgent/created_seq2。reorder=[q20260102000000,q20260102000000-001]後にrunner再起動。 | 次activeはq20260102000000、q20260102000000-001はwaiting。priority/seq/payload不変、queue_order=[q20260102000000-001]。priority再sort変異をkill。 |
+| queue-retention-webhook / dequeue-cancel-race | runnerのq20260102000000 active移動commit後にcancel lockを解放。逆順も別schedule。 | runner先ならcancel409でactive維持。cancel先ならq20260102000000未実行、queuedから除去、build_history/logなし、audit/event各1回。lost update/二重実行をkill。 |
+| users-roles-success / last-admin-race | [認可固定入力](#additional-management-authorization-inputs) のuser-last-admin-raceを使用する。actor/target/lock順を固定し、後requestの401と409を区別する。 | 存続actor順は200/409、自己disable先行順は200/401、active admin1件を維持する。後行主state/event不変、401認証logだけは正本どおり。checkをlock外へ移す変異をkill。 |
+| auth-permission-denied / route-closure | API追加route表の全method/pathについてpermissionを欠くactorを使用。version/shareの認証除外は各正本を適用。 | protected routeは403、対象業務state no-read/no-write。users/{id}/roles/{id}/projects/{id}/template deleteを含める。未登録prefix継承をkill。 |
+| request-validation / json-duplicates | 同一objectにenabledを2回、trailing JSON、invalid UTF-8をそれぞれ投入。 | 各400、後続状態read/write/外部callなし。最後のkey採用への変異をkill。 |
+| cache-share-diff / stats-boundaries | b20260101000000/b20260102000000はfrom/to同時刻境界内、status=success/failure_build、duration=10/null。b20260102000001はto+1秒。 | summary={total:2,status_counts:{failure_build:1,success:1},duration_count:1,duration_sum_seconds:10}。b20260102000001不在、build/day/monthの同じ総数。両端排他/欠損durationの0件加算をkill。 |
+| cache-share-diff / prometheus-gauges | running=true、queued2、有効history3、pending1。 | 4family、値1/2/3/1、順/HELP/TYPE gauge/末尾LF byte比較。label/counter混入をkill。 |
+| cache-share-diff / stale-fill | readがgeneration7で停止→更新で8→purge→read再開。 | generation7のentryは保存しない、残ってもhit不可。cache missで最新handlerを呼ぶ。generation再確認削除をkill。 |
+| cache-share-diff / cache-atomic-fault | 128entry、body262144/262145byte、rename前/後失敗、clock逆行。 | 閾値内だけ保存、eviction順固定、前失敗は旧全体/後失敗は新全体。partial entry削除なし、原response維持、旧世代復活なし。 |
+| cache-share-diff / stream-bounds | 128/129未送信、65536/65537byte、認証失効をkeepalive直前、write timeout10秒。 | 上限超過だけerror/close、失効後eventなし、全reader/timer/goroutine終了、secret診断なし。閾値+1/auth再検証skipをkill。 |
+| config-state-order / snapshot-diff-null | 左filesのa=null/b=[1,2]、右a欠落/b=[2,1]/c=null、keyに~/を含むobject。 | removed/modified/addedを区別し、arrayは1差分、path escapeをbyte比較、secretはmarkerだけ。null/欠損同一視とarray sortをkill。 |
+| config-state-order / auto-snapshot-fault | enabled=true/max_count1、既存0→1、次変更は満杯。snapshot write前/後、主state writeでfault。 | snapshot確定前は主state不変、主state失敗でも旧設定snapshot保持。満杯は変更拒否、disable-only例外以外のwriteなし。snapshotを主state後へ移す変異をkill。 |
+
+上表のqueue/build識別子と主要入力は固定済みだが、全fixture群・全異常系の具体payload/expected完了を意味しない。製品実装時は各caseを対象ownerと [requirement coverage ledger](#test-requirement-coverage-ledger-contract)、[18 record closure set](#test-verification-closure-record-set-contract) へ接続し、expectedを実装出力から自動承認しない。
+
 追加管理 API fixture の `manifest.json.assertions` は次表に固定する。複数値は [fixture 証跡責務共通 manifest schema 固定契約](#sec-27-f-8) の列挙順で記録する。
 
 | fixture 名 | 必須 assertions |
@@ -4839,6 +7445,2055 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | `additional-management-sdk-transport` | `sdk-trace`、`sdk-return`、`sdk-error`、`secret-mask` |
 | `additional-management-ui-flow` | `sdk-trace`、`ui-trace`、`ui-dom`、`secret-mask`、`order` |
 | `additional-management-cache-share-diff` | `response`、`state`、`logs`、`effects`、`secret-mask`、`order`、`idempotency` |
+
+<a id="additional-management-fixed-inputs"></a>
+**queue・集計・差分の固定具体入力：** JSONの各keyは同じnamed caseのinput/expectedへそのまま展開する。schemaの最小値から不足keyを推測生成しない。queueの再起動caseはこのbuild_stateを保存し、reorder_request成功後にAPI/runner memoryを破棄して再読込する。metrics caseだけはbuild_state.running=true/current_build_id=b20260102000002へ差し替え、notify pending adapterは有効1件を返す。statsのhistoryはfull record入力であり、read adapterのsliceをhandler側で捏造しない。diff_left/rightは再帰比較primitiveへのobject入力で、schema-invalid snapshotをHTTPへ投入するfixtureではない。
+
+```json
+{
+  "now": "2026-01-02T00:00:00Z",
+  "build_state": {
+    "running": false,
+    "current_build_id": null,
+    "active_queue_entry": null,
+    "queued": [
+      {
+        "id": "q20260102000000",
+        "trigger": "manual",
+        "queued_at": "2026-01-02T00:00:00Z",
+        "requested_by": "admin",
+        "priority": "low",
+        "created_seq": 1,
+        "payload": {
+          "force": false
+        }
+      },
+      {
+        "id": "q20260102000000-001",
+        "trigger": "manual",
+        "queued_at": "2026-01-02T00:00:00Z",
+        "requested_by": "admin",
+        "priority": "urgent",
+        "created_seq": 2,
+        "payload": {
+          "force": true
+        }
+      }
+    ],
+    "queue_order": [],
+    "last_started_at": null,
+    "last_finished_at": null,
+    "weekly_summary_last_sent_at": null,
+    "weekly_summary_sent_date": null
+  },
+  "reorder_request": {
+    "method": "POST",
+    "path": "/api/queue/reorder",
+    "body": {
+      "queue_ids": [
+        "q20260102000000",
+        "q20260102000000-001"
+      ]
+    }
+  },
+  "history": [
+    {
+      "id": "b20260101000000",
+      "status": "success",
+      "trigger": "manual",
+      "branch": "main",
+      "target_file": "README.md",
+      "started_at": "2025-12-31T23:59:50Z",
+      "finished_at": "2026-01-01T00:00:00Z",
+      "duration_seconds": 10,
+      "commit_sha": "0123456789abcdef0123456789abcdef01234567",
+      "blob_sha": "123456789abcdef0123456789abcdef0123456789a",
+      "pages": null,
+      "warnings": 0,
+      "retry_count": 0,
+      "commit_status_state": null,
+      "rollback_from": null,
+      "snapshot_id": null,
+      "failure_category": null,
+      "chain_run_id": null,
+      "output_size_bytes": null,
+      "output_sha256": null,
+      "size_warn": false,
+      "flagged": false,
+      "tags": [],
+      "comment": null,
+      "error": null
+    },
+    {
+      "id": "b20260102000000",
+      "status": "failure_build",
+      "trigger": "manual",
+      "branch": "main",
+      "target_file": "README.md",
+      "started_at": "2026-01-02T00:00:00Z",
+      "finished_at": "2026-01-02T00:00:00Z",
+      "duration_seconds": null,
+      "commit_sha": "0123456789abcdef0123456789abcdef01234567",
+      "blob_sha": "123456789abcdef0123456789abcdef0123456789a",
+      "pages": null,
+      "warnings": 0,
+      "retry_count": 0,
+      "commit_status_state": null,
+      "rollback_from": null,
+      "snapshot_id": null,
+      "failure_category": "pipeline_exit",
+      "chain_run_id": null,
+      "output_size_bytes": null,
+      "output_sha256": null,
+      "size_warn": false,
+      "flagged": false,
+      "tags": [],
+      "comment": null,
+      "error": "pipeline failed"
+    },
+    {
+      "id": "b20260102000001",
+      "status": "success",
+      "trigger": "manual",
+      "branch": "main",
+      "target_file": "README.md",
+      "started_at": "2026-01-02T00:00:01Z",
+      "finished_at": "2026-01-02T00:00:01Z",
+      "duration_seconds": 0,
+      "commit_sha": "0123456789abcdef0123456789abcdef01234567",
+      "blob_sha": "123456789abcdef0123456789abcdef0123456789a",
+      "pages": null,
+      "warnings": 0,
+      "retry_count": 0,
+      "commit_status_state": null,
+      "rollback_from": null,
+      "snapshot_id": null,
+      "failure_category": null,
+      "chain_run_id": null,
+      "output_size_bytes": null,
+      "output_sha256": null,
+      "size_warn": false,
+      "flagged": false,
+      "tags": [],
+      "comment": null,
+      "error": null
+    }
+  ],
+  "stats_request": {
+    "method": "GET",
+    "path": "/api/stats/export?from=2026-01-01T00%3A00%3A00Z&to=2026-01-02T00%3A00%3A00Z&granularity=build"
+  },
+  "stats_response": {
+    "generated_at": "2026-01-02T00:00:00Z",
+    "range": {
+      "from": "2026-01-01T00:00:00Z",
+      "to": "2026-01-02T00:00:00Z",
+      "granularity": "build",
+      "target": null
+    },
+    "summary": {
+      "total": 2,
+      "status_counts": {
+        "failure_build": 1,
+        "success": 1
+      },
+      "duration_count": 1,
+      "duration_sum_seconds": 10
+    },
+    "items": [
+      {
+        "id": "b20260101000000",
+        "finished_at": "2026-01-01T00:00:00Z",
+        "status": "success",
+        "duration_seconds": 10
+      },
+      {
+        "id": "b20260102000000",
+        "finished_at": "2026-01-02T00:00:00Z",
+        "status": "failure_build",
+        "duration_seconds": null
+      }
+    ]
+  },
+  "stats_day_items": [
+    {
+      "bucket_start": "2026-01-01T00:00:00Z",
+      "total": 1,
+      "status_counts": {
+        "success": 1
+      },
+      "duration_count": 1,
+      "duration_sum_seconds": 10
+    },
+    {
+      "bucket_start": "2026-01-02T00:00:00Z",
+      "total": 1,
+      "status_counts": {
+        "failure_build": 1
+      },
+      "duration_count": 0,
+      "duration_sum_seconds": 0
+    }
+  ],
+  "stats_month_items": [
+    {
+      "bucket_start": "2026-01-01T00:00:00Z",
+      "total": 2,
+      "status_counts": {
+        "failure_build": 1,
+        "success": 1
+      },
+      "duration_count": 1,
+      "duration_sum_seconds": 10
+    }
+  ],
+  "metrics_body": "# HELP adlaire_ci_build_running Build running.\n# TYPE adlaire_ci_build_running gauge\nadlaire_ci_build_running 1\n# HELP adlaire_ci_queue_entries Waiting queue entries.\n# TYPE adlaire_ci_queue_entries gauge\nadlaire_ci_queue_entries 2\n# HELP adlaire_ci_history_entries Retained history entries.\n# TYPE adlaire_ci_history_entries gauge\nadlaire_ci_history_entries 3\n# HELP adlaire_ci_notify_pending Pending notifications.\n# TYPE adlaire_ci_notify_pending gauge\nadlaire_ci_notify_pending 1\n",
+  "diff_left": {
+    "a": null,
+    "b": [
+      1,
+      2
+    ],
+    "~/": {
+      "v": 1
+    }
+  },
+  "diff_right": {
+    "b": [
+      2,
+      1
+    ],
+    "c": null,
+    "~/": {
+      "v": 2
+    }
+  },
+  "diff_changes": [
+    {
+      "path": "/a",
+      "change": "removed",
+      "left": null,
+      "right": null
+    },
+    {
+      "path": "/b",
+      "change": "modified",
+      "left": [
+        1,
+        2
+      ],
+      "right": [
+        2,
+        1
+      ]
+    },
+    {
+      "path": "/c",
+      "change": "added",
+      "left": null,
+      "right": null
+    },
+    {
+      "path": "/~0~1/v",
+      "change": "modified",
+      "left": 1,
+      "right": 2
+    }
+  ]
+}
+```
+
+empty-reorderはqueued/queue_orderをともに[]に置き換え、requestは `{"queue_ids":[]}`、responseは `{"message":"Queue reordered","queue_ids":[]}`。manual-priorityは上記requestで保存後、runnerの1回取得でactive_queue_entryがq20260102000000の全objectと一致、queuedはq20260102000000-001の全objectだけ、queue_order=["q20260102000000-001"]となる。取消成功responseは `{"message":"Queue entry cancelled","queue_id":"q20260102000000","status":"cancelled"}`、再取消404、active競合409は `{"error":"Conflict"}`。各失敗は主state byte不変で、許可された共通security log以外のaudit/eventを追加しない。stats day/monthは同じrequestのgranularityだけ変更し、generated_at/range以外の期待値は上記各itemsへ固定する。
+
+<a id="additional-management-state-inputs"></a>
+**snapshot/template/project/再送の固定具体入力：** 次のJSONは各caseで新しいfake state-dirへ展開する入力である。runtime pathはfake root下だけ、file0600/directory0700、初期logは空、clockはnow固定。共通actorは [OIDC固定入力](#oidc-http-concrete-oracles) のlocal admin idへ束縛した有効sessionとし、session tokenは0x04を32byteのlowercase hex、session_idは0x07を16byte、権限hashはsecurity正本のadmin配列から独立計算する。認証用state/role/userは同入力を再利用する。snapshot.filesは13設定fileの完全な入力集合で、secret markerを実secret byteとして書かない。snapshot testはこのfilesを初期stateへ展開して作成結果をsnapshotと比較する。templateは作成前templates=[]、apply/delete時はこのrecord1件。projectは検証済repository_rootとmain branch targetを使い、directory statはAPI実行uid/0755、親は検証済root、clone/fetch/commandは0。再送testだけnotify_configを下記channelへ差し替え、notify_payloadを同delivery idの耐久payload fileへ保存する。ledger初期records=[]、source logはnotify_delivery1行、time idの既存衝突はsource delivery1件だけ、乱数idの16byte値はbig-endian整数1。外部送信fakeはHTTP status=204、実DNS/HTTPなし。
+
+```json
+{
+  "now": "2026-01-02T00:00:00Z",
+  "repository_root": "/fixture/repository",
+  "initialized_at": "2026-01-02T00:00:00Z",
+  "snapshot": {
+    "id": "cfgsnap_20260102000000",
+    "label": "fixture",
+    "created_at": "2026-01-02T00:00:00Z",
+    "created_by": "usr_00000000000000000000000001",
+    "files": {
+      ".server_config": {},
+      ".notify_config": {
+        "channels": [],
+        "on": [],
+        "summary": {
+          "enabled": false,
+          "interval": "weekly",
+          "hour": 9,
+          "day_of_week": 1
+        }
+      },
+      ".repo_config": {
+        "owner": "fqwink",
+        "repo": "Build-Scripts",
+        "updated_at": "2026-01-02T00:00:00Z"
+      },
+      ".branch_config": {
+        "branch_targets": [
+          {
+            "branch": "main",
+            "target_file": "README.md",
+            "target_files": [
+              "README.md"
+            ],
+            "sha_file": "/fixture/state/.last_sha",
+            "src": "/fixture/source/README.md",
+            "out": "/fixture/output/site",
+            "approval_required": false,
+            "env": {},
+            "deploy_targets": []
+          }
+        ]
+      },
+      ".access_control": {
+        "allow": []
+      },
+      ".hooks": {
+        "hooks": []
+      },
+      ".alert_rules": {
+        "rules": []
+      },
+      ".tag_rules": {
+        "rules": []
+      },
+      ".pipeline_config": {
+        "extra_args": [],
+        "env": {}
+      },
+      ".dashboard_layout": {
+        "widgets": [
+          "status",
+          "stats",
+          "schedule",
+          "alerts",
+          "disk",
+          "rate_limit",
+          "snapshots",
+          "maintenance",
+          "queue"
+        ]
+      },
+      ".smtp_config": {
+        "host": null,
+        "port": 587,
+        "user": null,
+        "tls": true,
+        "from": null,
+        "to": [],
+        "on": [],
+        "enabled": false
+      },
+      ".webhook_secret": {
+        "secret_set": false,
+        "value": null
+      },
+      ".smtp_secret": {
+        "secret_set": false,
+        "value": null
+      }
+    },
+    "sha256": "6d21ac0c8cbd9a2e802717f11ec3a7a1d9fbffb17e91d8042a9f4331a061bcc5"
+  },
+  "template": {
+    "id": "tmpl_00000000000000000000000001",
+    "name": "Fixture layout",
+    "description": null,
+    "values": {
+      "pipeline_config": {
+        "extra_args": [],
+        "env": {
+          "FIXTURE": "1"
+        }
+      },
+      "dashboard_layout": {
+        "widgets": [
+          "stats",
+          "status"
+        ]
+      }
+    },
+    "created_at": "2026-01-02T00:00:00Z",
+    "updated_at": "2026-01-02T00:00:00Z"
+  },
+  "projects": {
+    "projects": [
+      {
+        "id": "default",
+        "name": "Default",
+        "status": "active",
+        "root": "/fixture/repository",
+        "branch": "main",
+        "default": true,
+        "created_at": "2026-01-02T00:00:00Z",
+        "updated_at": "2026-01-02T00:00:00Z"
+      }
+    ]
+  },
+  "notify_config": {
+    "channels": [
+      {
+        "id": "n1",
+        "type": "webhook",
+        "label": "Fixture",
+        "enabled": true,
+        "on": [
+          "failure"
+        ],
+        "config": {
+          "url": "https://notify.example.test/hook",
+          "payload_template": null,
+          "secret": null
+        },
+        "retry_count": 10,
+        "retry_interval_seconds": 60
+      }
+    ],
+    "on": [
+      "failure"
+    ],
+    "summary": {
+      "enabled": false,
+      "interval": "weekly",
+      "hour": 9,
+      "day_of_week": 1
+    }
+  },
+  "notify_delivery": {
+    "id": "ntfy20260102000000",
+    "at": "2026-01-02T00:00:00Z",
+    "event": "failure",
+    "channel_id": "n1",
+    "channel_type": "webhook",
+    "payload_sha256": "3ab1644e8b1fcc545756baa961ec40b34cdeabd048650c420887fbdbbed7eebb",
+    "result": "failure",
+    "attempt": 1,
+    "http_status": 503,
+    "error_code": "http_5xx",
+    "error": "HTTP 503"
+  },
+  "notify_payload": {
+    "delivery_id": "ntfy20260102000000",
+    "channel_id": "n1",
+    "event": "failure",
+    "payload": {
+      "event": "failure",
+      "build_id": "b20260102000000",
+      "status": "failure_build",
+      "branch": "main",
+      "trigger": "manual",
+      "created_at": "2026-01-02T00:00:00Z"
+    },
+    "payload_sha256": "3ab1644e8b1fcc545756baa961ec40b34cdeabd048650c420887fbdbbed7eebb",
+    "created_at": "2026-01-02T00:00:00Z"
+  },
+  "resend_expected": {
+    "schema_version": 1,
+    "records": [
+      {
+        "id": "rsnd_00000000000000000000000001",
+        "source_delivery_id": "ntfy20260102000000",
+        "delivery_id": "ntfy20260102000000-001",
+        "payload_sha256": "3ab1644e8b1fcc545756baa961ec40b34cdeabd048650c420887fbdbbed7eebb",
+        "channel_id": "n1",
+        "status": "queued",
+        "queued_at": "2026-01-02T00:00:00Z",
+        "updated_at": "2026-01-02T00:00:00Z",
+        "attempt": 0,
+        "next_attempt_at": "2026-01-02T00:00:00Z",
+        "result_code": null
+      }
+    ]
+  }
+}
+```
+
+snapshot作成/list/get/delete、template、retention、project、再送caseのresponse status/bodyは下表の固定値またはこのJSONのrecordそのものへ接続する。array順は保存順、response object key順は比較除外。全caseでsecret/raw request/Authorization/Cookie/real URLのlog露出0、表に記したwrite列以外は0。success後audit/eventの固定fieldは各owner正本へ対応させ、失敗したrequestを成功eventへ変換しない。
+
+| case ID | 具体request / fake checkpoint | 固定response / state / effects |
+|---|---|---|
+| config-snapshot-create-list-get | POST /api/config-snapshots body={"label":"fixture"}→GET list→GET /api/config-snapshots/cfgsnap_20260102000000 | 201はsnapshotからfilesを除いたrecord、list200は同recordへcorrupted=falseを追加しtotal1/limit50/offset0、get200は上記snapshot。writeはsnapshot→audit→event、設定13file不変、read-only2件の業務write0。 |
+| config-snapshot-corrupt-list-restore-denied | file cfgsnap_20260102000000-001.jsonをUTF-8 byte "{" として追加→list→同id restore body={"confirmation":"RESTORE_CONFIG"} | listは正常recordの後にcorrupted=true/null fields/idだけの破損record、total2。restore500 Config snapshot corrupted、全設定不変/修復削除0。 |
+| config-snapshot-restore-partial-failure | 初期.server_config={log_max_lines:1000}、snapshotは上記、restoreで.repo_config write rename前EIO | .server_config={}、.notify_config=snapshot値まで確定、.repo_config以降不変、snapshot不変、500 Operation failed。config/audit/event追記0。 |
+| config-snapshot-restore-success | 初期.dashboard_layout={widgets:["status"]}、restore上記confirmation | 200 {message:"Config snapshot restored",snapshot_id:"cfgsnap_20260102000000",restored_paths:[13file中secretを除く11pathのASCII昇順]}。write列はbackup/restore正本順、secret作成0。 |
+| config-snapshot-delete | DELETE /api/config-snapshots/cfgsnap_20260102000000、body0 | 200 {message:"Config snapshot deleted"}、当該fileだけ削除→audit→event。再delete404 Config snapshot not found。 |
+| config-template-create-apply-delete | POST /api/config-templatesへtemplateのname/description/values→apply同id body={"confirmation":"APPLY_CONFIG_TEMPLATE"}→DELETE同id | 201はtemplate全record、apply200 {message:"Config template applied",template_id:固定id,updated_paths:[".dashboard_layout",".pipeline_config"]}、DELETE200 Config template deleted、templates=[]。applyのwriteは.pipeline_config→.dashboard_layout→config_log→audit→event、削除で設定を戻さない。 |
+| config-template-apply-partial-failure | 同template apply、.dashboard_layout rename前EIO | 500 Operation failed、.pipeline_configだけenv.FIXTURE=1を保存、dashboard旧値、後続log0、template保持。 |
+| config-template-validation | name同値2回目POST、values={}、values.webhook_secret="x"、values.dashboard_layout={widgets:[]}を各独立request | 順に409 Conflict/422 Validation failed/422 Validation failed/422 Validation failed、主state/log不変。 |
+| config-auto-snapshot | .server_config.config_snapshot_policy={enabled:true,max_count:1}、snapshot数0、POST /api/dashboard-layout {widgets:["stats"]} | snapshot created_by=system/label=null、旧widgets全9件を保持してから主state変更。2回目widgets=["status"]は409・旧設定維持、max_count容量による暗黙削除0。 |
+| config-auto-snapshot-fault | 上のsnapshot rename前EIO、次にsnapshot成功/主state rename前EIOを独立case | 前者snapshot/主state不変、後者旧設定snapshot1件保持/主state不変、ともに500、audit/event0。 |
+| history-retention-policy-run-success-disabled-partial | [固定history入力](#additional-management-fixed-inputs) 3行、policy={enabled:true,max_count:1,max_age_days:null,updated_at:now}、build idle/lockなし、POST run body0 | 古い2idのlog→archive→history更新、成功200 {deleted_count:2,matched_ids:["b20260101000000","b20260102000000"]}、historyはb20260102000001だけ、audit→event各1。policy disabledなら200 {deleted_count:0,matched_ids:[]}、全byte不変。 |
+| history-retention-partial | 前行の2番目idのlog削除でEIO | 500 History retention failed、1番目のlog/archived logだけ削除済み、history3行保持、後続削除/audit/event0。history rename前EIOなら削除済み2件logは戻さずhistory3行。 |
+| history-retention-policy | enabled=false/max_count=1/max_age_days=nullを保存済み、POST body={"enabled":false}、続けて{"enabled":true,"max_count":null,"max_age_days":1} | 1回目no-op200/全state-log不変。2回目200/threshold 1日だけ、updated_at=now、server_config完全形→audit→event。両threshold明示nullは422。 |
+| project-create-update-archive | POST /api/projects {id:"docs",name:"Docs",root:"repo:default",branch:"main"}→PATCH /api/projects/docs {name:"Docs 2"}→DELETE同id | 201 active/default=false/root=repo:default/created_at=updated_at=now、200はnameだけ変更、delete200 Project archived、record保持/status=archived。writeはprojects→event、audit0。 |
+| project-validation | id=default、root="https://evil.example.test/repo"、branch="missing"、root="/fixture/other"、DELETE defaultを独立case | 409/422/422/422/409、全state-log不変、directory作成/clone/command0。 |
+| project-partial | 正常POST後event append EIO | 500 Operation failed、作成record保持、後続event0、再POST同id409。 |
+| webhook-resend-accepted-not-resendable-conflict | POST /api/notify-log/ntfy20260102000000/resend {"confirmation":"RESEND_WEBHOOK"} | 202 {accepted:true,delivery_id:"ntfy20260102000000",queued_at:now}、新delivery payload作成→resend_expected ledger→audit→event、受付時HTTP0。再POSTは409 Conflict、ledger1件のまま。 |
+| webhook-resend-eligibility | sourceのresult=success/error_code=null/error=null、channel_type=email、event=notify_testを独立case | 各422 Webhook delivery is not resendable、payload/ledger/log書込0。schema-validにするためsuccess.http_status=204、email.http_status=null/email.error_code=smtp_error/email.error="SMTP error"を併用する。 |
+| webhook-resend-no-payload | input耐久payloadを不在、またはpayload_sha256末尾0へ置換して不一致 | 409 Webhook payload unavailable、HTTP0/ledger0、raw payloadからの推測生成0。 |
+| webhook-resend-partial | queued ledger確定後audit append EIO | 500 Operation failed、queued record/新payload保持、event0、再POST409。同sourceを別新idで二重受付しない。 |
+| webhook-resend-runner | 受付済ledger、clock=next_attempt_at、fake204、runner process lockあり | sending/attempt1 sync→HTTP1→new delivery notify log success→ledger succeeded/result_code=http_success/attempt1、next_attempt_at=null、元log不変。.notify_pending追加0。 |
+| webhook-resend-crash | HTTP1終了後notify log保存前停止、またはmatching success log保存後ledger更新前停止 | 前者restartはrecovery_required/HTTP追加0、後者matching logからsucceeded復元/HTTP追加0。別本文/hash/複数結果は成功推測せずrecovery_required。 |
+
+retentionの通常/archived logは各history idに対応する通常fileを全3件用意し、byteをそれぞれUTF-8の `fixture-log\n` / `fixture-archive\n` とする。retentionは内容をdecodeせず通常fileの削除だけを扱うため、これをbuild-log read成功fixtureへ流用しない。
+
+retentionのage境界はclockを2026-01-03T00:00:00Z、max_age_days=1/max_count=null、b20260101000000のfinished_at=2026-01-01T23:59:59Z/started_at=2026-01-01T23:59:49Zへ変更し、finished_at=2026-01-02T00:00:00Zは保持、同時刻より1秒前のb20260101000000だけ削除する。snapshot/template partial caseの各成功write前後も同じEIO scheduleで展開し、主state確定後のaudit/event失敗では確定分を維持する。templateの2fileは異なる値を必ず使い、no-opをpartial成功として数えない。
+
+<a id="additional-management-public-inputs"></a>
+**cache・share・event・badgeの固定具体入力：** cache/share/event caseは [状態入力](#additional-management-state-inputs) の認証seedを共用し、以下のJSONへ差し替える。cacheケースの.build_status.jsonは [状態固定表](statefile.md#statefile-fixed-table) の完全な初期値をfileとして配置、pending/notify_pending=[]、process start=nowとし、health missのbodyはcache entry.bodyと完全一致する。cache generationは7/instance_idはentry値に固定する。shareだけのstatus/history caseは履歴空、lock不在、同じbuild_status初期値を使用する。
+
+```json
+{
+  "now": "2026-01-02T00:00:00Z",
+  "cache_policy": {
+    "enabled": true,
+    "ttl_seconds": 30,
+    "endpoints": [
+      "/api/health"
+    ]
+  },
+  "cache_key_input": {
+    "method": "GET",
+    "path": "/api/health",
+    "query": {},
+    "vary": {}
+  },
+  "response_cache": {
+    "entries": {
+      "76144c2400bc476b3d4081c4f2ae5b76668b33fa9887ab95f86f97680e73638e": {
+        "key": "76144c2400bc476b3d4081c4f2ae5b76668b33fa9887ab95f86f97680e73638e",
+        "endpoint": "/api/health",
+        "vary": {
+          "method": "GET",
+          "path": "/api/health",
+          "query": {},
+          "vary": {}
+        },
+        "created_at": "2026-01-02T00:00:00Z",
+        "expires_at": "2026-01-02T00:00:30Z",
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store"
+        },
+        "body_sha256": "1f68af6ca60ce02c628ec72cdf1ff65bb2180aecb73dc2091c3072a1d84a70c9",
+        "body": {
+          "status": "ok",
+          "last_build_at": null,
+          "last_build_status": "none",
+          "last_deploy_at": null,
+          "last_deploy_status": null,
+          "pending_transfers": 0,
+          "uptime_seconds": 0,
+          "checks": []
+        },
+        "instance_id": "00112233445566778899aabbccddeeff",
+        "generation": 7
+      }
+    }
+  },
+  "share_entropy_hex": "0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+  "share_links": {
+    "links": [
+      {
+        "id": "share_00000000000000000000000001",
+        "token_hash": "b9b07dd4e7718454476f04edeb935022ae4f4d90934ab7ce913ff20c8baeb399",
+        "scope": "status",
+        "expires_at": "2026-01-02T00:01:00Z",
+        "created_at": "2026-01-01T00:00:00Z",
+        "revoked_at": null
+      }
+    ]
+  },
+  "shared_status_response": {
+    "status": {
+      "last_sha": null,
+      "last_build_at": null,
+      "last_build_status": "none",
+      "last_target_status": null,
+      "last_trigger": null,
+      "last_deploy_status": null,
+      "pending_transfers_count": 0,
+      "notify_pending_count": 0,
+      "circuit_open": false,
+      "running": false
+    }
+  },
+  "shared_history_response": {
+    "history": {
+      "total": 0,
+      "page": 1,
+      "per_page": 20,
+      "pages": 0,
+      "history": []
+    }
+  },
+  "event_appends": [
+    {
+      "id": "evt_20260102000000",
+      "timestamp": "2026-01-02T00:00:00Z",
+      "type": "build",
+      "actor": "usr_00000000000000000000000001",
+      "target_type": "queue",
+      "target_id": "q20260102000000",
+      "message": "Queue reordered",
+      "severity": "info"
+    },
+    "{",
+    {
+      "id": "evt_20260102000000-001",
+      "timestamp": "2026-01-02T00:00:00Z",
+      "type": "config",
+      "actor": "usr_00000000000000000000000001",
+      "target_type": "queue",
+      "target_id": "q20260102000000",
+      "message": "Config updated",
+      "severity": "info"
+    }
+  ],
+  "event_stream_expected": "id: evt_20260102000000\nevent: admin-event\ndata: {\"actor\":\"usr_00000000000000000000000001\",\"id\":\"evt_20260102000000\",\"message\":\"Queue reordered\",\"severity\":\"info\",\"target_id\":\"q20260102000000\",\"target_type\":\"queue\",\"timestamp\":\"2026-01-02T00:00:00Z\",\"type\":\"build\"}\n\n: keepalive\n\nevent: error\ndata: {\"error\":\"Admin events read failed\"}\n\n",
+  "badge_svg": {
+    "success": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120\" height=\"20\" viewBox=\"0 0 120 20\" role=\"img\" aria-label=\"Adlaire CI: success\"><rect x=\"0\" y=\"0\" width=\"66\" height=\"20\" fill=\"#555555\"/><rect x=\"66\" y=\"0\" width=\"54\" height=\"20\" fill=\"#2e7d32\"/><text x=\"33\" y=\"14\" text-anchor=\"middle\" font-family=\"Verdana,Arial,sans-serif\" font-size=\"10px\" letter-spacing=\"0\" fill=\"#ffffff\">Adlaire CI</text><text x=\"93\" y=\"14\" text-anchor=\"middle\" font-family=\"Verdana,Arial,sans-serif\" font-size=\"10px\" letter-spacing=\"0\" fill=\"#ffffff\">success</text></svg>\n",
+    "failure": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120\" height=\"20\" viewBox=\"0 0 120 20\" role=\"img\" aria-label=\"Adlaire CI: failure\"><rect x=\"0\" y=\"0\" width=\"66\" height=\"20\" fill=\"#555555\"/><rect x=\"66\" y=\"0\" width=\"54\" height=\"20\" fill=\"#c62828\"/><text x=\"33\" y=\"14\" text-anchor=\"middle\" font-family=\"Verdana,Arial,sans-serif\" font-size=\"10px\" letter-spacing=\"0\" fill=\"#ffffff\">Adlaire CI</text><text x=\"93\" y=\"14\" text-anchor=\"middle\" font-family=\"Verdana,Arial,sans-serif\" font-size=\"10px\" letter-spacing=\"0\" fill=\"#ffffff\">failure</text></svg>\n",
+    "running": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120\" height=\"20\" viewBox=\"0 0 120 20\" role=\"img\" aria-label=\"Adlaire CI: running\"><rect x=\"0\" y=\"0\" width=\"66\" height=\"20\" fill=\"#555555\"/><rect x=\"66\" y=\"0\" width=\"54\" height=\"20\" fill=\"#1565c0\"/><text x=\"33\" y=\"14\" text-anchor=\"middle\" font-family=\"Verdana,Arial,sans-serif\" font-size=\"10px\" letter-spacing=\"0\" fill=\"#ffffff\">Adlaire CI</text><text x=\"93\" y=\"14\" text-anchor=\"middle\" font-family=\"Verdana,Arial,sans-serif\" font-size=\"10px\" letter-spacing=\"0\" fill=\"#ffffff\">running</text></svg>\n",
+    "skipped": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120\" height=\"20\" viewBox=\"0 0 120 20\" role=\"img\" aria-label=\"Adlaire CI: skipped\"><rect x=\"0\" y=\"0\" width=\"66\" height=\"20\" fill=\"#555555\"/><rect x=\"66\" y=\"0\" width=\"54\" height=\"20\" fill=\"#6d6d6d\"/><text x=\"33\" y=\"14\" text-anchor=\"middle\" font-family=\"Verdana,Arial,sans-serif\" font-size=\"10px\" letter-spacing=\"0\" fill=\"#ffffff\">Adlaire CI</text><text x=\"93\" y=\"14\" text-anchor=\"middle\" font-family=\"Verdana,Arial,sans-serif\" font-size=\"10px\" letter-spacing=\"0\" fill=\"#ffffff\">skipped</text></svg>\n",
+    "unknown": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120\" height=\"20\" viewBox=\"0 0 120 20\" role=\"img\" aria-label=\"Adlaire CI: unknown\"><rect x=\"0\" y=\"0\" width=\"66\" height=\"20\" fill=\"#555555\"/><rect x=\"66\" y=\"0\" width=\"54\" height=\"20\" fill=\"#455a64\"/><text x=\"33\" y=\"14\" text-anchor=\"middle\" font-family=\"Verdana,Arial,sans-serif\" font-size=\"10px\" letter-spacing=\"0\" fill=\"#ffffff\">Adlaire CI</text><text x=\"93\" y=\"14\" text-anchor=\"middle\" font-family=\"Verdana,Arial,sans-serif\" font-size=\"10px\" letter-spacing=\"0\" fill=\"#ffffff\">unknown</text></svg>\n"
+  }
+}
+```
+
+share requestのtokenはshare_entropy_hexをraw byteへdecodeしpadding無しbase64urlにした値で、expected file/logへ本体を保存しない。create時だけresponse secret fieldをmemory内比較、保存expectedは上記hashだけ、listはhashも除外する。SVGはJSON中の5文字列をUTF-8 byteそのまま返す固定expectedで、末尾LF1個、動的値はstatus/color/aria-label内statusだけ。寸法/色/文字は [DESIGNデザイン責務](../DESIGN.md#status-badge-visual-contract) を照合するテスト入力であり、このfixtureで新しい視覚契約を定義しない。
+
+| case ID | request / 入力差分 / fake schedule | 固定expected |
+|---|---|---|
+| cache-hit | GET /api/health、entry/policy/instance/genは上記 | 200/body=entry.body/保存2header+X-Adlaire-Cache:HIT、health state read0、cache write0。 |
+| cache-miss | entries={}、同request | health handler1回/各adapter1回、200/body同値/X-Adlaire-Cache:MISS、上記entryをatomic保存。 |
+| cache-expired | now=2026-01-02T00:00:30Z | miss。expires_at同秒をhitしない。created_atは当該nowへ更新して新保存。 |
+| cache-corrupt | entries対象keyの値を{"key":"bad"}、またはfile byte="{" | miss/handler1、corrupt backup作成0、成功後だけ完全cache保存。 |
+| cache-hash-mismatch | body_sha256を64byte0へ、またはentry.keyだけ64byte0へ置換 | 各miss/handler1、壊れたbodyを返さない。 |
+| cache-forbidden-header | headers.Set-Cookie="test=x"を追加 | miss、当該headerをresponseへ再生しない。 |
+| cache-disabled | policy.enabled=false | handler1、cache read/write0、X-Adlaire-Cacheを付けない。 |
+| cache-instance-generation | instance_idをffffffffffffffffffffffffffffffff、generation=6を独立置換 | miss、旧値補完/世代巻戻し0。 |
+| cache-clock-policy | now=2026-01-01T23:59:59Z、またはnow=00:00:20Z/現在policy.ttl_seconds=10 | 各miss、将来created_at/短縮TTLを無視しない。 |
+| cache-write-failure | miss後cache tmp open/write/sync/rename前で各EIO | original200/body維持、cache保存だけ中止、監査/event追加0。rename後sync失敗でも新entry全体を保持しpartial byteなし。 |
+| cache-policy-purge | POST /api/cache-policyへ上記policyと同値→DELETE /api/response-cache | POST no-op200/世代log不変。DELETE200 {message:"Response cache purged",purged_count:1}、entries={}へatomic置換→event1、世代8、旧entry hit不可。 |
+| cache-purge-failure | DELETE時rename前EIO、rename後sync EIOを独立case | 両500 Response cache purge failed、前者entry1件全体保持/後者entries={}、世代8のまま、後続event0。 |
+| cache-stale-fill | missでgeneration7を捕捉してhandler停止→業務主state更新で8→purge→handler再開 | old bodyのcache再保存0、次GETはmiss/最新handler1回。old response返却自体を新状態読取と称さない。 |
+| cache-allowed-forbidden | policy.endpointsを許可10pathへ全指定、次に禁止path /api/users、/api/events/stream、/api/v1/health、/api/health/を各単独指定 | 許可集合は200、禁止は各422、policy/log不変。GET以外/body有り/binary/SSE/SVG/個人固有responseは保存0。 |
+| cache-limits | cache primitiveにbody={"padding":ASCII x列}をcanonical byte262144/262145へ調整、さらに128/129entry | 前者だけ保存。entry fixtureは/api/stats?days=1..129の正規query/hashを使用、bodyは同endpointの固定public schema値、created_at同値、key最小を先にevict。全byte8MiB超も同順evict。primitive bodyはHTTP health応答へ転用しない。 |
+| share-create-list-revoke | links=[]→POST /api/share-links {scope:"status",expires_at:"2026-01-02T00:01:00Z"}→GET list→DELETE固定share id | 201はid/token/scope/expires_at/created_at=now、token1回だけ。state hash/created_at=now→audit→event。listはtoken/hash無し。DELETE200 Share link revoked、revoked_at=now→audit→event、再DELETE404。 |
+| share-status-history | GET /api/share/{derived-token}/status、scope=status/historyを独立配置 | 200はJSON中の対応response1keyのみ、session0/permission/rate/cache不使用、audit/event0。通常API GET historyのpage/per_page契約と一致する。 |
+| share-token-invalid | token="***"、raw31byteのbase64url、padding付加を独立投入 | 401 Invalid share token、share state read0。 |
+| share-token-missing-revoked | raw32byte0x0bのtoken、または上記record.revoked_at=now | 404 Share link not found、理由詳細0/主state不変。 |
+| share-expired | now=2026-01-02T00:01:00Z | 410 Share link expired、同秒境界を受理しない。 |
+| share-snapshot-shortage | scope=snapshot_diff、valid snapshot1件のみ | 404 Shared resource not found、state/log/cache変更0。2件時は [site diff固定入力](#additional-management-site-diff-inputs) へ接続。 |
+| share-log-redaction | token有りpathの正常/404/不正subrouteとAuthorization/Cookie付きrequest | access pathは既定templateかredacted固定値だけ、token本体/hash/長さ/prefix/raw pathなし、auth_type=none/actor=null、audit/event0。 |
+| admin-events-list | 上記event_appendsの3行を接続前から配置、GET /api/events?type=build&limit=1&offset=0 | eventsはbuild1件だけ/total1/limit1/offset0、壊れ行修復0、config行除外。 |
+| admin-events-stream | GET /api/events/stream?type=build、接続後に3行append→fake clock30秒→read EIO | byte列はevent_stream_expectedと一致。既存行再送0、corrupt/config行なし、reader/timer/goroutine終了。 |
+| admin-events-disconnect | 上記streamでclient cancel、SDK close、logoutを独立checkpoint | 正常close、error frameなし、追加read/writeなし、全資源回収。 |
+| admin-events-bounds | 未送信128/129record、frame65536/65537byte、fakewrite deadline10秒、keepalive前失効を独立case | 超過だけerror/close、error文言/フレームはAPI正本固定値、失効後event0、timeout後retry0。recordは有効base eventへid suffix/合法messageを付けて生成し、frame長境界はserializer primitiveで任意padding inputを使う。HTTPにschema-invalid大eventを受理させない。 |
+| sdk-stream | SDK streamAdminEvents({type:"build",limit:1,offset:2,after:now},onEvent)へ上記frames | 送信queryはtype=buildのみ、callback1回/keepalive破棄/error frameでreject。callback非functionはTypeError/HTTP0、user closeはdone=null、server EOF/invalid frameはreject。 |
+| ui-event-feed | 1callback→error、次にuser stopを独立操作 | 値はAPI record由来だけ、SDK stream1回。error表示1/getAdminEvents1、stopはerror0/getAdminEvents1。UI直接fetch/EventSource/reader0。 |
+| status-badge-svg-contract | statusを5値へ各配置、GET /api/badge/status.svg | 200/JSON内SVG byte一致、image/svg+xml; charset=utf-8/no-store、ETag/Last-Modified/Set-Cookieなし、cache/state/log write0。branch=missingは404 Status not found。 |
+| version-current-alias | build version注入V.1.2.3、GET /api/versionと/api/v1/version | 各200 {api_version:"1",compatible_versions:["1"],deprecated_versions:[],spec_version:"V.N",binary_version:"V.1.2.3"}、未注入はV.0.0-dev。no-store、rate/cache/auth state read/write0。 |
+| version-invalid-prefix | /api/v0/version、/api/v2/version、/api/v01/version、/api/v1/、/api/vx/version | 各404 Not found、current pathへのfallback0。 |
+| openapi-generated | generator primitiveのfake実装済route集合をGET /api/version・GET /api/health・GET /api/openapi.jsonの3件へ固定 | root5key/OpenAPI3.1/servers=[{url:"/"}]、path昇順、operationId=getHealth/getOpenapiJson/getVersion、summary=GET空白+各path、security=[]、responsesは各正本status/media/schema、example(s)/host/secretなし。未登録OIDC/users route不在。 |
+| openapi-invalid | 同じoperationIdを持つ2routeをfake登録、または認証区分不明route | 500 OpenAPI generation failed、部分documentなし/修正write0。 |
+
+cacheの全閾値caseはin-process serializer/cache primitiveとHTTPの別assertionに分け、schema-invalid健康応答を製品APIの期待値にしない。SVG/sse/text/binaryのbyte fixtureはJSON文字列を復号した値を比較し、見た目だけで検証を済ませない。
+
+<a id="additional-management-site-diff-inputs"></a>
+**site diff保存archive・expectedの固定入力：** base64はGo1.22.12標準archive/tar + gzip.BestCompressionで [archive詳細本文責務](archive.md#snapshot-archive-validation) のUSTAR/header規則から生成した固定byteである。filesはUTF-8入力、file_sha256は別のnative SHA256計算とも照合したoracle、meta_bytesは保存するJSON+LFそのもの。fake FSへ.snapshotではなく `.snapshots/{meta.id}/meta.json` / `site.tar.gz` の2fileを0600で配置し、既存archiveのreadだけを許可する。メタデータoutput_sha256=nullはこのarchive read/diff fixtureだけの明示入力で、rollback pending送信の成功条件へ転用しない。
+
+```json
+{
+  "left": {
+    "archive_base64": "H4sIAAC5VWkC/+zUQQrCMBCF4Vl7Ck9QXpKJPU8hAYXGQhulxxddSVYuTETyvs1AdsPw53INcR/OOc1SDQCcVF8TQDkBqBhvrHdO9flujHWQI6SB25anVYBvLPm+3J9Y5nAQ6tYa03KPYch7/mH/Y9m/KvtveH9+Ab3aphSrxv9R/77oH6O17L/V/Vk/EVF/HgEAAP//DzZvHAAQAAA=",
+    "archive_sha256": "83f678968b2ab601b3865c90db00cf74da13546adb9ae8cb5067909021c52d8e",
+    "file_sha256": {
+      "index.html": "01d09d19c2139a46aebfb577780d123d7396e97201bc7ead210a2ebff8239dee",
+      "removed.txt": "2308cd77689ace11b7c2f247cbb997ca394f469febe6385bc89ac717584ee0ad",
+      "same.txt": "a6328afc76e9db71da297ebff4b0d3e7a7eb3b01d917c05a6573fef121b6ecb6"
+    },
+    "files": {
+      "index.html": "old\n",
+      "removed.txt": "remove\n",
+      "same.txt": "same\n"
+    },
+    "meta": {
+      "id": "b20260101000000",
+      "build_id": "b20260101000000",
+      "saved_at": "2026-01-01T00:00:00Z",
+      "size_bytes": 16,
+      "file_count": 3,
+      "output_sha256": null
+    },
+    "meta_bytes": "{\"id\":\"b20260101000000\",\"build_id\":\"b20260101000000\",\"saved_at\":\"2026-01-01T00:00:00Z\",\"size_bytes\":16,\"file_count\":3,\"output_sha256\":null}\n"
+  },
+  "right": {
+    "archive_base64": "H4sIAIAKV2kC/+zVQQrCMBCF4Vl7Ck9Q3oxJe57ABBRsFzZijy+6kq5c2GDJ+zYD2Q3hT5J79q4sRbYDAH0I7wlgPQEE0agWe0R7naviFOQIqeA+l3QT4BdLfi63E8n9INSsy+R56c5lvP5V/2YD+69hyg/237A5jXnj7/+L/uOqfwym7L/W/fMBICJqzzMAAP//SH1DvQAQAAA=",
+    "archive_sha256": "d1027eb4c3c0d48f695b713584e91e0d385fef32637e60ca170ac2b15b87faaa",
+    "file_sha256": {
+      "added.txt": "87623ceab830648b4f91539f54b7d3d6ef9bbdb04a1442dcfbf90103dd60e73e",
+      "index.html": "7aa7a5359173d05b63cfd682e3c38487f3cb4f7f1d60659fe59fab1505977d4c",
+      "same.txt": "a6328afc76e9db71da297ebff4b0d3e7a7eb3b01d917c05a6573fef121b6ecb6"
+    },
+    "files": {
+      "added.txt": "add\n",
+      "index.html": "new\n",
+      "same.txt": "same\n"
+    },
+    "meta": {
+      "id": "b20260102000000",
+      "build_id": "b20260102000000",
+      "saved_at": "2026-01-02T00:00:00Z",
+      "size_bytes": 13,
+      "file_count": 3,
+      "output_sha256": null
+    },
+    "meta_bytes": "{\"id\":\"b20260102000000\",\"build_id\":\"b20260102000000\",\"saved_at\":\"2026-01-02T00:00:00Z\",\"size_bytes\":13,\"file_count\":3,\"output_sha256\":null}\n"
+  },
+  "expected": {
+    "left_id": "b20260101000000",
+    "right_id": "b20260102000000",
+    "added": [
+      {
+        "path": "added.txt",
+        "sha256": "87623ceab830648b4f91539f54b7d3d6ef9bbdb04a1442dcfbf90103dd60e73e"
+      }
+    ],
+    "removed": [
+      {
+        "path": "removed.txt",
+        "sha256": "2308cd77689ace11b7c2f247cbb997ca394f469febe6385bc89ac717584ee0ad"
+      }
+    ],
+    "modified": [
+      {
+        "path": "index.html",
+        "left_sha256": "01d09d19c2139a46aebfb577780d123d7396e97201bc7ead210a2ebff8239dee",
+        "right_sha256": "7aa7a5359173d05b63cfd682e3c38487f3cb4f7f1d60659fe59fab1505977d4c"
+      }
+    ],
+    "unchanged_count": 1
+  }
+}
+```
+
+| case ID | 具体入力 | response / state / effects expected |
+|---|---|---|
+| snapshot-site-diff-contract | GET /api/snapshots/b20260101000000/diff/b20260102000000 | 200/上記expected完全一致、hash/pathだけ、内容/mtime/mode等なし。metadata/tarを両方検証、業務state/log/cache write0。 |
+| snapshot-site-diff-same | left/rightともb20260101000000 | 422 Snapshot diff validation failed、archive open0。 |
+| snapshot-site-diff-corrupt | 右archive base64復号byte0 xor1、またはmeta.file_count=4、meta.size_bytes=14を各独立投入 | 各500 Snapshot diff failed、state不変、部分response0、修復/削除/再生成0。 |
+| snapshot-site-diff-missing | 右directory不在 | 404 Not found、左archiveを成功結果として返さない。 |
+| snapshot-share-diff | share scope=snapshot_diff、上記2snapshot | 200 {snapshot_diff:上記expected}、saved_atからright=20260102/left=20260101を選択、audit/event0。 |
+| snapshot-read-fault | gzip/tar検証中または二つ目archive readでEIO | 500 Snapshot diff failed、部分response/state write0。 |
+
+archive_sha256は保存byte不変の補助検査、diff判定は非圧縮file hashだけを使う。gzip headerが異なってもarchive正本に適合し同じfile内容ならmodifiedへ数えない。圧縮byte hashとsite内容hashを混同する変異、同一id拒否を削除する変異、先にresponse送信してから右検証する変異を必須mutationへ接続する。
+
+<a id="additional-management-authorization-inputs"></a>
+**users/roles・認可・request validationの固定入力：** 以下はHTTP/auth fixtureの入力であり、route/permissionの規範を再定義しない。requestsは [API責務](api.md#additional-management-api-contract) の50 routeの固定test instance、required_permissionは [security責務](security.md#sec-27-58) と比較するexpected。45 protected instanceではdenied_actor_idのsessionを使用し、user/role認証stateのreadだけを許可して、endpoint業務stateのread/writeが0であることを比較する。public4routeと本人session専用1routeはpermission拒否matrixから除外し、それぞれpublic-inputと認証起動fixtureへ接続する。
+
+各caseはこのusers/roles/auth_profile/external_auth_configをfake FSへ配置し直し、.api_tokens={tokens:[]}、.user_revocations={users:[]}、log空、他の業務stateは各具体入力bundleを使用する。sessionはactor idへ束縛しissued_at=now/expires_at=2026-01-02T01:00:00Z、permissions_hashは固定role集合から独立計算、password_change_required=false、auth_source=local/provider3field=null、token/session_idは既存0x04/0x07 entropy入力。created_at/updated_atを前日にしてPATCHによる更新時刻の省略を検出する。request ID/clock/rateの共通副作用は各正本どおり別比較し、業務no-writeへ混入させない。
+
+```json
+{
+  "now": "2026-01-02T00:00:00Z",
+  "users": {
+    "users": [
+      {
+        "id": "usr_00000000000000000000000001",
+        "username": "admin",
+        "display_name": "Fixture Admin",
+        "status": "active",
+        "role_ids": [
+          "admin"
+        ],
+        "credential": {
+          "password_hash": "1fcfc74d2c455dd9af866f75de73a4bc47e7f3f5d653b72f548b44efd1c37887",
+          "salt": "1111111111111111111111111111111111111111111111111111111111111111",
+          "algorithm": "pbkdf2_hmac_sha256_v1",
+          "iterations": 600000,
+          "must_change": false,
+          "login_count": 0,
+          "last_login_at": null,
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "external_subjects": [],
+        "totp": {
+          "enabled": false,
+          "secret_base32": null,
+          "confirmed_at": null,
+          "last_accepted_step": null
+        },
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "id": "usr_00000000000000000000000002",
+        "username": "oidc-user",
+        "display_name": "Fixture OIDC",
+        "status": "active",
+        "role_ids": [
+          "operator"
+        ],
+        "credential": null,
+        "external_subjects": [
+          {
+            "provider_id": "fixture",
+            "subject": "subject-1"
+          }
+        ],
+        "totp": {
+          "enabled": false,
+          "secret_base32": null,
+          "confirmed_at": null,
+          "last_accepted_step": null
+        },
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "id": "usr_00000000000000000000000003",
+        "username": "manager",
+        "display_name": "manager",
+        "status": "active",
+        "role_ids": [
+          "account-manager"
+        ],
+        "credential": {
+          "password_hash": "1fcfc74d2c455dd9af866f75de73a4bc47e7f3f5d653b72f548b44efd1c37887",
+          "salt": "1111111111111111111111111111111111111111111111111111111111111111",
+          "algorithm": "pbkdf2_hmac_sha256_v1",
+          "iterations": 600000,
+          "must_change": false,
+          "login_count": 0,
+          "last_login_at": null,
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "external_subjects": [],
+        "totp": {
+          "enabled": false,
+          "secret_base32": null,
+          "confirmed_at": null,
+          "last_accepted_step": null
+        },
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "id": "usr_00000000000000000000000004",
+        "username": "reader",
+        "display_name": "reader",
+        "status": "active",
+        "role_ids": [
+          "config-reader"
+        ],
+        "credential": {
+          "password_hash": "1fcfc74d2c455dd9af866f75de73a4bc47e7f3f5d653b72f548b44efd1c37887",
+          "salt": "1111111111111111111111111111111111111111111111111111111111111111",
+          "algorithm": "pbkdf2_hmac_sha256_v1",
+          "iterations": 600000,
+          "must_change": false,
+          "login_count": 0,
+          "last_login_at": null,
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "external_subjects": [],
+        "totp": {
+          "enabled": false,
+          "secret_base32": null,
+          "confirmed_at": null,
+          "last_accepted_step": null
+        },
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "id": "usr_00000000000000000000000005",
+        "username": "viewer",
+        "display_name": "viewer",
+        "status": "active",
+        "role_ids": [
+          "viewer"
+        ],
+        "credential": {
+          "password_hash": "1fcfc74d2c455dd9af866f75de73a4bc47e7f3f5d653b72f548b44efd1c37887",
+          "salt": "1111111111111111111111111111111111111111111111111111111111111111",
+          "algorithm": "pbkdf2_hmac_sha256_v1",
+          "iterations": 600000,
+          "must_change": false,
+          "login_count": 0,
+          "last_login_at": null,
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "external_subjects": [],
+        "totp": {
+          "enabled": false,
+          "secret_base32": null,
+          "confirmed_at": null,
+          "last_accepted_step": null
+        },
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z"
+      }
+    ]
+  },
+  "roles": {
+    "roles": [
+      {
+        "id": "admin",
+        "name": "Administrator",
+        "permissions": [
+          "*"
+        ],
+        "system": true,
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "id": "operator",
+        "name": "Operator",
+        "permissions": [
+          "build:write",
+          "config:read",
+          "status:read"
+        ],
+        "system": true,
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "id": "viewer",
+        "name": "Viewer",
+        "permissions": [
+          "status:read"
+        ],
+        "system": true,
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "id": "account-manager",
+        "name": "Account Manager",
+        "permissions": [
+          "user:admin"
+        ],
+        "system": false,
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "id": "config-reader",
+        "name": "Config Reader",
+        "permissions": [
+          "config:read"
+        ],
+        "system": false,
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z"
+      }
+    ]
+  },
+  "create_user": {
+    "username": "FIXTURE-USER",
+    "display_name": "Fixture User",
+    "role_ids": [
+      "viewer"
+    ],
+    "external_subjects": [
+      {
+        "provider_id": "fixture",
+        "subject": "subject-2"
+      }
+    ]
+  },
+  "created_user_view": {
+    "id": "usr_00000000000000000000000006",
+    "username": "fixture-user",
+    "display_name": "Fixture User",
+    "status": "active",
+    "role_ids": [
+      "viewer"
+    ],
+    "external_subjects": [
+      {
+        "provider_id": "fixture",
+        "subject": "subject-2"
+      }
+    ],
+    "totp_enabled": false,
+    "created_at": "2026-01-02T00:00:00Z",
+    "updated_at": "2026-01-02T00:00:00Z",
+    "password_set": false
+  },
+  "create_user_entropy_hex": "00000000000000000000000000000006",
+  "reset_credential": {
+    "password_hash": "1b8b6c3834f63a640cfb5539e1aa823876e461a82acc2a0a65d82282c69487d4",
+    "salt": "1212121212121212121212121212121212121212121212121212121212121212",
+    "algorithm": "pbkdf2_hmac_sha256_v1",
+    "iterations": 600000,
+    "must_change": true,
+    "login_count": 0,
+    "last_login_at": null,
+    "updated_at": "2026-01-02T00:00:00Z"
+  },
+  "create_role": {
+    "id": "auditor",
+    "name": "Auditor",
+    "permissions": [
+      "status:read"
+    ]
+  },
+  "created_role_record": {
+    "id": "auditor",
+    "name": "Auditor",
+    "permissions": [
+      "status:read"
+    ],
+    "system": false,
+    "created_at": "2026-01-02T00:00:00Z",
+    "updated_at": "2026-01-02T00:00:00Z"
+  },
+  "requests": [
+    {
+      "method": "GET",
+      "route_template": "/api/users",
+      "path": "/api/users",
+      "required_permission": "user:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/users",
+      "path": "/api/users",
+      "body": {
+        "username": "FIXTURE-USER",
+        "display_name": "Fixture User",
+        "role_ids": [
+          "viewer"
+        ],
+        "external_subjects": [
+          {
+            "provider_id": "fixture",
+            "subject": "subject-2"
+          }
+        ]
+      },
+      "required_permission": "user:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "PATCH",
+      "route_template": "/api/users/{id}",
+      "path": "/api/users/usr_00000000000000000000000006",
+      "body": {
+        "display_name": "Fixture Changed"
+      },
+      "required_permission": "user:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "DELETE",
+      "route_template": "/api/users/{id}",
+      "path": "/api/users/usr_00000000000000000000000006",
+      "required_permission": "user:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/datastore",
+      "path": "/api/datastore",
+      "required_permission": "system:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/datastore/switch",
+      "path": "/api/datastore/switch",
+      "body": {
+        "target_store": "statefile",
+        "dry_run": true
+      },
+      "required_permission": "system:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/external-auth-config",
+      "path": "/api/external-auth-config",
+      "required_permission": "user:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/external-auth-config",
+      "path": "/api/external-auth-config",
+      "body": {
+        "enabled": true,
+        "providers": [
+          {
+            "id": "fixture",
+            "type": "oidc",
+            "enabled": true,
+            "issuer": "https://id.example.test",
+            "client_id": "adlaire-ci-test",
+            "scopes": [
+              "openid"
+            ],
+            "redirect_uri": "https://admin.example.test/"
+          }
+        ]
+      },
+      "required_permission": "user:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/external-auth/test",
+      "path": "/api/external-auth/test",
+      "body": {
+        "provider_id": "fixture"
+      },
+      "required_permission": "user:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/stats/export",
+      "path": "/api/stats/export?from=2026-01-01T00%3A00%3A00Z&to=2026-01-02T00%3A00%3A00Z&granularity=build",
+      "required_permission": "status:read",
+      "denied_actor_id": "usr_00000000000000000000000004"
+    },
+    {
+      "method": "DELETE",
+      "route_template": "/api/queue/{queue_id}",
+      "path": "/api/queue/q20260102000000",
+      "required_permission": "build:write",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/auth/options",
+      "path": "/api/auth/options",
+      "required_permission": null,
+      "auth_boundary": "public"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/auth/me",
+      "path": "/api/auth/me",
+      "required_permission": null,
+      "auth_boundary": "session-self"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/metrics",
+      "path": "/api/metrics",
+      "required_permission": "status:read",
+      "denied_actor_id": "usr_00000000000000000000000004"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/config-snapshots",
+      "path": "/api/config-snapshots",
+      "required_permission": "config:read",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/config-snapshots",
+      "path": "/api/config-snapshots",
+      "body": {
+        "label": null
+      },
+      "required_permission": "config:write",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/config-snapshots/{id}",
+      "path": "/api/config-snapshots/cfgsnap_20260102000000",
+      "required_permission": "config:read",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/config-snapshots/{id}/restore",
+      "path": "/api/config-snapshots/cfgsnap_20260102000000/restore",
+      "body": {
+        "confirmation": "RESTORE_CONFIG"
+      },
+      "required_permission": "config:write",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "DELETE",
+      "route_template": "/api/config-snapshots/{id}",
+      "path": "/api/config-snapshots/cfgsnap_20260102000000",
+      "required_permission": "config:write",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/badge/status.svg",
+      "path": "/api/badge/status.svg",
+      "required_permission": "status:read",
+      "denied_actor_id": "usr_00000000000000000000000004"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/history/retention",
+      "path": "/api/history/retention",
+      "required_permission": "status:read",
+      "denied_actor_id": "usr_00000000000000000000000004"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/history/retention",
+      "path": "/api/history/retention",
+      "body": {
+        "enabled": false,
+        "max_count": 1,
+        "max_age_days": null
+      },
+      "required_permission": "system:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/history/retention/run",
+      "path": "/api/history/retention/run",
+      "required_permission": "system:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/roles",
+      "path": "/api/roles",
+      "required_permission": "user:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/roles",
+      "path": "/api/roles",
+      "body": {
+        "id": "auditor",
+        "name": "Auditor",
+        "permissions": [
+          "status:read"
+        ]
+      },
+      "required_permission": "user:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "PATCH",
+      "route_template": "/api/roles/{id}",
+      "path": "/api/roles/auditor",
+      "body": {
+        "name": "Auditor 2"
+      },
+      "required_permission": "user:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "DELETE",
+      "route_template": "/api/roles/{id}",
+      "path": "/api/roles/auditor",
+      "required_permission": "user:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/config-snapshots/{left_id}/diff/{right_id}",
+      "path": "/api/config-snapshots/cfgsnap_20260101000000/diff/cfgsnap_20260102000000",
+      "required_permission": "config:read",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/projects",
+      "path": "/api/projects",
+      "required_permission": "config:read",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/projects",
+      "path": "/api/projects",
+      "body": {
+        "id": "docs",
+        "name": "Docs",
+        "root": "repo:default",
+        "branch": "main"
+      },
+      "required_permission": "config:write",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "PATCH",
+      "route_template": "/api/projects/{id}",
+      "path": "/api/projects/docs",
+      "body": {
+        "name": "Docs 2"
+      },
+      "required_permission": "config:write",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "DELETE",
+      "route_template": "/api/projects/{id}",
+      "path": "/api/projects/docs",
+      "required_permission": "config:write",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/version",
+      "path": "/api/version",
+      "required_permission": null,
+      "denied_actor_id": null
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/openapi.json",
+      "path": "/api/openapi.json",
+      "required_permission": null,
+      "denied_actor_id": null
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/queue/reorder",
+      "path": "/api/queue/reorder",
+      "body": {
+        "queue_ids": [
+          "q20260102000000",
+          "q20260102000000-001"
+        ]
+      },
+      "required_permission": "build:write",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/config-templates",
+      "path": "/api/config-templates",
+      "required_permission": "config:read",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/config-templates",
+      "path": "/api/config-templates",
+      "body": {
+        "name": "Fixture layout",
+        "description": null,
+        "values": {
+          "pipeline_config": {
+            "extra_args": [],
+            "env": {
+              "FIXTURE": "1"
+            }
+          },
+          "dashboard_layout": {
+            "widgets": [
+              "stats",
+              "status"
+            ]
+          }
+        }
+      },
+      "required_permission": "config:write",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/config-templates/{id}/apply",
+      "path": "/api/config-templates/tmpl_00000000000000000000000001/apply",
+      "body": {
+        "confirmation": "APPLY_CONFIG_TEMPLATE"
+      },
+      "required_permission": "config:write",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "DELETE",
+      "route_template": "/api/config-templates/{id}",
+      "path": "/api/config-templates/tmpl_00000000000000000000000001",
+      "required_permission": "config:write",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/events",
+      "path": "/api/events",
+      "required_permission": "system:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/events/stream",
+      "path": "/api/events/stream?type=build",
+      "required_permission": "system:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/share-links",
+      "path": "/api/share-links",
+      "required_permission": "user:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/share-links",
+      "path": "/api/share-links",
+      "body": {
+        "scope": "status",
+        "expires_at": "2026-01-02T00:01:00Z"
+      },
+      "required_permission": "user:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "DELETE",
+      "route_template": "/api/share-links/{id}",
+      "path": "/api/share-links/share_00000000000000000000000001",
+      "required_permission": "user:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/share/{token}/status",
+      "path": "/api/share/CgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgo/status",
+      "required_permission": null,
+      "denied_actor_id": null
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/cache-policy",
+      "path": "/api/cache-policy",
+      "required_permission": "system:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/cache-policy",
+      "path": "/api/cache-policy",
+      "body": {
+        "enabled": true,
+        "ttl_seconds": 30,
+        "endpoints": [
+          "/api/health"
+        ]
+      },
+      "required_permission": "system:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "DELETE",
+      "route_template": "/api/response-cache",
+      "path": "/api/response-cache",
+      "required_permission": "system:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    },
+    {
+      "method": "GET",
+      "route_template": "/api/snapshots/{left_id}/diff/{right_id}",
+      "path": "/api/snapshots/b20260101000000/diff/b20260102000000",
+      "required_permission": "status:read",
+      "denied_actor_id": "usr_00000000000000000000000004"
+    },
+    {
+      "method": "POST",
+      "route_template": "/api/notify-log/{delivery_id}/resend",
+      "path": "/api/notify-log/ntfy20260102000000/resend",
+      "body": {
+        "confirmation": "RESEND_WEBHOOK"
+      },
+      "required_permission": "system:admin",
+      "denied_actor_id": "usr_00000000000000000000000005"
+    }
+  ],
+  "external_auth_config": {
+    "enabled": true,
+    "providers": [
+      {
+        "id": "fixture",
+        "type": "oidc",
+        "enabled": true,
+        "issuer": "https://id.example.test",
+        "client_id": "adlaire-ci-test",
+        "client_secret_ref": null,
+        "scopes": [
+          "openid"
+        ],
+        "redirect_uri": "https://admin.example.test/",
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z"
+      }
+    ]
+  },
+  "auth_profile": {
+    "schema_version": 1,
+    "profile": "multi-user-v1",
+    "admin_user_id": "usr_00000000000000000000000001",
+    "migrated_at": "2026-01-01T00:00:00Z"
+  }
+}
+```
+
+| case ID | 具体request / schedule | 固定expected |
+|---|---|---|
+| user-create-view | create_userをPOST /api/users、entropy16byteはcreate_user_entropy_hex | 201/created_user_viewそのもの。stateは同viewからpassword_set/totp_enabledを除きcredential=null/totp=disabled完全objectを追加したrecordを末尾へ保存。users→audit(user_create)→event、内部credential/totp値のresponse露出0。 |
+| user-list-filter | GET /api/users?status=active&role_id=viewer&limit=1&offset=0 | usersはid5の公開view1件、total1/limit1/offset0、stored users全5件byte不変。未知role queryは200 users=[]/total0。 |
+| user-patch | 作成後clock=2026-01-02T00:00:01Z、PATCH id6 {display_name:"Changed",role_ids:["operator"]} | 200/公開viewの対応2fieldとupdated_atだけ変更。credential/external_subjects/TOTP/created_at保持、audit user_role_update1/event1。 |
+| user-normalization | create username="FiXtUrE-UsEr"、role_ids=["viewer","operator"] | 201 username=fixture-user、role_ids=["operator","viewer"]。同normal username再作成409。先頭空白を含むusernameは422、trimしない。 |
+| user-disable-noop | DELETE id5→同DELETE | 1回目200 User disabled、status=disabled/updated_at=now、revocation marker→users→tokens対象失効→marker空object→audit→event。2回目200/主state-log不変。物理削除0。 |
+| user-active-without-login | PATCH id5 {password:null}、external_subjects=[]のまま | 422/全state不変。status=disabledも同時指定した独立caseは200、nullable credentialの意図した解除。 |
+| user-reset-password | PATCH id5 {password:"Fixture-only-password-2026"}、salt entropy32byte0x12 | 200/password_set=true、credentialはreset_credential、must_change=true/login_count0/last_login_at=null/updated_at=now。全session/ticket/token失効、平文response/log/expected0。 |
+| user-revocation-fault | user disableでusers commit後tokens write EIO | 500、users disabled/marker保持/token未処理、対象userの全認証401。restartでtokens失効→marker users=[]、HTTP listenは復旧後だけ。 |
+| user-revocation-before-users | marker成功後users rename前EIO | 500/users旧active/marker保持、対象user認証401。restartはuserを推測変更せずtoken失効だけ完了しmarker空へ、旧sessionは再起動で消滅。 |
+| user-last-local-admin | id1のcredential=null、status=disabled、role_ids=["viewer"]を別PATCH | 各409、user/role/session/token/marker/audit/eventの業務変更0。id2はOIDC-only/operatorなのでlocal admin代替ではない。 |
+| user-last-admin-race | id2をrole_ids=["admin"]/credential=id1.credentialへ変更した入力。actor=id1、DELETE id2とDELETE id1を同時preflightし、id2側lockを先に解放 | 先200/後409、active local admin1件、後request主state/log不変。逆順scheduleは先が自己disable200/後401でactor失効を検出し、残adminを維持する。 |
+| user-identity-conflict | username=ADMIN、external_subjectsにfixture/subject-1、未知provider=missingを各createへ指定 | 409/409/422、users/log不変。body内duplicate role/subjectは422。 |
+| user-superadmin-boundary | actor=id3 manager、PATCH id1 {password:"Fixture-only-password-2026"}、PATCH自己 {role_ids:["admin"]}を独立投入 | 各403 Forbidden、主state/token/marker/event変更0。user:adminだけで*へ昇格しない。 |
+| user-capacity | 既存admin id1を保持し、user0002..user1000の999件を追加して新規create | 409 Conflict、ID生成/write0。追加999件をactive viewer/local credentialの完全recordとしてseed、users idはbig-endian整数1..1000の26桁Crockford、参照/username重複0。 |
+| user-partial-audit | 正常create後audit append EIO | 500/作成record保持/event0、再POST同username409、成功扱いにしない。 |
+| role-create-update-delete | create_role POST→clock+1秒でPATCH auditor {name:"Auditor 2"}→DELETE auditor | 201 created_role_record、200 name/updated_at変更、200 Role deleted/rolesから除去。各主state→audit→event。 |
+| role-system-used | PATCH viewer {name:"Viewer 2"}、DELETE viewer、userが参照するcustom auditor DELETEを別case | 各409、全state/log不変。disabled/locked userの参照も409。 |
+| role-inputs | create permissions=["*"]、[]、["status:read","status:read"]、["unknown"]、PATCH id/system keyを別case | 各422 Validation failed、state/log不変。 |
+| role-capacity | system3件+既存custom2件+role001..role123の合計128件へcreate_role | 409 Conflict、write0。追加custom id=role001..role123/name=同id/permissions=["status:read"]/system=false/前日timestamps。 |
+| permission-route-closure | requests中required_permission非nullの全45 instance、指定denied_actor_id | 各403 Forbidden、endpoint state read/write0、permission_denied auditと共通accessだけ、admin event0。route template未登録のsubrouteは404でpermission継承0。 |
+| auth-user-state | id5をdisabled/lockedに各変更し、status:read対象へ元session | 各401 Unauthorized、endpoint業務state read0。 |
+| validation-body-forbidden | GET /api/users、DELETE /api/projects/docs、POST /api/history/retention/runへbody={} | 各400 Invalid request、endpoint業務state read/write0。 |
+| validation-json | POST /api/cache-policyへenabled重複、trailing {}、invalid UTF-8、array/nullを別投入 | 各400 Invalid request、後続業務state/auth判定/write0。 |
+| validation-schema | 正常cache-policyへunknown=true、ttl_seconds="30"、ttl_seconds=0を別投入 | 各422 Validation failed、業務state/write0。 |
+| validation-path-query | DELETE /api/users/a%2Fb、DELETE /api/users/a%252Fb、GET /api/users?limit=0、limit=1&limit=2、x=1を別request | 各422、endpoint業務state read0。固定segment /api/%75sersと末尾slashは404/redirect0。 |
+| validation-priority | body禁止のDELETE /api/users/a%2Fb?x=1に{}を付加し無認証 | 最初body400だけ、path/query/auth後続判定0。bodyを除去した独立caseはpath422、valid pathへ変えた次caseはquery422、その後だけ401へ到達。 |
+
+capacity caseは正本の全record schemaを保つdeterministic展開であり、必要fieldを省略して大きな件数だけ数えない。Crockfordの整数変換は標準alphabetの固定26桁left-zero-pad、乱数生成の実行結果をgoldenへ追認する生成ではない。全45routeのrequest bodyはschema-valid、存在確認前にpermissionで拒否するため未配置のtarget fileをreadしてはならない。
+
+<a id="additional-management-sdk-inputs"></a>
+**SDK50 method transport固定入力：** 次のrowsは [API instance入力](#additional-management-authorization-inputs) と [SDK詳細本文責務](sdk.md#sec-23-8) を独立照合するwire fixtureである。argsのcallback objectはJSONへ送信する値ではなく、固定fake関数「受け取ったschema-valid recordをcanonical JSONでtraceへ1回appendする」へのdescriptorである。baseUrl=https://admin.example.test、memory tokenは0x04×32byteのlowercase hex、clock/timeoutはfake、constructorは1instance。http_path/args内のshare tokenはtest inputだけであり、trace expectedではroute templateにmaskする。
+
+JSON成功fakeはstatus200（作成6methodは201、switchDatastore/resendWebhookは202）/Content-Type application/json/body={"fixture":"sdk-transport"}を返し、同objectを変更せず返すことを比較する。これはSDKが業務schemaを合成/改変しないことのunit oracleで、API成功payloadは各HTTP fixtureの完全recordで別検証する。textは固定metrics、Blobは固定badge SVG、streamは固定event framesをfake応答とする。OIDC2methodは [HTTP具体oracle](#oidc-http-concrete-oracles) の専用caseに接続し、このrowsへauth付きで重複定義しない。
+
+```json
+{
+  "rows": [
+    {"sdk_method":"getUsers","args":[{}],"http_method":"GET","http_path":"/api/users","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"createUser","args":[{"username":"FIXTURE-USER","display_name":"Fixture User","role_ids":["viewer"],"external_subjects":[{"provider_id":"fixture","subject":"subject-2"}]}],"http_method":"POST","http_path":"/api/users","body_property_present":true,"body":{"username":"FIXTURE-USER","display_name":"Fixture User","role_ids":["viewer"],"external_subjects":[{"provider_id":"fixture","subject":"subject-2"}]},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"updateUser","args":["usr_00000000000000000000000006",{"display_name":"Fixture Changed"}],"http_method":"PATCH","http_path":"/api/users/usr_00000000000000000000000006","body_property_present":true,"body":{"display_name":"Fixture Changed"},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"disableUser","args":["usr_00000000000000000000000006"],"http_method":"DELETE","http_path":"/api/users/usr_00000000000000000000000006","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getDatastore","args":[],"http_method":"GET","http_path":"/api/datastore","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"switchDatastore","args":[{"target_store":"statefile","dry_run":true}],"http_method":"POST","http_path":"/api/datastore/switch","body_property_present":true,"body":{"target_store":"statefile","dry_run":true},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getExternalAuthConfig","args":[],"http_method":"GET","http_path":"/api/external-auth-config","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"setExternalAuthConfig","args":[{"enabled":true,"providers":[{"id":"fixture","type":"oidc","enabled":true,"issuer":"https://id.example.test","client_id":"adlaire-ci-test","scopes":["openid"],"redirect_uri":"https://admin.example.test/"}]}],"http_method":"POST","http_path":"/api/external-auth-config","body_property_present":true,"body":{"enabled":true,"providers":[{"id":"fixture","type":"oidc","enabled":true,"issuer":"https://id.example.test","client_id":"adlaire-ci-test","scopes":["openid"],"redirect_uri":"https://admin.example.test/"}]},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"testExternalAuth","args":[{"provider_id":"fixture"}],"http_method":"POST","http_path":"/api/external-auth/test","body_property_present":true,"body":{"provider_id":"fixture"},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"exportStats","args":[{"from":"2026-01-01T00:00:00Z","to":"2026-01-02T00:00:00Z","granularity":"build"}],"http_method":"GET","http_path":"/api/stats/export?from=2026-01-01T00%3A00%3A00Z&to=2026-01-02T00%3A00%3A00Z&granularity=build","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"cancelQueueEntry","args":["q20260102000000"],"http_method":"DELETE","http_path":"/api/queue/q20260102000000","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getAuthOptions","args":[],"http_method":"GET","http_path":"/api/auth/options","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getCurrentUser","args":[],"http_method":"GET","http_path":"/api/auth/me","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getPrometheusMetrics","args":[],"http_method":"GET","http_path":"/api/metrics","body_property_present":false,"accept":"text/plain","response_kind":"string"},
+    {"sdk_method":"getConfigSnapshots","args":[{}],"http_method":"GET","http_path":"/api/config-snapshots","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"createConfigSnapshot","args":[{"label":null}],"http_method":"POST","http_path":"/api/config-snapshots","body_property_present":true,"body":{"label":null},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getConfigSnapshot","args":["cfgsnap_20260102000000"],"http_method":"GET","http_path":"/api/config-snapshots/cfgsnap_20260102000000","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"restoreConfigSnapshot","args":["cfgsnap_20260102000000",{"confirmation":"RESTORE_CONFIG"}],"http_method":"POST","http_path":"/api/config-snapshots/cfgsnap_20260102000000/restore","body_property_present":true,"body":{"confirmation":"RESTORE_CONFIG"},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"deleteConfigSnapshot","args":["cfgsnap_20260102000000"],"http_method":"DELETE","http_path":"/api/config-snapshots/cfgsnap_20260102000000","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getStatusBadge","args":[{}],"http_method":"GET","http_path":"/api/badge/status.svg","body_property_present":false,"accept":"image/svg+xml","response_kind":"Blob"},
+    {"sdk_method":"getHistoryRetention","args":[],"http_method":"GET","http_path":"/api/history/retention","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"setHistoryRetention","args":[{"enabled":false,"max_count":1,"max_age_days":null}],"http_method":"POST","http_path":"/api/history/retention","body_property_present":true,"body":{"enabled":false,"max_count":1,"max_age_days":null},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"runHistoryRetention","args":[],"http_method":"POST","http_path":"/api/history/retention/run","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getRoles","args":[],"http_method":"GET","http_path":"/api/roles","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"createRole","args":[{"id":"auditor","name":"Auditor","permissions":["status:read"]}],"http_method":"POST","http_path":"/api/roles","body_property_present":true,"body":{"id":"auditor","name":"Auditor","permissions":["status:read"]},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"updateRole","args":["auditor",{"name":"Auditor 2"}],"http_method":"PATCH","http_path":"/api/roles/auditor","body_property_present":true,"body":{"name":"Auditor 2"},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"deleteRole","args":["auditor"],"http_method":"DELETE","http_path":"/api/roles/auditor","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"diffConfigSnapshots","args":["cfgsnap_20260101000000","cfgsnap_20260102000000"],"http_method":"GET","http_path":"/api/config-snapshots/cfgsnap_20260101000000/diff/cfgsnap_20260102000000","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getProjects","args":[{}],"http_method":"GET","http_path":"/api/projects","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"createProject","args":[{"id":"docs","name":"Docs","root":"repo:default","branch":"main"}],"http_method":"POST","http_path":"/api/projects","body_property_present":true,"body":{"id":"docs","name":"Docs","root":"repo:default","branch":"main"},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"updateProject","args":["docs",{"name":"Docs 2"}],"http_method":"PATCH","http_path":"/api/projects/docs","body_property_present":true,"body":{"name":"Docs 2"},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"archiveProject","args":["docs"],"http_method":"DELETE","http_path":"/api/projects/docs","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getApiVersion","args":[],"http_method":"GET","http_path":"/api/version","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getOpenApiDocument","args":[],"http_method":"GET","http_path":"/api/openapi.json","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"reorderQueue","args":[["q20260102000000","q20260102000000-001"]],"http_method":"POST","http_path":"/api/queue/reorder","body_property_present":true,"body":{"queue_ids":["q20260102000000","q20260102000000-001"]},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getConfigTemplates","args":[],"http_method":"GET","http_path":"/api/config-templates","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"createConfigTemplate","args":[{"name":"Fixture layout","description":null,"values":{"pipeline_config":{"extra_args":[],"env":{"FIXTURE":"1"}},"dashboard_layout":{"widgets":["stats","status"]}}}],"http_method":"POST","http_path":"/api/config-templates","body_property_present":true,"body":{"name":"Fixture layout","description":null,"values":{"pipeline_config":{"extra_args":[],"env":{"FIXTURE":"1"}},"dashboard_layout":{"widgets":["stats","status"]}}},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"applyConfigTemplate","args":["tmpl_00000000000000000000000001",{"confirmation":"APPLY_CONFIG_TEMPLATE"}],"http_method":"POST","http_path":"/api/config-templates/tmpl_00000000000000000000000001/apply","body_property_present":true,"body":{"confirmation":"APPLY_CONFIG_TEMPLATE"},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"deleteConfigTemplate","args":["tmpl_00000000000000000000000001"],"http_method":"DELETE","http_path":"/api/config-templates/tmpl_00000000000000000000000001","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getAdminEvents","args":[{}],"http_method":"GET","http_path":"/api/events","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"streamAdminEvents","args":[{"type":"build","limit":1,"offset":2,"after":"2026-01-02T00:00:00Z"},{"kind":"callback","behavior":"append-canonical-record-to-trace"}],"http_method":"GET","http_path":"/api/events/stream?type=build","body_property_present":false,"accept":"text/event-stream","response_kind":"StreamHandle"},
+    {"sdk_method":"getShareLinks","args":[],"http_method":"GET","http_path":"/api/share-links","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"createShareLink","args":[{"scope":"status","expires_at":"2026-01-02T00:01:00Z"}],"http_method":"POST","http_path":"/api/share-links","body_property_present":true,"body":{"scope":"status","expires_at":"2026-01-02T00:01:00Z"},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"revokeShareLink","args":["share_00000000000000000000000001"],"http_method":"DELETE","http_path":"/api/share-links/share_00000000000000000000000001","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getSharedStatus","args":["CgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgo"],"http_method":"GET","http_path":"/api/share/CgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgo/status","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"getCachePolicy","args":[],"http_method":"GET","http_path":"/api/cache-policy","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"setCachePolicy","args":[{"enabled":true,"ttl_seconds":30,"endpoints":["/api/health"]}],"http_method":"POST","http_path":"/api/cache-policy","body_property_present":true,"body":{"enabled":true,"ttl_seconds":30,"endpoints":["/api/health"]},"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"purgeResponseCache","args":[],"http_method":"DELETE","http_path":"/api/response-cache","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"diffSnapshots","args":["b20260101000000","b20260102000000"],"http_method":"GET","http_path":"/api/snapshots/b20260101000000/diff/b20260102000000","body_property_present":false,"accept":"application/json","response_kind":"object"},
+    {"sdk_method":"resendWebhook","args":["ntfy20260102000000",{"confirmation":"RESEND_WEBHOOK"}],"http_method":"POST","http_path":"/api/notify-log/ntfy20260102000000/resend","body_property_present":true,"body":{"confirmation":"RESEND_WEBHOOK"},"accept":"application/json","response_kind":"object"}
+  ]
+}
+```
+
+各rowの必須expectedはfetch1回、method/path/query/body property有無/JSON body値/Accept/Content-Type、credentials/redirect/cache、timeout設定/解除、return kind。Authorizationはmemory tokenがある場合の共通helper規則、traceには本体を保存しない。JSON bodyなしのmethodはbody/Content-Type propertyを作らず、PATCHもJSON bodyとContent-Typeを付ける。query順はSDK正本の列挙順、spaceは%20、null/undefined keyは省略、空文字はkey=のまま送る。
+
+| case ID | 固定入力 / fake | expected |
+|---|---|---|
+| sdk-all-methods | 全50rowを別SDK instance/独立fakeへ投入 | rowsどおりのtransport/return。未定義method/alias/追加fetch0、入力objectのproperty/array順を変更しない。 |
+| sdk-query-omit | getUsers({limit:undefined,offset:null,status:"",role_id:"role a"}) | path=/api/users?status=&role_id=role%20a、body propertyなし。getUsers(null/undefined)は/api/usersだけ、未知x=1はTypeError/HTTP0。 |
+| sdk-path-query-encode | updateUser("a b",{display_name:"Changed"})、diffSnapshots("a%b","right")、exportStats({from:"2026-01-01T00:00:00Z",to:"2026-01-02T00:00:00Z",target:"a%b"}) | 不正id2件はTypeError/HTTP0。exportStatsだけtarget=a%25b、時刻colon=%3A、二重encode0。valid idは共通regex文字だけなのでpathの再encode変異はwire同値でkillと数えず、引数拒否を検証する。 |
+| sdk-invalid-args | idにnull/""/"a/b"/"."/".."/NUL/CR/LF、inputにnull/[]/1、queueIds重複/非string、callback非function | TypeError/HTTP0、memory token保持、原引数をerror/consoleへ出さない。 |
+| sdk-empty-reorder | reorderQueue([]) | POST1/body={"queue_ids":[]}、TypeError0。queued集合一致はAPIへ委譲。 |
+| sdk-stream-query | rowsのstreamAdminEvents args | type=buildだけ送信、limit/offset/after不送信、callback argをquery/bodyへ混ぜない。 |
+| sdk-media-fault | 全methodで成功statusのContent-Typeをtext/htmlへ変更 | streamはstatus0/Invalid SSE response、他はHTTP status/Invalid response、retry0。 |
+| sdk-json-error | 各JSON methodへ409 {"error":"Conflict"} | AdlaireCIError status409/message=Conflict、token保持、1fetchのみ。401だけtoken=null、AdlaireCICD専用callbackをAdlaireCIへ混入させない。 |
+| sdk-field-details | createUserへ422 {error:"Validation failed",details:{display_name:"Invalid value"}}、別caseはdetails=[] | 前者error.detailsを同objectのまま渡す、後者Invalid response/HTTP422/details=null、legacy配列契約と混同0。 |
+| sdk-timeout-body | header成功後body readを停止→fake clock30秒 | Request timeout/status0、Abort1、finally timer解除1、token保持、未完read回収。headerだけで成功しない。 |
+| sdk-network | fetch rejectでerrorにsecret風文字列を含める | Network error/status0、元message/stack/response転写0、token保持。 |
+| sdk-stream-terminal | 正常event/keepalive/error frame、user close、server EOF、invalidUTF8/CRLF/unknown eventを独立投入 | 正常callback1、error frameはstatus0/message=Admin events read failed、user close done=null、EOF Event stream closed、形式不正Invalid SSE frame、全reader/timer回収。 |
+| sdk-callback-throw | onEventがError("fixture-secret")をthrow | Invalid SSE frame/status0、record/元message/stackの外部転写0、close1。 |
+| sdk-mutable-input | query/arraysを凍結して1call、別caseはmutable inputをfetch開始後に変更→異なるbodyで次call | 凍結入力の変更0、捕捉済request.body string不変、次callは新bodyだけで前call入力の流用0。 |
+
+test harnessはJavaScript実行をDeno stable runtimeだけで行い、native fetch/Response/Blob/TextDecoder/AbortControllerを固定fakeへ差し替える。Node/npm/bundlerや実networkを代用しない。local補助でDeno不在の場合は未実行理由を残し、正式Actionsで同じ対象source SHAを検証する。現在のこの文書入力を、未実装SDK methodのDeno合格として記録しない。
+
+<a id="additional-management-migration-inputs"></a>
+**認証移行と失効復旧の固定入力：** 次のsourceはcanonical JSON + LFをfile byteとしてfake rootへ展開する。outputs/journal/profileはgolden入力であり、実装が生成した値で期待値を上書きしない。file0600/owner一致/nlink1、directory0700、clock/entropyはJSON値、lifecycle flockは解放状態。digest比較はmemory内だけ、credential/token hashを通常ログやexpected/securityへ転写しない。caseは既存users-roles-successとauth-permission-deniedのinput/cli.json・input/fakes.json/expected群へ接続する。
+
+```json
+{
+  "now": "2026-01-02T00:00:00Z",
+  "argv": [
+    "--migrate-users",
+    "--state-dir",
+    "/fixture/state",
+    "--username",
+    "ADMIN"
+  ],
+  "entropy_hex": "00000000000000000000000000000001",
+  "source_bytes_encoding": "canonical-json-plus-LF",
+  "source": {
+    ".admin_credentials": {
+      "password_hash": "1fcfc74d2c455dd9af866f75de73a4bc47e7f3f5d653b72f548b44efd1c37887",
+      "salt": "1111111111111111111111111111111111111111111111111111111111111111",
+      "algorithm": "pbkdf2_hmac_sha256_v1",
+      "iterations": 600000,
+      "must_change": false,
+      "login_count": 0,
+      "last_login_at": null,
+      "updated_at": "2026-01-01T00:00:00Z"
+    },
+    ".totp_secret": {
+      "enabled": false,
+      "secret_base32": null,
+      "confirmed_at": null,
+      "last_accepted_step": null
+    },
+    ".api_tokens": {
+      "tokens": [
+        {
+          "id": "tok000001",
+          "label": "fixture-read",
+          "scopes": [
+            "read"
+          ],
+          "token_hash": "1290ff1f79b9e8645c2d7e9c9e750826b680180f8a0d812b6474707f19498cc7",
+          "created_at": "2026-01-01T00:00:00Z",
+          "last_used_at": null,
+          "expires_at": null,
+          "revoked_at": null
+        },
+        {
+          "id": "tok000002",
+          "label": "fixture-revoked",
+          "scopes": [
+            "read"
+          ],
+          "token_hash": "1290ff1f79b9e8645c2d7e9c9e750826b680180f8a0d812b6474707f19498cc7",
+          "created_at": "2026-01-01T00:00:00Z",
+          "last_used_at": null,
+          "expires_at": null,
+          "revoked_at": "2026-01-01T12:00:00Z"
+        }
+      ]
+    }
+  },
+  "outputs": {
+    ".roles": {
+      "roles": [
+        {
+          "id": "admin",
+          "name": "Administrator",
+          "permissions": [
+            "*"
+          ],
+          "system": true,
+          "created_at": "2026-01-02T00:00:00Z",
+          "updated_at": "2026-01-02T00:00:00Z"
+        },
+        {
+          "id": "operator",
+          "name": "Operator",
+          "permissions": [
+            "build:write",
+            "config:read",
+            "status:read"
+          ],
+          "system": true,
+          "created_at": "2026-01-02T00:00:00Z",
+          "updated_at": "2026-01-02T00:00:00Z"
+        },
+        {
+          "id": "viewer",
+          "name": "Viewer",
+          "permissions": [
+            "status:read"
+          ],
+          "system": true,
+          "created_at": "2026-01-02T00:00:00Z",
+          "updated_at": "2026-01-02T00:00:00Z"
+        }
+      ]
+    },
+    ".users": {
+      "users": [
+        {
+          "id": "usr_00000000000000000000000001",
+          "username": "admin",
+          "display_name": "admin",
+          "status": "active",
+          "role_ids": [
+            "admin"
+          ],
+          "credential": {
+            "password_hash": "1fcfc74d2c455dd9af866f75de73a4bc47e7f3f5d653b72f548b44efd1c37887",
+            "salt": "1111111111111111111111111111111111111111111111111111111111111111",
+            "algorithm": "pbkdf2_hmac_sha256_v1",
+            "iterations": 600000,
+            "must_change": false,
+            "login_count": 0,
+            "last_login_at": null,
+            "updated_at": "2026-01-01T00:00:00Z"
+          },
+          "external_subjects": [],
+          "totp": {
+            "enabled": false,
+            "secret_base32": null,
+            "confirmed_at": null,
+            "last_accepted_step": null
+          },
+          "created_at": "2026-01-02T00:00:00Z",
+          "updated_at": "2026-01-02T00:00:00Z"
+        }
+      ]
+    },
+    ".api_tokens": {
+      "tokens": [
+        {
+          "id": "tok000001",
+          "label": "fixture-read",
+          "scopes": [
+            "read"
+          ],
+          "token_hash": "1290ff1f79b9e8645c2d7e9c9e750826b680180f8a0d812b6474707f19498cc7",
+          "created_at": "2026-01-01T00:00:00Z",
+          "last_used_at": null,
+          "expires_at": null,
+          "revoked_at": "2026-01-02T00:00:00Z",
+          "user_id": "usr_00000000000000000000000001"
+        },
+        {
+          "id": "tok000002",
+          "label": "fixture-revoked",
+          "scopes": [
+            "read"
+          ],
+          "token_hash": "1290ff1f79b9e8645c2d7e9c9e750826b680180f8a0d812b6474707f19498cc7",
+          "created_at": "2026-01-01T00:00:00Z",
+          "last_used_at": null,
+          "expires_at": null,
+          "revoked_at": "2026-01-01T12:00:00Z",
+          "user_id": "usr_00000000000000000000000001"
+        }
+      ]
+    }
+  },
+  "journal": {
+    "schema_version": 1,
+    "admin_user_id": "usr_00000000000000000000000001",
+    "started_at": "2026-01-02T00:00:00Z",
+    "source_sha256": {
+      ".admin_credentials": "67cb2da8f7746cdc9e96114abee6ca98cb8ca85cd174be32d388aaf3b1a9adeb",
+      ".totp_secret": "d436e3fce01138454b255728e35ad7fa28f1d9d246af3e694d9d621fc6e0af39",
+      ".api_tokens": "ba2550b40bb990eacbc353ede4ca0776ac3a51ca1022c8a9814520346d7415b1"
+    },
+    "output_sha256": {
+      ".roles": "292258eefd1cc2148476fa0610331b71cc4835a808af36c7b49c9c60161bd0b3",
+      ".users": "ec4dc9f8bd7d0e46ba7a6c9529e7e03386c7740784f93260ae4c615408eea836",
+      ".api_tokens": "3dcee8abdc22c8953f5c3e6fc9f90fffca4eff5615e69dbf60925484b1127d41"
+    },
+    "phase": "prepared"
+  },
+  "profile": {
+    "schema_version": 1,
+    "profile": "multi-user-v1",
+    "admin_user_id": "usr_00000000000000000000000001",
+    "migrated_at": "2026-01-02T00:00:00Z"
+  }
+}
+```
+
+| case ID | 固定入力 / 中断地点 | 固定expected |
+|---|---|---|
+| migration-success | argv/source、全I/O成功 | exit0/stdout={"profile":"multi-user-v1","migrated":true}+LF/stderr空。outputs/profileと等価、旧credential/TOTP byte不変、journal不在、順序prepared→roles→users→tokens→read-back→profile→committed→unlink→parent sync。 |
+| migration-absent-optional | source.totp_secret不在、source.api_tokens不在 | journal source該当2値null、disabled TOTP/空tokensの予定digestをprepared前に固定。user1/role3、空tokens、exit0。旧2fileを作成しない。 |
+| migration-arguments | 各々 --migrate-users重複、--username重複、未知--x、相対state-dir、username=" admin"、通常serve option併用 | exit2/AUTH_MIGRATION_INVALID+LF/stdout空、state read/write/entropy/listen0。 |
+| migration-old-schema | source credential.algorithm=sha256_iter_v1、credential欠落、totp enabled=trueかつsecret=null、tokens未知keyの各独立case | exit2/INVALID、journal/output/profile write0、元byte不変、listen0。 |
+| migration-existing | journal無しでusers/roles/profileのいずれか存在 | exit2/INVALID、既存file上書き0。multi-user profileで再移行しない。 |
+| migration-busy | APIが同inode flockを保持、別CLIも同時開始 | 後行exit3/AUTH_MIGRATION_BUSY+LF、全write/entropy0。先行だけ継続。lock file unlink0。 |
+| migration-entropy | prepared作成前にentropy失敗 | exit4/AUTH_MIGRATION_FAILED+LF、journal/output/profile0、旧byte不変。 |
+| migration-prepared-cuts | prepared parent sync完了後、roles/users/tokens各atomic commit後、read-back後の5地点でprocess停止 | 再開前profile無し→HTTP listen0。再CLIは保存id/started_at再使用・entropy0、既存outputのcanonical digest一致だけ再利用、最後にsuccessと等価。既存tokens予定出力一致も再開可能。 |
+| migration-profile-cuts | profile commit後/committed journal後/unlink後の3地点停止 | profileを削除/legacy downgradeしない。journal存在時CLIは検証後cleanupのみ、出力再生成0。unlink済みなら起動はmulti-user、再CLIはexit2。 |
+| migration-source-change | preparedだけ配置後にcredential.login_countを1へ、またはTOTP byte末尾へ空白追加 | 再CLI exit4、profile0、予定/既存output書換0。canonical同値でもsource byte差分を拒否。 |
+| migration-token-change | prepared/tokens予定write後にtok000001.labelをchangedへ | 再CLI exit4、profile0/既存byte不変。元byte/予定canonicalのどちらにも一致しない。 |
+| migration-output-conflict | prepared/roles確定後にroles[0].nameをChangedへ | 再CLI exit4、users/tokens/profile write0、roles上書き0。 |
+| migration-readback-fault | outputs全commit後にusers read-backでEIO | exit4/profile0/journal prepared保持、旧credential不変。fault除去後再開はsuccess。 |
+| migration-profile-fault | profile atomic rename前でEIO | exit4/profile無し、prepared保持。rename後/parent syncで失敗する独立caseはprofile存在を維持、再開はcleanup。 |
+| migration-cleanup-fault | committed後journal unlinkまたはparent sync失敗 | exit4/新profile維持。unlink失敗時再CLI cleanup成功、unlink済sync失敗時再CLI exit2、APIはprofile/outputs全検証後だけlisten可。 |
+| migration-path-safety | 各source/journal/output/lockをsymlink、hardlink2、0604、他ownerへ独立置換 | 事前schema/path拒否ならexit2、再開中拒否なら4。追従/permission自動修復/既存上書き/HTTP listen0。 |
+| revocation-cuts | 認可入力id5をdisable、marker sync後/users commit後/tokens commit後/marker除去前の4地点停止 | 未完markerがあるid5の全認証401。restartはlisten前にtokens対象全失効→marker users=[]をatomic保存。users変更前cutでもtoken失効を取消さない。元revoked_atは維持。 |
+| revocation-corrupt | marker.user_id重複、requested_at不正、未知key、tokens EIOを別case | API起動停止/listen0、marker自動再生成/削除0、旧token許可0。 |
+| revocation-cleanup-fault | tokens commit後marker空object保存EIO | API500、対象user全認証拒否、marker保持、users/tokens確定分維持。restart後復旧完了までlisten0。 |
+
+<a id="additional-management-bootstrap-inputs"></a>
+**認証起動・本人情報・datastoreの固定入力：** 認証/role/provider stateは [認可固定入力](#additional-management-authorization-inputs)、sessionは [OIDC HTTP入力](#oidc-http-concrete-oracles) のlocal/OIDC束縛に各userを対応させる。GETはbody/query無し、request headerはX-Request-IDだけ（本人APIだけ有効Bearer追加）、fake socket remote=203.0.113.10:12345。次のresponseはAPI出力goldenでありSDK単体のopaque responseとは別に比較する。
+
+```json
+{
+  "now": "2026-01-02T00:00:00Z",
+  "options_legacy": {
+    "profile": "legacy-v1",
+    "providers": []
+  },
+  "options_multi": {
+    "profile": "multi-user-v1",
+    "providers": [
+      {
+        "id": "fixture",
+        "issuer_origin": "https://id.example.test"
+      }
+    ]
+  },
+  "self_admin": {
+    "user": {
+      "id": "usr_00000000000000000000000001",
+      "username": "admin",
+      "display_name": "Fixture Admin",
+      "status": "active",
+      "role_ids": [
+        "admin"
+      ],
+      "external_subjects": [],
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z",
+      "totp_enabled": false,
+      "password_set": true
+    },
+    "capabilities": {
+      "build:write": true,
+      "config:read": true,
+      "config:write": true,
+      "status:read": true,
+      "system:admin": true,
+      "user:admin": true
+    },
+    "auth_source": "local"
+  },
+  "self_oidc": {
+    "user": {
+      "id": "usr_00000000000000000000000002",
+      "username": "oidc-user",
+      "display_name": "Fixture OIDC",
+      "status": "active",
+      "role_ids": [
+        "operator"
+      ],
+      "external_subjects": [
+        {
+          "provider_id": "fixture",
+          "subject": "subject-1"
+        }
+      ],
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z",
+      "totp_enabled": false,
+      "password_set": false
+    },
+    "capabilities": {
+      "build:write": true,
+      "config:read": true,
+      "config:write": false,
+      "status:read": true,
+      "system:admin": false,
+      "user:admin": false
+    },
+    "auth_source": "oidc"
+  },
+  "self_manager": {
+    "user": {
+      "id": "usr_00000000000000000000000003",
+      "username": "manager",
+      "display_name": "manager",
+      "status": "active",
+      "role_ids": [
+        "account-manager"
+      ],
+      "external_subjects": [],
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z",
+      "totp_enabled": false,
+      "password_set": true
+    },
+    "capabilities": {
+      "build:write": false,
+      "config:read": false,
+      "config:write": false,
+      "status:read": false,
+      "system:admin": false,
+      "user:admin": true
+    },
+    "auth_source": "local"
+  },
+  "datastore": {
+    "active_store": "statefile",
+    "stores": [
+      {
+        "id": "statefile",
+        "type": "statefile",
+        "enabled": true,
+        "path": null
+      }
+    ],
+    "pending_switch": null
+  },
+  "datastore_response": {
+    "accepted": false,
+    "dry_run": true,
+    "target_store": "statefile",
+    "checks": [
+      {
+        "name": "schema",
+        "status": "ok",
+        "message": "OK"
+      },
+      {
+        "name": "ownership",
+        "status": "ok",
+        "message": "OK"
+      },
+      {
+        "name": "permissions",
+        "status": "ok",
+        "message": "OK"
+      },
+      {
+        "name": "readability",
+        "status": "ok",
+        "message": "OK"
+      }
+    ]
+  }
+}
+```
+
+| case ID | 固定request / 差分 | 固定expected |
+|---|---|---|
+| auth-options-legacy | GET /api/auth/options、profile不在 | options_legacy/200、external/user/role/secret read0、rate0、Set-Cookie/ETag/Last-Modified無し、no-store。 |
+| auth-options-multi | 同GET、認可固定state | options_multi/200、provider全体disabledならproviders=[]、個別disabledならその行だけ除外。各々secret file/user/role read0、config byte不変。 |
+| auth-options-corrupt | external config unknown keyまたはEIO | 500 Authentication options unavailable、legacy fallback/secret read0。 |
+| auth-options-input | body={}、query x=1、IP ACL denyの独立case | body400、unknown query422、ACL403。認証/secret/endpoint業務write0、schema不適合はexternal state read0。 |
+| auth-profile-registration | cicd-v1/siteでoptions/me、legacyでme | 各404、別namespaceへのdispatch/認証/secret/業務state read0。 |
+| auth-self-admin | GET /api/auth/me、admin1 session | 200/self_admin、全6capabilities true、caller以外の公開user情報なし。 |
+| auth-self-oidc | id2のOIDC session | 200/self_oidc、password_set=false、provider binding/hash/内部TOTP無し、user credential生成0。 |
+| auth-self-manager | id3 session | 200/self_manager、status:read=falseでも本人APIを許可。 |
+| auth-self-denied | Bearer無し/expired/rolehash変更/provider subject解除を別case | 401 Unauthorized、endpoint user view作成0、session削除、secret0。 |
+| auth-self-token-forced | 有効API token、forced sessionを別case | 前者403 Forbidden、後者403 Password change required、view0。Cookieだけは401。 |
+| auth-self-rate-io | read window満杯、または最新users EIO | 前者429、後者500 Authentication context unavailable。view/業務write0、rate/audit失敗優先は正本へ一致。 |
+| datastore-get | GET /api/datastore、datastoreを配置 | 200/datastoreそのまま、state write0。file不在は同値memory応答でfile作成0。 |
+| datastore-check | POST /api/datastore/switch {target_store:"statefile",dry_run:true} | 202/datastore_response、4check全ok/accepted=false、pending/event/移送/command0。 |
+| datastore-confirmed-noop | 同body dry_run=false/confirmation=SWITCH_DATASTORE | 202/response.dry_run=falseだけ変更、実切替/成功event0。 |
+| datastore-rejected | target_store=sqlite、dry_run=falseでconfirmation無し、未知keyを別case | 各422、state read/write/command0。 |
+| datastore-fault | schema未知key/owner他uid/mode0644/read EIOを別case | 各500、後続check/command/移送/write0、accepted=true応答0。 |
+
+<a id="additional-management-identity-inputs"></a>
+**外部設定・本人token/TOTP・漏えいの固定case：** baseは [認可JSON](#additional-management-authorization-inputs) と [OIDC HTTP JSON](#oidc-http-concrete-oracles)、nowも同値。secret値はinput/fakeのmemoryにだけ保持し、expectedでは共通secret placeholderを使用する。fixture群はusers-roles-success/auth-permission-denied/request-validation/secret-redactionの既存4群、未実装の実行成功を記録しない。
+
+| case ID | 具体入力 / schedule | 固定expected |
+|---|---|---|
+| external-config-get | admin1でGET external-auth-config | 200/enabled/providersは保存値からclient_secret_refを除きclient_secret_set=falseを加えたobject。保存byte不変、secret read0。 |
+| external-config-new-secret | 同configをPOST、fixture providerにclient_secret=fixture-client-secretを追加、version entropy16byte=00112233445566778899aabbccddeeff | create-only secret0600→config ref確定→external_auth_update audit→event。created_atはJan1維持/updated_at=now、response client_secret_set=true、ref/raw secret不在。 |
+| external-config-keep | 上の保存後、client_secret省略と***を独立POST | 200/no-op、secret read/write/config/log/event/世代更新0。client_secret=nullなら新ref=null/updated_at=now、旧secret fileをunlinkしない。 |
+| external-config-fault | 新secret保存EIO、または保存成功後config rename前EIO | 各500、旧config/ref byte不変、log/event0。後者だけ未参照secret残存、次回も既存version上書き0。 |
+| external-config-orphan | orphan file1件だけ追加、GET/options/start | orphanを探索/選択/削除0、設定ref以外のsecret read0。 |
+| external-config-protected | id2が参照中のfixture providerをdelete/issuer変更、enabled=falseも別case | 各409、state/flow/session/log変更0。disabled user参照も同結果。単なるprovider enabled=false更新は200/当該OIDC flow-ticket-session失効、local/API token不変。 |
+| external-config-invalid | providers同id2件、new secret=***、scopes=["email"]、client_secret_ref入力、秘密CRを各POST | 各422、secret file/config/metadata read/write0、診断に入力値不在。 |
+| external-test | POST {provider_id:"fixture"}、metadataはOIDC固定fake | 200/ok=true、issuer/authorize/token/jwksは固定metadata、discovery1/JWKS-token-UserInfo0、設定/flow/session不変。 |
+| external-test-url | 登録導出URLのdiscovery_urlだけ、または異なるhttps://evil.example.test/ | 前者同200/1call、後者422/HTTP0。両key同時指定422。 |
+| external-test-upstream | redirect302、duplicate metadata key、wrong issuer、S256無し、private DNS、body262145byte、timeoutを独立注入 | 各502/Upstream unavailable、後続JWKS/token0、上流body/header/secretのresponse/log露出0。 |
+| external-basic-encoding | confidential client_id="fixture: client+%"、secret="s: +%"、publicの対応無しmetadataを別case | Basic復号byteをmemory内で「url.QueryEscape(client_id)+colon+url.QueryEscape(secret)」と比較、raw連結不合格。formにclient_secret0、header expectedへの実値転写0。metadata不適合はstart502/token0。 |
+| oidc-origin-hosts | https://ID.EXAMPLE.TEST:443、https://id.example.test:8443をorigin helperへ、https://127.1、https://2130706433、https://[::ffff:8.8.8.8]、https://id.example.test.、https://id%2eexample.test、Unicode hostを別入力 | 前2件はhttps://id.example.test / https://id.example.test:8443。後7件はURL不適合/外部HTTP0。issuer claimはorigin正規化で救済しない。 |
+| oidc-public-ip | fake DNSを8.8.8.8だけ、8.8.8.8+127.0.0.1、100.64.0.1、192.0.2.1、2001:db8::1、空配列へ独立変更（通常documentation address特例をこのcaseでは無効化） | 最初だけ検証済みIPへdial1。他は全体502/dial0。環境HTTP_PROXY設定でもproxy dial0。DNS成功後再DNS0。 |
+| token-own-view | id5でGET /api/tokens、入力tokensはmigration.outputsへuser_id=id5/全revoked_at=nullを適用 | 自分の2件だけ、公開keyは既存7key+user_id、token_hash無し。他user id1のrecord追加後も件数に含めない。* sessionは全3件。 |
+| token-owner-create | id5でPOST token label=fixture/scopes=["read"]、entropy32byte0x0b | 201/新token32byte由来の既存表現+user_id=id5、hash保存のみ。admin scopeは403/entropy-statewrite0。有効API tokenで管理GET/POST/DELETEは各403。 |
+| token-owner-revoke | id5 sessionでid1所有token DELETE、id5所有token DELETEを別case | 前者404/変更0、後者200/対象だけrevoke。user_id入力keyをPOSTへ追加すると422。 |
+| token-latest-role | token owner id5をlocked、またはroleのstatus:readを除去後read API | locked401、後者permission403、owner roleの過去snapshotから許可しない。権限hashが変わった旧sessionは401。 |
+| totp-user-password | id5 session/password=Fixture-only-password-2026、entropy20byteはRFC secret decoded byte | setup成功は本人だけ仮secret/既存response、users永続変更0。他idの仮secret/ticket流用401。API token/OIDC-only id2の本人setupは403。 |
+| totp-confirm | 上caseの仮secret、code726075/now、confirm password同値 | 200/id5だけenabled=true/confirmed_at=now/step58910400、他user/TOTP旧file不変。再code同step拒否、仮secret再利用拒否。 |
+| totp-wrong-password | setup/confirm/deleteでpassword=wrongを別case | 各401、users/TOTP/session成功発行0、秘密入力のエラー露出0。password key無しは422。 |
+| totp-race-step | id5のTOTP login ticket2件、同codeを同時にlock順A→B | A成功session1/step更新、B401/session0、compare-and-updateをlock外へ移すmutationを検出する入力。 |
+| notify-signature-compat | notify-testと通常build/手動再送を同じfixture secret/bodyで独立送信 | API testはX-Adlaire-Signatureだけ、runner通常/再送はX-Adlaire-Signature-256だけ、値はmemory内HMAC比較で一致、header両方送信0。secret=nullなら両方無し。実値のexpected転写0。 |
+| secrets-negative | OIDC token/code/state/nonce/cookie/Basic、password/TOTP、share token、notify secretをそれぞれinputからmarker登録 | 許可されたone-time response以外のresponse/stdout/stderr/log/event/effects/UI errorに実値/派生値0。故意にfake loggerへ1値転写したnegative controlはsecret-mask assertionで不合格。実値を失敗診断に印字しない。 |
+
+<a id="additional-management-ui-inputs"></a>
+**UI固定入力と操作oracle：** owner=ui、fixture=additional-management-ui-flow。HTML moduleから抽出した実UI handlerをDeno stableのfake browser runtimeで実行し、fake SDK→API fakeは [SDK50row](#additional-management-sdk-inputs) / [bootstrap入力](#additional-management-bootstrap-inputs) / 各機能の完全HTTP入力へ接続する。DOMは [UI DOM責務](ui.md#sec-24-8) のpanel/controlを各1件、他既存controlは実HTMLを使用する。最初のactionは共通input/request.json.ui、後続actionはmanifest.input_filesに列挙したinput/files/ui-actions.jsonへ順序付き配列として置く。配列要素は共通ui actionと同じaction/target/valueの3keyだけで、orderは配列位置（1始まり）から確定し、expectedを入力にしない。action語彙/targetは [UI expected共通契約](#fixture-ui-expected-contract)、bootstrapのloadはdocumentをtargetとする。fake responseはinput/fakes.jsonの既存sdk/fetch/timer/clipboard root、未使用rootも空配列で保持する。browser rootを新設しない。expectedは既存必須4fileだけ。native Browserの実画面検証とは区別し、fake DOM成功をvisual/layout実測と報告しない。未定義fake呼出しは即不合格、実fetch/network/storage/clipboardを呼ばない。clock/Promise/stream/callback発火順はcase scheduleで制御する。
+
+| case ID | 固定操作 / fake | 固定trace / DOM expected |
+|---|---|---|
+| ui-bootstrap-legacy | DOM ready、options_legacy | baseUrl検証→SDK1→getAuthOptions1、password focus、username/OIDC hidden、login応答前protected call0。 |
+| ui-bootstrap-multi | options_multi→password login none→self_admin | getAuthOptions→login(username=admin/password=inputのみ)→getCurrentUser→getDashboard→getStatus→getQueue→getMaintenance→getDashboardLayout。login secret消去、provider label=fixture、capability/userはmemoryだけ。 |
+| ui-bootstrap-manager | login none→self_manager | getCurrentUser後の初期5call0、nav有効、role名からstatus要求/非表示0、操作permissionはAPI403で確定。 |
+| ui-bootstrap-forced | login must_change=forced→本人changePassword成功→self_admin | forced時getCurrentUser/初期5call0、password panelだけ有効。changePassword成功後getCurrentUser→初期5、prompt成功時は初期5再実行0。 |
+| ui-bootstrap-failure | options fetch500/壊れたproviders/未知profileを独立fake、明示retry1回 | 初期getAuthOptions1、login/OIDC disabled/UI initialization failed1、legacy fallback0。retry clickだけ追加GET1、同時二重clickで追加0。 |
+| ui-oidc-start | provider fixture選択/startは固定authorization_url | URL HTTPS/origin確認→location.assign1、storage/traceへのsecret保存0。別origin/fragment token/HTTP URLは遷移0。 |
+| ui-oidc-callback | root query code/state固定、bootstrap multi→finish session→self_oidc | callback捕捉→replaceStateでquery/fragment消去→getAuthOptions→finish1→getCurrentUser→初期5。完了後code/state参照なし/TOTP controls disabled。 |
+| ui-oidc-bad-callback | state重複、error、未知query、fragment token、bootstrap legacyを別case | replaceState1、finish0/一般login失敗、値のDOM/log/storage出力0。 |
+| ui-oidc-ticket | finishがTOTP ticket→loginTotp成功→self_oidc | ticket時初期5/getCurrentUser0、TOTP成功後だけself/初期5、ticket/code/passwordはfinally消去。finish500でもcode再交換0。 |
+| ui-success-panels | SDK50rowのうちOIDC/options/self/public share以外を、対応controlへ1操作ずつ投入、HTTP成功は各完全golden | method/args/confirmationと [UI所有の再取得表](ui.md#sec-24-8) の順に一致。read操作はread1のみ、mutationはmutation1+指定再取得だけ。表外fetch/状態補完0。query入力未指定は省略、表示テキストはtextContent。 |
+| ui-confirm-cancel | restore/template/switch/resendの各confirmation dialogでcancel | 対象SDKcall0、非secret入力保持、pending confirmation破棄。confirmなら固定literalを1回だけ送る。 |
+| ui-datastore-noop | switchDatastore response=datastore_response、dry_run false | checks4件表示、accepted=false維持、切替開始/完了表示0、getDatastore→getAdminEventsだけ。 |
+| ui-422-field | createUserが422/details={display_name:"Invalid value"}、未知field xも別case | 表示名controlへerror/focus、secret消去、未知xはsummary/新DOM生成0、mutation再送/一覧再取得0。 |
+| ui-403-network | setExternalAuthConfigで403、network errorを別case | client_secret/password消去、provider id等非secretだけ保持、permission/connection summary1、retry0。 |
+| ui-queue-conflict | reorder固定2id→409または422→getQueueは順を反転した正常値 | mutation1→getQueue1、楽観成功/旧順へ自動再送0、新応答で表示を置換。 |
+| ui-409-users | updateUserが409、getUsersは認可baseの5件 | updateUser1→getUsers1、conflict表示/自動PATCH0。他panel409も対象一覧だけ、status等を追加取得0。 |
+| ui-401 | getCurrentUserまたは後続readが401、同時pending stream/confirmationあり | 以降call0、全secret/user/capability/confirmation破棄、streamclose1、login表示1、auto retry0。 |
+| ui-event-order | event_appendsを逆順/同id重複/未知late callbackで発火 | schema-valid recordだけtimestamp降順/id昇順、同idは置換で重複表示0。古いstream世代callbackは無視、id/type等の合成0。 |
+| ui-stream-error-stop | active events panelでerror frame、別case明示stop | 前者error1/getAdminEvents1、後者error0/getAdminEvents1、close/reader cleanup1。離脱/logout/401の別3caseはgetAdminEvents0。 |
+| ui-stream-inflight | stream old callbackをpanel離脱後、再入後の新接続より後に発火 | old callback DOM変更0、old doneの再取得0、新handleだけ有効。二重startはSDKcall1。 |
+| ui-share-once | createShareLink成功→copy、revoke、panel離脱、logout、401を別case | share-token-onceだけone-time、各消去後text/attribute/hidden/storage/traceにraw0、copy自体はfake clipboardだけ。 |
+| ui-badge-blob | 固定badge Blob→再refresh→panel離脱 | objectURL2件生成、旧URL/残URLを各1回revoke、img.src以外へSVG挿入0、innerHTML/script0。 |
+| ui-public-display | metrics/OpenAPI/diffにtext="<script>fixture</script>"を含むSDK値 | 表示文字としてescape、script execution0、JSON/SVG/diff再計算0。APIのschema-validity検査とは別のUI値無害化case。 |
+| ui-no-direct-io | UI module実行中にfetch/XMLHttpRequest/EventSource/file/storageへtrap | 全操作はfakeSDK経由だけ、trap count0。SDKのfetchだけ許可しUI直接fetchを検出するnegative controlを別実行。 |
+
+全UI success caseの後、同じ操作へ500を注入した独立caseを実行し、成功後再取得0/成功表示0/secret消去/submit解除を比較する。read-after-success自体の失敗は元mutation成功を取り消さずsummaryにread error、一覧を推測更新せず自動mutation retry0とする。fake browser拡張はUIにも適用するが、builderのstorage許可を管理UIへ継承しない。fake runtimeだけでは実browser/layout証跡を満たさない。
 
 <a id="mcp-fixture-contract"></a>
 **[fixture 証跡責務 §30-F MCP fixture 固定契約](fixture.md#mcp-fixture-contract)：**
