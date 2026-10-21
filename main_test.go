@@ -14,6 +14,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"go/ast"
+	"go/format"
 	"go/parser"
 	"go/token"
 	"io"
@@ -11514,113 +11515,364 @@ func TestDevelopmentActionsGateControls(t *testing.T) {
 var developmentActionsNodeCommand = regexp.MustCompile("(?i)(^|[\\s;&|(\"'\\x60])(?:[^\\s;&|(\"'\\x60]*/)?(?:node(?:js)?|npm|npx|pnpm|yarn|corepack)(?:\\.exe)?($|[\\s;&|)\"'\\x60])")
 var developmentActionsNodeAPI = regexp.MustCompile("(?m)[\"'\\x60](?:node:|npm:)|\\brequire\\s*\\(|\\bmodule\\s*\\.\\s*exports\\b|\\bexports\\s*[.\\[]|\\bprocess\\s*[.\\[]|\\bBuffer\\s*\\.|\\b__dirname\\b|\\b__filename\\b")
 
-func developmentActionsStaticString(expr ast.Expr) (string, bool) {
-	switch expr := expr.(type) {
-	case *ast.BasicLit:
-		if expr.Kind == token.STRING {
-			value, err := strconv.Unquote(expr.Value)
-			return value, err == nil
+type developmentActionsGoProcessReview struct {
+	Path         string `json:"path"`
+	SourceSHA256 string `json:"source_sha256"`
+	CallsSHA256  string `json:"calls_sha256"`
+	CallCount    int    `json:"call_count"`
+	Basis        string `json:"review_basis"`
+}
+
+func developmentActionsGoReviewBasis() map[string]string {
+	return map[string]string{
+		"main_test.go":                     "native-fixture-only",
+		"components/runner/runner_test.go": "native-fixture-only",
+		"components/release/release.go":    "release-owned-toolchain",
+		"components/setup/setup.go":        "setup-verified-artifact",
+		"components/api/api.go":            "fixed-systemctl",
+		"components/runner/runner.go":      "configured-product-boundary",
+	}
+}
+
+func developmentActionsGoInitializer(object *ast.Object) ast.Expr {
+	if object == nil {
+		return nil
+	}
+	switch declaration := object.Decl.(type) {
+	case *ast.ValueSpec:
+		if len(declaration.Names) == len(declaration.Values) {
+			for i, name := range declaration.Names {
+				if name.Obj == object {
+					return declaration.Values[i]
+				}
+			}
 		}
-	case *ast.ParenExpr:
-		return developmentActionsStaticString(expr.X)
-	case *ast.BinaryExpr:
-		if expr.Op == token.ADD {
-			left, okLeft := developmentActionsStaticString(expr.X)
-			right, okRight := developmentActionsStaticString(expr.Y)
-			return left + right, okLeft && okRight
+	case *ast.AssignStmt:
+		if len(declaration.Lhs) == len(declaration.Rhs) {
+			for i, left := range declaration.Lhs {
+				if name, ok := left.(*ast.Ident); ok && name.Obj == object {
+					return declaration.Rhs[i]
+				}
+			}
 		}
 	}
-	return "", false
+	return nil
+}
+
+func developmentActionsGoProcessInspection(path string, data []byte) ([]string, error) {
+	fset := token.NewFileSet()
+	tree, err := parser.ParseFile(fset, path, data, 0)
+	if err != nil {
+		return nil, fmt.Errorf("node-ban:go-syntax")
+	}
+	imports := map[string]string{}
+	for _, imp := range tree.Imports {
+		name, _ := strconv.Unquote(imp.Path.Value)
+		if name != "os/exec" && name != "os" && name != "syscall" {
+			continue
+		}
+		alias := filepath.Base(name)
+		if imp.Name != nil {
+			alias = imp.Name.Name
+		}
+		if alias == "." {
+			return nil, fmt.Errorf("node-ban:command")
+		}
+		imports[alias] = name
+	}
+	parents, owners := map[ast.Node]ast.Node{}, map[ast.Node]string{}
+	stack := []ast.Node{}
+	writes := map[*ast.Object][]ast.Expr{}
+	ast.Inspect(tree, func(n ast.Node) bool {
+		if n == nil {
+			stack = stack[:len(stack)-1]
+			return true
+		}
+		if len(stack) != 0 {
+			parents[n] = stack[len(stack)-1]
+			owners[n] = owners[parents[n]]
+		}
+		if fn, ok := n.(*ast.FuncDecl); ok {
+			owners[n] = fn.Name.Name
+		}
+		stack = append(stack, n)
+		if assignment, ok := n.(*ast.AssignStmt); ok {
+			for i, left := range assignment.Lhs {
+				id, ok := left.(*ast.Ident)
+				if !ok || id.Obj == nil || id.Obj.Decl == assignment {
+					continue
+				}
+				var value ast.Expr
+				if assignment.Tok == token.ASSIGN && len(assignment.Lhs) == len(assignment.Rhs) {
+					value = assignment.Rhs[i]
+				}
+				writes[id.Obj] = append(writes[id.Obj], value)
+			}
+		}
+		return true
+	})
+	var stringsOf func(ast.Expr, map[*ast.Object]bool, int) ([]string, bool)
+	stringsOf = func(expr ast.Expr, seen map[*ast.Object]bool, depth int) ([]string, bool) {
+		if depth >= 64 {
+			return nil, false
+		}
+		switch expr := expr.(type) {
+		case *ast.BasicLit:
+			if expr.Kind == token.STRING {
+				value, err := strconv.Unquote(expr.Value)
+				return []string{value}, err == nil
+			}
+		case *ast.ParenExpr:
+			return stringsOf(expr.X, seen, depth+1)
+		case *ast.Ident:
+			if expr.Obj == nil || seen[expr.Obj] {
+				return nil, false
+			}
+			seen[expr.Obj] = true
+			defer delete(seen, expr.Obj)
+			values, known := stringsOf(developmentActionsGoInitializer(expr.Obj), seen, depth+1)
+			for _, write := range writes[expr.Obj] {
+				more, _ := stringsOf(write, seen, depth+1)
+				values = append(values, more...)
+			}
+			return values, known && len(writes[expr.Obj]) == 0
+		case *ast.BinaryExpr:
+			if expr.Op == token.ADD {
+				left, leftOK := stringsOf(expr.X, seen, depth+1)
+				right, rightOK := stringsOf(expr.Y, seen, depth+1)
+				if len(left)*len(right) > 64 {
+					return nil, false
+				}
+				values := []string{}
+				for _, a := range left {
+					for _, b := range right {
+						values = append(values, a+b)
+					}
+				}
+				return values, leftOK && rightOK
+			}
+		}
+		return nil, false
+	}
+	api := func(expr ast.Expr) string {
+		selector, ok := expr.(*ast.SelectorExpr)
+		if !ok {
+			return ""
+		}
+		pkg, ok := selector.X.(*ast.Ident)
+		if !ok || pkg.Obj != nil {
+			return ""
+		}
+		name := selector.Sel.Name
+		if imports[pkg.Name] == "os/exec" && phase17StringInSlice(name, []string{"Command", "CommandContext", "LookPath"}) ||
+			imports[pkg.Name] == "os" && name == "StartProcess" ||
+			imports[pkg.Name] == "syscall" && (name == "Exec" || name == "ForkExec") {
+			return name
+		}
+		return ""
+	}
+	var functionOf func(ast.Expr, map[*ast.Object]bool, int) (string, bool)
+	functionOf = func(expr ast.Expr, seen map[*ast.Object]bool, depth int) (string, bool) {
+		if depth >= 64 {
+			return "unresolved", false
+		}
+		if name := api(expr); name != "" {
+			return name, true
+		}
+		switch expr := expr.(type) {
+		case *ast.ParenExpr:
+			return functionOf(expr.X, seen, depth+1)
+		case *ast.Ident:
+			if expr.Obj == nil || seen[expr.Obj] {
+				return "", false
+			}
+			seen[expr.Obj] = true
+			defer delete(seen, expr.Obj)
+			name, known := functionOf(developmentActionsGoInitializer(expr.Obj), seen, depth+1)
+			for _, write := range writes[expr.Obj] {
+				if other, _ := functionOf(write, seen, depth+1); name == "" {
+					name = other
+				}
+			}
+			return name, known && len(writes[expr.Obj]) == 0
+		}
+		return "", false
+	}
+	opaque := []string{}
+	addOpaque := func(n ast.Node) {
+		var text bytes.Buffer
+		owner := owners[n]
+		if owner == "" {
+			owner = "<package>"
+		}
+		if err := format.Node(&text, fset, n); err != nil {
+			opaque = append(opaque, owner+" <unformattable>")
+			return
+		}
+		opaque = append(opaque, owner+" "+text.String())
+	}
+	// A function value must stay in a directly traceable call or immutable alias.
+	allowedUse := func(n ast.Node) bool {
+		for {
+			if parent, ok := parents[n].(*ast.ParenExpr); ok {
+				n = parent
+				continue
+			}
+			break
+		}
+		switch parent := parents[n].(type) {
+		case *ast.CallExpr:
+			return parent.Fun == n
+		case *ast.ValueSpec:
+			return len(parent.Names) == 1 && len(parent.Values) == 1 && parent.Values[0] == n && len(writes[parent.Names[0].Obj]) == 0
+		case *ast.AssignStmt:
+			if len(parent.Lhs) == 1 && len(parent.Rhs) == 1 && parent.Rhs[0] == n {
+				id, ok := parent.Lhs[0].(*ast.Ident)
+				return ok && id.Obj != nil && id.Obj.Decl == parent && len(writes[id.Obj]) == 0
+			}
+		}
+		return false
+	}
+	forbidden, malformed := false, false
+	ast.Inspect(tree, func(n ast.Node) bool {
+		if call, ok := n.(*ast.CallExpr); ok {
+			if name, known := functionOf(call.Fun, map[*ast.Object]bool{}, 0); name != "" {
+				start := 0
+				if name == "CommandContext" {
+					start = 1
+				}
+				if len(call.Args) <= start {
+					malformed = true
+					return true
+				}
+				for _, argument := range call.Args[start:] {
+					values, resolved := stringsOf(argument, map[*ast.Object]bool{}, 0)
+					known = known && resolved
+					for _, value := range values {
+						if developmentActionsNodeCommand.MatchString(value) {
+							forbidden = true
+						}
+					}
+				}
+				if !known {
+					addOpaque(call)
+				}
+			}
+		}
+		if expr, ok := n.(ast.Expr); ok {
+			if _, id := expr.(*ast.Ident); id {
+				ident := expr.(*ast.Ident)
+				if ident.Obj == nil || ident.Pos() == ident.Obj.Pos() {
+					return true
+				}
+				if assignment, ok := parents[n].(*ast.AssignStmt); ok {
+					for _, left := range assignment.Lhs {
+						if left == n {
+							return true
+						}
+					}
+				}
+			}
+			if _, paren := expr.(*ast.ParenExpr); !paren {
+				if name, _ := functionOf(expr, map[*ast.Object]bool{}, 0); name != "" && !allowedUse(n) {
+					addOpaque(n)
+				}
+			}
+		}
+		return true
+	})
+	if malformed {
+		return nil, fmt.Errorf("node-ban:go-syntax")
+	}
+	if forbidden {
+		return nil, fmt.Errorf("node-ban:command")
+	}
+	if !strings.HasSuffix(path, "_test.go") {
+		ast.Inspect(tree, func(n ast.Node) bool {
+			if value, ok := n.(*ast.BasicLit); ok && value.Kind == token.STRING {
+				text, err := strconv.Unquote(value.Value)
+				if err == nil && developmentActionsNodeAPI.MatchString(text) {
+					forbidden = true
+				}
+			}
+			return true
+		})
+		if forbidden {
+			return nil, fmt.Errorf("node-ban:api")
+		}
+	}
+	sort.Strings(opaque)
+	return opaque, nil
+}
+
+func developmentActionsGoReview(path string, data []byte, opaque []string) developmentActionsGoProcessReview {
+	source := sha256.Sum256(data)
+	encoded, _ := json.Marshal(opaque)
+	calls := sha256.Sum256(encoded)
+	return developmentActionsGoProcessReview{Path: path, SourceSHA256: hex.EncodeToString(source[:]), CallsSHA256: hex.EncodeToString(calls[:]), CallCount: len(opaque), Basis: developmentActionsGoReviewBasis()[path]}
+}
+
+func developmentActionsValidateGoReviews(reviews []developmentActionsGoProcessReview, observed map[string]developmentActionsGoProcessReview) error {
+	if len(reviews) == 0 && len(observed) == 0 {
+		return nil
+	}
+	bases := developmentActionsGoReviewBasis()
+	if len(reviews) != len(bases) || len(observed) != len(reviews) {
+		return fmt.Errorf("node-ban:review")
+	}
+	seen := map[string]bool{}
+	for _, review := range reviews {
+		if seen[review.Path] || bases[review.Path] == "" || review.Basis != bases[review.Path] ||
+			!phase17IsLowerHexSHA256(review.SourceSHA256) || !phase17IsLowerHexSHA256(review.CallsSHA256) || review.CallCount < 1 || review.CallCount > 256 ||
+			observed[review.Path] != review {
+			return fmt.Errorf("node-ban:review")
+		}
+		seen[review.Path] = true
+	}
+	return nil
+}
+
+func developmentActionsReadGoReviews(root string) ([]developmentActionsGoProcessReview, error) {
+	data, err := os.ReadFile(filepath.Join(root, "docs/details/fixture.md"))
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("node-ban:review")
+	}
+	_, input, ok := strings.Cut(string(data), "**Go process review固定入力：**")
+	if !ok {
+		return nil, fmt.Errorf("node-ban:review")
+	}
+	_, input, ok = strings.Cut(input, "```json\n")
+	if !ok {
+		return nil, fmt.Errorf("node-ban:review")
+	}
+	input, _, ok = strings.Cut(input, "\n```")
+	var declared struct {
+		Version int                                 `json:"schema_version"`
+		Reviews []developmentActionsGoProcessReview `json:"reviews"`
+	}
+	if !ok || developmentActionsDecodeJSON([]byte(input), &declared, 65536, true) != nil || declared.Version != 1 || declared.Reviews == nil {
+		return nil, fmt.Errorf("node-ban:review")
+	}
+	encoded, _ := json.Marshal(declared)
+	var before, after any
+	if json.Unmarshal([]byte(input), &before) != nil || json.Unmarshal(encoded, &after) != nil ||
+		!bytes.Equal(iacSpecificationCanonical(before), iacSpecificationCanonical(after)) {
+		return nil, fmt.Errorf("node-ban:review")
+	}
+	return declared.Reviews, nil
 }
 
 func developmentActionsCheckNodeContent(path string, data []byte) error {
 	ext := filepath.Ext(path)
 	if ext == ".go" {
-		tree, err := parser.ParseFile(token.NewFileSet(), path, data, parser.SkipObjectResolution)
-		if err != nil {
-			return fmt.Errorf("node-ban:go-syntax")
+		opaque, err := developmentActionsGoProcessInspection(path, data)
+		if err == nil && len(opaque) != 0 {
+			return fmt.Errorf("node-ban:unresolved")
 		}
-		execNames := map[string]bool{}
-		processNames := map[string]bool{}
-		for _, imp := range tree.Imports {
-			name, err := strconv.Unquote(imp.Path.Value)
-			if err != nil {
-				return fmt.Errorf("node-ban:go-syntax")
-			}
-			if name == "os/exec" || name == "os" || name == "syscall" {
-				alias := "exec"
-				if name == "os" || name == "syscall" {
-					alias = name
-				}
-				if imp.Name != nil {
-					alias = imp.Name.Name
-				}
-				if alias == "." {
-					return fmt.Errorf("node-ban:command")
-				}
-				if name == "os/exec" {
-					execNames[alias] = true
-				} else {
-					processNames[alias] = true
-				}
-			}
-		}
-		var violation error
-		ast.Inspect(tree, func(n ast.Node) bool {
-			if violation != nil {
-				return false
-			}
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			sel, ok := call.Fun.(*ast.SelectorExpr)
-			if !ok {
-				return true
-			}
-			pkg, ok := sel.X.(*ast.Ident)
-			if !ok {
-				return true
-			}
-			spawn := execNames[pkg.Name] && (sel.Sel.Name == "Command" || sel.Sel.Name == "CommandContext" || sel.Sel.Name == "LookPath")
-			spawn = spawn || processNames[pkg.Name] && (sel.Sel.Name == "StartProcess" || sel.Sel.Name == "Exec" || sel.Sel.Name == "ForkExec")
-			if !spawn {
-				return true
-			}
-			start := 0
-			if sel.Sel.Name == "CommandContext" {
-				start = 1
-			}
-			if len(call.Args) <= start {
-				violation = fmt.Errorf("node-ban:go-syntax")
-				return false
-			}
-			for _, argument := range call.Args[start:] {
-				if value, ok := developmentActionsStaticString(argument); ok && developmentActionsNodeCommand.MatchString(value) {
-					violation = fmt.Errorf("node-ban:command")
-				}
-			}
-			return true
-		})
-		if violation != nil {
-			return violation
-		}
-		if !strings.HasSuffix(path, "_test.go") {
-			var found bool
-			ast.Inspect(tree, func(n ast.Node) bool {
-				if value, ok := n.(*ast.BasicLit); ok && value.Kind == token.STRING {
-					text, err := strconv.Unquote(value.Value)
-					if err == nil && developmentActionsNodeAPI.MatchString(text) {
-						found = true
-					}
-				}
-				return true
-			})
-			if found {
-				return fmt.Errorf("node-ban:api")
-			}
-		}
-		return nil
+		return err
 	}
 	if ext == ".js" || ext == ".mjs" || ext == ".html" || ext == ".sh" {
 		if developmentActionsNodeAPI.Match(data) {
@@ -11652,7 +11904,8 @@ func developmentActionsCheckNodeContent(path string, data []byte) error {
 }
 
 func developmentActionsCheckNodeFreeRepository(root string) error {
-	return filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
+	observed := map[string]developmentActionsGoProcessReview{}
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return fmt.Errorf("node-ban:read")
 		}
@@ -11710,12 +11963,28 @@ func developmentActionsCheckNodeFreeRepository(root string) error {
 				return fmt.Errorf("node-ban:command")
 			}
 		}
+		if filepath.Ext(rel) == ".go" {
+			opaque, err := developmentActionsGoProcessInspection(rel, data)
+			if err == nil && len(opaque) != 0 {
+				observed[rel] = developmentActionsGoReview(rel, data, opaque)
+			}
+			return err
+		}
 		return developmentActionsCheckNodeContent(rel, data)
 	})
+	if err != nil {
+		return err
+	}
+	reviews, err := developmentActionsReadGoReviews(root)
+	if err != nil {
+		return err
+	}
+	return developmentActionsValidateGoReviews(reviews, observed)
 }
 
 func TestDevelopmentActionsNodeFreeControls(t *testing.T) {
 	t.Parallel()
+	t.Run("go-provenance", developmentActionsGoProvenanceControls)
 	spec := phase11MustReadText(t, "docs/SPEC.md")
 	_, policy, ok := strings.Cut(spec, `<a id="policy-node-runtime-ban"></a>`)
 	if !ok || strings.Count(spec, `<a id="policy-node-runtime-ban"></a>`) != 1 {
@@ -11744,6 +12013,18 @@ func TestDevelopmentActionsNodeFreeControls(t *testing.T) {
 		t.Fatal("helper runtime definition drift not rejected")
 	}
 	if err := developmentActionsCheckNodeFreeRepository("."); err != nil {
+		for path := range developmentActionsGoReviewBasis() {
+			data, readErr := os.ReadFile(path)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			opaque, inspectErr := developmentActionsGoProcessInspection(path, data)
+			if inspectErr != nil {
+				t.Fatal(inspectErr)
+			}
+			record, _ := json.Marshal(developmentActionsGoReview(path, data, opaque))
+			t.Logf("review input: %s", record)
+		}
 		t.Fatal(err)
 	}
 	for _, name := range []string{"node", "node.exe", "nodejs", "node_modules", "package.json", "package-lock.json", "npm-shrinkwrap.json", ".npmrc", ".nvmrc", ".node-version", ".yarnrc", ".yarnrc.yml", "yarn.lock", "pnpm-lock.yaml", "pnpm-workspace.yaml", "bun.lock", "bun.lockb", "adapter.cjs", "adapter.cts"} {
@@ -11854,6 +12135,268 @@ func TestDevelopmentActionsNodeFreeControls(t *testing.T) {
 	if err := developmentActionsCheckNodeFreeRepository(worktree); err == nil || err.Error() != "node-ban:artifact" {
 		t.Fatal("git metadata file hid later artifact")
 	}
+}
+
+func TestDevelopmentActionsGoProcessControls(t *testing.T) {
+	t.Parallel()
+	developmentActionsGoProvenanceControls(t)
+}
+
+func developmentActionsGoProvenanceControls(t *testing.T) {
+	for _, c := range []struct{ id, source, reason string }{
+		{"literal", `import "os/exec"; func f(){ exec.Command("go", "version") }`, ""},
+		{"package-const", `import "os/exec"; const runtime = "go"; func f(){ exec.Command(runtime) }`, ""},
+		{"local-alias", `import "os/exec"; func f(){ const runtime = "go"; a := (runtime + "fmt"); b := a; exec.Command(b) }`, ""},
+		{"import-alias", `import e "os/exec"; func f(){ e.Command("go") }`, ""},
+		{"function-alias", `import "os/exec"; func f(){ a := (exec.Command); b := a; b("go") }`, ""},
+		{"scope-shadow", `import "os/exec"; const runtime = "node"; func f(){ const runtime = "go"; exec.Command(runtime) }`, ""},
+		{"sibling-scope", `import "os/exec"; func f(){ runtime := "go"; exec.Command(runtime) }; func g(){ runtime := "node"; _ = runtime }`, ""},
+		{"local-package-shadow", `import "os/exec"; func f(exec struct{Command func(string)}) { exec.Command("node") }`, ""},
+		{"context-not-command", `import "os/exec"; func f(){ exec.CommandContext(nil, "go") }`, ""},
+		{"const-node", `import "os/exec"; const runtime = "node"; func f(){ exec.Command(runtime) }`, "command"},
+		{"escaped-node", `import "os/exec"; const runtime = "\x6eode"; func f(){ exec.Command(runtime) }`, "command"},
+		{"local-node", `import "os/exec"; func f(){ runtime := "node"; exec.Command(runtime) }`, "command"},
+		{"var-node", `import "os/exec"; var runtime = "node"; func f(){ exec.Command(runtime) }`, "command"},
+		{"alias-node", `import "os/exec"; func f(){ const runtime = "node"; a := runtime; b := (a); exec.Command(b) }`, "command"},
+		{"concat-node", `import "os/exec"; const a = "no"; const b = "de"; func f(){ exec.Command(a+b) }`, "command"},
+		{"multi-binding-node", `import "os/exec"; func f(){ a,b := "node","--version"; exec.Command(a,b) }`, "command"},
+		{"shell-node", `import "os/exec"; func f(){ const body = "node --version"; exec.Command("sh","-c",body) }`, "command"},
+		{"function-alias-node", `import e "os/exec"; func f(){ spawn := e.Command; spawn("node") }`, "command"},
+		{"context-alias-node", `import "os/exec"; func f(){ spawn := exec.CommandContext; spawn(nil,"node") }`, "command"},
+		{"start-process-alias-node", `import "os"; func f(){ spawn := os.StartProcess; spawn("node",nil,nil) }`, "command"},
+		{"syscall-alias-node", `import "syscall"; func f(){ spawn := syscall.Exec; spawn("node",nil,nil) }`, "command"},
+		{"forbidden-before-reassign", `import "os/exec"; func f(){ name := "node"; exec.Command(name); name = "go" }`, "command"},
+		{"forbidden-after-reassign", `import "os/exec"; func f(){ name := "go"; name = "node"; exec.Command(name) }`, "command"},
+		{"unknown-parameter", `import "os/exec"; func f(name string){ exec.Command(name) }`, "unresolved"},
+		{"unknown-call", `import "os/exec"; func f(){ exec.Command(runtime()) }`, "unresolved"},
+		{"unknown-selector", `import "os/exec"; func f(){ exec.Command(config.Runtime) }`, "unresolved"},
+		{"unknown-index", `import "os/exec"; func f(args []string){ exec.Command(args[0]) }`, "unresolved"},
+		{"unknown-cycle", `import "os/exec"; var a = b; var b = a; func f(){ exec.Command(a) }`, "unresolved"},
+		{"reassigned", `import "os/exec"; func f(){ name := "go"; name = "gofmt"; exec.Command(name) }`, "unresolved"},
+		{"compound-assignment", `import "os/exec"; func f(){ name := "go"; name += "fmt"; exec.Command(name) }`, "unresolved"},
+		{"dynamic-shell", `import "os/exec"; func f(body string){ exec.Command("sh","-c",body) }`, "unresolved"},
+		{"mutable-function", `import "os/exec"; func f(){ spawn := exec.Command; spawn = replacement; spawn("go") }`, "unresolved"},
+		{"return-escape", `import "os/exec"; func f() any { return exec.Command }`, "unresolved"},
+		{"argument-escape", `import "os/exec"; func f(){ forward(exec.Command) }`, "unresolved"},
+		{"field-escape", `import "os/exec"; func f(){ cfg.Spawn = exec.Command }`, "unresolved"},
+		{"alias-escape", `import "os/exec"; func f(){ spawn := exec.Command; forward(spawn) }`, "unresolved"},
+		{"package-escape", `import "os/exec"; var spawn = []any{exec.Command}`, "unresolved"},
+		{"depth-max", `import "os/exec"; func f(){ exec.Command(` + strings.Repeat("(", 63) + `"go"` + strings.Repeat(")", 63) + `) }`, ""},
+		{"depth-over", `import "os/exec"; func f(){ exec.Command(` + strings.Repeat("(", 64) + `"go"` + strings.Repeat(")", 64) + `) }`, "unresolved"},
+		{"missing-argument", `import "os/exec"; func f(){ exec.CommandContext() }`, "go-syntax"},
+		{"syntax-priority", `import "os/exec"; func f(){ exec.Command("node"); exec.CommandContext() }`, "go-syntax"},
+		{"malformed", `import "os/exec"; func f( {`, "go-syntax"},
+	} {
+		t.Run(c.id, func(t *testing.T) {
+			err := developmentActionsCheckNodeContent("tool.go", []byte("package p; "+c.source))
+			actual := ""
+			if err != nil {
+				actual = err.Error()
+			}
+			expected := ""
+			if c.reason != "" {
+				expected = "node-ban:" + c.reason
+			}
+			if actual != expected {
+				t.Fatalf("release.node-provenance.%s.outcome: fixture.md#development-actions-node-free-contract expected=%q actual=%q; reproduce go test . -run TestDevelopmentActionsNodeFreeControls/go-provenance -count=1", c.id, expected, actual)
+			}
+		})
+	}
+	for _, limit := range []struct {
+		id    string
+		count int
+		valid bool
+	}{{"binding-max", 63, true}, {"binding-over", 64, false}} {
+		t.Run(limit.id, func(t *testing.T) {
+			for _, function := range []bool{false, true} {
+				var source strings.Builder
+				source.WriteString(`package p; import "os/exec"; func f(){ a0 := `)
+				if function {
+					source.WriteString("exec.Command;")
+				} else {
+					source.WriteString(`"go";`)
+				}
+				for i := 1; i < limit.count; i++ {
+					fmt.Fprintf(&source, "a%d := a%d;", i, i-1)
+				}
+				if function {
+					fmt.Fprintf(&source, `a%d("go") }`, limit.count-1)
+				} else {
+					fmt.Fprintf(&source, `exec.Command(a%d) }`, limit.count-1)
+				}
+				err := developmentActionsCheckNodeContent("tool.go", []byte(source.String()))
+				if (err == nil) != limit.valid || err != nil && err.Error() != "node-ban:unresolved" {
+					t.Fatalf("release.node-provenance.%s.depth: expected valid=%t function=%t actual=%v", limit.id, limit.valid, function, err)
+				}
+			}
+		})
+	}
+	t.Run("non-executable-negative-data", func(t *testing.T) {
+		if err := developmentActionsCheckNodeContent("sample_test.go", []byte(`package p; const data = "node --version"`)); err != nil {
+			t.Fatalf("release.node-provenance.negative-data.accept: expected nil actual=%v", err)
+		}
+	})
+	observed := map[string]developmentActionsGoProcessReview{}
+	reviews := []developmentActionsGoProcessReview{}
+	for path := range developmentActionsGoReviewBasis() {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		opaque, err := developmentActionsGoProcessInspection(path, data)
+		if err != nil || len(opaque) == 0 {
+			caseID := strings.NewReplacer("/", "-", ".", "-").Replace(path)
+			t.Fatalf("release.node-review.%s.inspect: fixture.md#development-actions-node-free-contract expected nonempty reviewed boundary actual=%v/%v", caseID, opaque, err)
+		}
+		observed[path] = developmentActionsGoReview(path, data, opaque)
+		reviews = append(reviews, observed[path])
+	}
+	sort.Slice(reviews, func(i, j int) bool { return reviews[i].Path < reviews[j].Path })
+	for _, c := range []struct {
+		id    string
+		edit  func([]developmentActionsGoProcessReview) []developmentActionsGoProcessReview
+		valid bool
+	}{
+		{"exact", func(r []developmentActionsGoProcessReview) []developmentActionsGoProcessReview { return r }, true},
+		{"reorder", func(r []developmentActionsGoProcessReview) []developmentActionsGoProcessReview {
+			r[0], r[1] = r[1], r[0]
+			return r
+		}, true},
+		{"missing", func(r []developmentActionsGoProcessReview) []developmentActionsGoProcessReview { return r[1:] }, false},
+		{"extra", func(r []developmentActionsGoProcessReview) []developmentActionsGoProcessReview {
+			return append(r, r[0])
+		}, false},
+		{"duplicate", func(r []developmentActionsGoProcessReview) []developmentActionsGoProcessReview { r[0] = r[1]; return r }, false},
+		{"path", func(r []developmentActionsGoProcessReview) []developmentActionsGoProcessReview {
+			r[0].Path = "unknown.go"
+			return r
+		}, false},
+		{"source", func(r []developmentActionsGoProcessReview) []developmentActionsGoProcessReview {
+			r[0].SourceSHA256 = strings.Repeat("0", 64)
+			return r
+		}, false},
+		{"calls", func(r []developmentActionsGoProcessReview) []developmentActionsGoProcessReview {
+			r[0].CallsSHA256 = strings.Repeat("0", 64)
+			return r
+		}, false},
+		{"invalid-hash", func(r []developmentActionsGoProcessReview) []developmentActionsGoProcessReview {
+			r[0].CallsSHA256 = "invalid"
+			return r
+		}, false},
+		{"count", func(r []developmentActionsGoProcessReview) []developmentActionsGoProcessReview {
+			r[0].CallCount++
+			return r
+		}, false},
+		{"zero-count", func(r []developmentActionsGoProcessReview) []developmentActionsGoProcessReview {
+			r[0].CallCount = 0
+			return r
+		}, false},
+		{"basis", func(r []developmentActionsGoProcessReview) []developmentActionsGoProcessReview {
+			r[0].Basis = "safe"
+			return r
+		}, false},
+	} {
+		t.Run("review-"+c.id, func(t *testing.T) {
+			changed := c.edit(append([]developmentActionsGoProcessReview{}, reviews...))
+			err := developmentActionsValidateGoReviews(changed, observed)
+			if (err == nil) != c.valid || err != nil && err.Error() != "node-ban:review" {
+				t.Fatalf("release.node-review.%s.outcome: fixture.md#development-actions-node-free-contract expected valid=%t actual=%v; reproduce go test . -run TestDevelopmentActionsNodeFreeControls/go-provenance -count=1", c.id, c.valid, err)
+			}
+		})
+	}
+	for _, c := range []struct{ id, input string }{
+		{"null", `{"schema_version":1,"reviews":null}`},
+		{"unknown-key", `{"schema_version":1,"reviews":[],"unknown":true}`},
+		{"duplicate-key", `{"schema_version":1,"schema_version":1,"reviews":[]}`},
+		{"version", `{"schema_version":2,"reviews":[]}`},
+		{"trailing", `{"schema_version":1,"reviews":[]} {}`},
+		{"missing-key", `{"reviews":[]}`},
+		{"case-key", `{"SCHEMA_VERSION":1,"reviews":[]}`},
+		{"null-key", `{"schema_version":1,"reviews":[{"path":null}]}`},
+	} {
+		t.Run("review-json-"+c.id, func(t *testing.T) {
+			root := t.TempDir()
+			dir := filepath.Join(root, "docs/details")
+			if err := os.MkdirAll(dir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			input := "**Go process review固定入力：**\n\n```json\n" + c.input + "\n```\n"
+			if err := os.WriteFile(filepath.Join(dir, "fixture.md"), []byte(input), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := developmentActionsReadGoReviews(root); err == nil || err.Error() != "node-ban:review" {
+				t.Fatalf("release.node-review.%s.reject: expected node-ban:review actual=%v", c.id, err)
+			}
+		})
+	}
+	for _, c := range []struct {
+		id    string
+		count int
+		valid bool
+	}{{"count-max", 256, true}, {"count-over", 257, false}} {
+		t.Run(c.id, func(t *testing.T) {
+			input := append([]developmentActionsGoProcessReview{}, reviews...)
+			input[0].CallCount = c.count
+			actual := map[string]developmentActionsGoProcessReview{}
+			for path, record := range observed {
+				actual[path] = record
+			}
+			actual[input[0].Path] = input[0]
+			err := developmentActionsValidateGoReviews(input, actual)
+			if (err == nil) != c.valid {
+				t.Fatalf("release.node-review.%s.boundary: expected valid=%t actual=%v", c.id, c.valid, err)
+			}
+		})
+	}
+	t.Run("observed-extra", func(t *testing.T) {
+		actual := map[string]developmentActionsGoProcessReview{}
+		for path, record := range observed {
+			actual[path] = record
+		}
+		actual["unknown.go"] = reviews[0]
+		if err := developmentActionsValidateGoReviews(reviews, actual); err == nil {
+			t.Fatal("release.node-review.observed-extra.reject: expected node-ban:review actual=nil")
+		}
+	})
+	t.Run("review-does-not-authorize-node", func(t *testing.T) {
+		root := t.TempDir()
+		data := []byte(`package p; import "os/exec"; const runtime="node"; func f(){ exec.Command(runtime) }`)
+		if err := os.WriteFile(filepath.Join(root, "main_test.go"), data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		claims := append([]developmentActionsGoProcessReview{}, reviews...)
+		for i := range claims {
+			if claims[i].Path == "main_test.go" {
+				claims[i] = developmentActionsGoReview("main_test.go", data, []string{`f exec.Command(runtime)`})
+			}
+		}
+		encoded, err := json.Marshal(struct {
+			Version int                                 `json:"schema_version"`
+			Reviews []developmentActionsGoProcessReview `json:"reviews"`
+		}{1, claims})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(root, "docs/details"), 0700); err != nil {
+			t.Fatal(err)
+		}
+		document := "**Go process review固定入力：**\n\n```json\n" + string(encoded) + "\n```\n"
+		if err := os.WriteFile(filepath.Join(root, "docs/details/fixture.md"), []byte(document), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := developmentActionsCheckNodeFreeRepository(root); err == nil || err.Error() != "node-ban:command" {
+			t.Fatalf("release.node-review.forbidden.reject: expected node-ban:command actual=%v", err)
+		}
+	})
+	t.Run("unregistered-repository-call", func(t *testing.T) {
+		root := t.TempDir()
+		if err := os.WriteFile(filepath.Join(root, "unknown.go"), []byte(`package p; import "os/exec"; func f(name string){ exec.Command(name) }`), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := developmentActionsCheckNodeFreeRepository(root); err == nil || err.Error() != "node-ban:review" {
+			t.Fatalf("release.node-review.unregistered.reject: expected node-ban:review actual=%v", err)
+		}
+	})
 }
 
 func developmentActionsCheckHelper(setup *developmentActionsSetup, data []byte) error {

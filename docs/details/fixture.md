@@ -3437,9 +3437,15 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
 | 公開・cleanup | 検証後だけ bin path を `GITHUB_PATH`、root と cache path / Go local-only設定 / Deno package無効設定を `GITHUB_ENV` へ渡し、bootstrap JSON を1件出す。Goは `GOENV=off GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off`。Denoは `DENO_NO_PACKAGE_JSON=1 DENO_NO_UPDATE_CHECK=1 DENO_NO_PROMPT=1`。失敗はnonzero、固定 `ci-setup:<reason>`、stage削除、成功markerなし。file-command部分書込後の失敗もstage削除とjob失敗とし、残るpathを後続成功へ流用しない。各job末尾の `if=always()` cleanup が同じhelperを呼び、mintしたrootだけを削除する。範囲外root、symlink、削除失敗は拒否する。 |
 | reason / 副作用 | 固定理由は `arguments / temp-boundary / cleanup-boundary / cleanup / runtime / platform / output-boundary / staging / download / digest-read / digest / archive-list / archive-entry / archive-type / extract / executable / version / publish`。repository、home、system toolchain、GitHub設定へ書かず、secretを取得しない。許可書込はstageとrunner file-commandのみ。成功後のroot以外の取得物を消し、job cleanup後の残留stageは0。 |
 | 検査境界 | repository walk は `.git` metadata だけを除き、hidden pathを含む全実在pathを調べる。Node系manifest / lock / 設定 / `node_modules`、Node runtime名のbinary、`.cjs / .cts`、symlinkを拒否する。`.github/workflows` は定義7件だけ、全workflowはcanonical bytes一致、helperは固定digest一致。Go sourceは標準ASTで `os/exec` / `os` / `syscall` の直接・shell経由のNode系commandを拒否する。JavaScript / HTML / shellとproduction Go文字列は Node import / Node専用API / Node commandを検査する。bare import、Deno process command、shebang、workflow内の直接commandと未確認container経路も負例へ接続する。禁止説明と非実行負例をruntimeと誤分類しない。既存scopeの探索除外で禁止pathを隠さない。 |
+| Go値解決 | 同一fileのpackage/local const、var初期値、短縮宣言、識別子の別名、括弧、文字列の `+` を標準ASTの宣言identityで解決する。初期値が明示された1対1のbindingだけを扱い、const値の省略/iota/type conversionは未解決とする。import aliasとlocal shadowを区別し、別scopeの同名識別子を混同しない。再代入・複合代入・循環参照・parameter・call・index・selector由来の値は静的確定としない。到達した禁止文字列があれば不確定性より優先して拒否する。単一式の探索はrootをdepth=0とし、depth<64だけを処理、64到達は未解決。文字列候補の直積は64件以下とし、超過は未解決。処理順で最後の代入だけを採用して安全を推定しない。 |
+| Go起動別名 | `os/exec.Command / CommandContext / LookPath`、`os.StartProcess`、`syscall.Exec / ForkExec` の直接参照、import alias、括弧付き参照、同一file内の単一bindingかつ未変更な変数別名を追跡する。対象3importのdot importは既存の `node-ban:command` 拒否を維持する。CommandContextのcontextだけはcommand引数から除く。関数値の再代入、戻り値・引数・fieldへの持出し、未対応の式への埋込みは未解決として記録し、検査対象外へ落とさない。Go構文と引数欠損は `node-ban:go-syntax`、既知の禁止commandは `node-ban:command`、それ以外の未解決起動は `node-ban:unresolved` の順で診断する。 |
+| Go未解決入力 | 個別source検査は未解決のcommandまたは引数を合格にしない。repository検査だけは、下記Go process review固定入力のpath・source SHA256・未解決call集合SHA256・件数・review basisがすべて一致する既存6fileのレビュー照合を行う。未知path、byte変更、call追加/削除、重複record、欠落/余分record、unknown key、null、不正hashは `node-ban:review`。既知禁止commandをreview recordで許可してはならない。未解決集合は所属FuncDecl名（package scopeだけ `<package>`）+ASCII space+gofmt正規化したcall/escape式とし、重複を保持する配列をbyte昇順に並べ、標準encoding/jsonでencodeしたbytesのSHA256とする。line numberはidentityに使用しない。 |
+| Go review schema | 固定JSONは全key必須の `{schema_version:1,reviews:[{path,source_sha256,calls_sha256,call_count,review_basis}]}`。hashは64 lowercase hex、call_countは整数1〜256、path/basisは下記6件の閉集合。UTF-8、65536 bytes以下、単一JSON、duplicate/unknown/case違いkey、null、必須field欠落を拒否する。順序は意味を持たず、空の一時rootで未解決callもrecordも0件の場合だけ空集合を受ける。sourceの指紋は観測bytesのmetadataであり、合否のoracleを実装出力から更新する許可ではない。 |
+| Goレビューの保証境界 | 固定入力は管理対象sourceのレビューと変更検出の証跡であり、動的引数の静的安全証明、Node禁止の例外、任意の将来設定・呼出元の実行許可ではない。native fixture、検証済toolchain/artifact、固定OS command、設定依存の製品境界をreview basisで区別する。設定依存境界の未使用経路を開発Actionsの実行経路へ読み替えない。実際の起動前に必要な確認と未確認経路の停止は [docs/SPEC.md ポリシー責務 Node全面禁止契約](../SPEC.md#policy-node-runtime-ban) に従い、review照合だけでその確認済みと報告しない。 |
 | 正例・負例 | `TestDevelopmentActionsNodeFreeControls` は空rootと標準web APIを正例、各禁止path、hidden / nested / symlink、各Node系command、Node import / CommonJS、Go command、未知workflow / Action / reusable workflow、helper改変を負例にする。同じvalidatorへ入力し固定reasonを比較する。負例データを保存・解析するだけで、禁止runtimeを実行しない。 |
 | 実行型control | `TestDevelopmentActionsBootstrapControls` は実helperと実checkout commandを固定fake git / curl / checksum / archive / runtimeへ接続する。Go/Deno成功、各I/O失敗、digest改変、unsafe entry / link、version不一致、出力境界、cleanup逸脱を実行し、exit / transcript順 / marker / file-command / stage残留 / secret canary非露出を比較する。fake切替のproduction envは作らず、テスト専用PATHとtemp rootに隔離する。downloadの28→成功、503→成功、3回上限、404/証明書/未知exitの即停止、不正HTTP診断のmask、partial除去、curl引数の時間/byte/HTTPS境界を固定fakeで比較する。 |
 | 正式入口・mutation | 既存3 gate rootに加え上記2 rootのPASS記録をgate shellが確認する。正式入口は全workflow、helper、repository境界を検証してからgate JSONを出し、setup definition digest / helper digest / `external_action_count=0` を接続する。条件除去、digest比較緩和、unsafe entry許可、cleanup逸脱許可、Node guard無効化、canonical比較無効化を同じcontrolsで検出し `survived=0` を既存PR packageへ記録する。 |
+| Go自己検証 | 同じ個別source検査へ、禁止定数/local変数/別名/連結/shell本文/import alias/起動関数別名を負例、Go literal/Go定数/無関係scope/未実行負例文字列を正例として与える。循環、再代入、parameter、動的shell本文、関数値escapeは固定未解決reasonを検査する。repository reviewは正規集合を正例、hash/call集合/件数/basis/path/key/欠落/余分/重複を負例とする。literalだけの旧検査への退行、binding追跡省略、alias追跡省略、未解決無視、review照合省略、拒否reason変更、assertionの常時成功化を同じcontrolsでkillする。`TestDevelopmentActionsNodeFreeControls/go-provenance` と独立root `TestDevelopmentActionsGoProcessControls` は同じcontrolsを使用する。mutationは後者を実行し、main_test.goの指紋差によるrepository検査失敗をkillの代用にしない。負例文字列は解析するだけで、Node系runtimeを起動しない。 |
 | 証跡・対象外 | directory fixture root は `not_applicable` と本anchorを記録する。定義は下記JSON、fake / expectedはroot tests内で完結し、正式fixture件数は増やさない。公式取得資料・digest、実run / job / SHA、準備log、正例・負例、mutation、race、18-record closureを同一PRへ接続する。プラットフォーム管理外の未使用binaryの不存在や他環境の全processは、この証跡から推定しない。 |
 
 ```json
@@ -3450,6 +3456,58 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
   "deno_sha256": "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490",
   "helper_sha256": "3e05589391fd1df04090dd682edb93f35f158cf35b19d2aefe9cd0adbacac25d",
   "checkout": "test \"$GITHUB_REPOSITORY\" = fqwink/Build-Scripts\ntest \"$GITHUB_SERVER_URL\" = https://github.com\n[[ \"$GITHUB_SHA\" =~ ^[0-9a-f]{40}$ ]] || exit 1\nworkspace=$(pwd -P)\nexpected_workspace=$(cd \"$GITHUB_WORKSPACE\" && pwd -P)\ntest \"$workspace\" = \"$expected_workspace\"\nworkspace_entry=$(find . -mindepth 1 -maxdepth 1 -print -quit)\ntest -z \"$workspace_entry\"\nexport GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0\ngit -c core.hooksPath=/dev/null init --quiet --template= .\ngit -c core.hooksPath=/dev/null remote add origin https://github.com/fqwink/Build-Scripts.git\ngit -c core.hooksPath=/dev/null fetch --quiet --no-tags --depth=1 origin \"$GITHUB_SHA\"\ngit -c core.hooksPath=/dev/null checkout --quiet --detach \"$GITHUB_SHA\"\ntested_sha=$(git rev-parse HEAD)\ntest \"$tested_sha\" = \"$GITHUB_SHA\""
+}
+```
+
+**Go process review固定入力：** source bytesと未解決call集合のhashをnative Goで照合する。basisの対応はmain_test.go/components/runner/runner_test.go=`native-fixture-only`、components/release/release.go=`release-owned-toolchain`、components/setup/setup.go=`setup-verified-artifact`、components/api/api.go=`fixed-systemctl`、components/runner/runner.go=`configured-product-boundary`に固定する。根拠は [docs/details/fixture.md fixture証跡責務 開発Actions検証接続](#development-actions-evidence-contract)、[docs/details/release.md 詳細本文責務](release.md)、[docs/details/setup.md 詳細本文責務](setup.md)、[docs/details/api.md 詳細本文責務](api.md)、[docs/details/runner.md 詳細本文責務](runner.md) を使い、製品境界の新たな実装・例外許可は行わない。
+
+```json
+{
+  "schema_version": 1,
+  "reviews": [
+    {
+      "path": "components/api/api.go",
+      "source_sha256": "c9d9550e74dda296b6bb45c899bd5cf88b82d0791071211217607c769258675a",
+      "calls_sha256": "65b937e2e108acc866557e908b59d528a49d4c6ff61b3afbf6b045b70c2af1c2",
+      "call_count": 1,
+      "review_basis": "fixed-systemctl"
+    },
+    {
+      "path": "components/release/release.go",
+      "source_sha256": "2ad2fb7545f2b451444e1cfac120300f74d765d5157777a87ce7ea33e2c0da0e",
+      "calls_sha256": "d7f9937e1683165e874fd1fedbed4bb7e5c5a324d3f745f7725af1ec040d170b",
+      "call_count": 2,
+      "review_basis": "release-owned-toolchain"
+    },
+    {
+      "path": "components/runner/runner.go",
+      "source_sha256": "5904e03324603b0bc24cf004a9ac3f79ba0ac376763ea0049de12414f8d7b2f9",
+      "calls_sha256": "b6fab1b673a0cd75cfb0df8df578f4ba3608a6e1664cf71e66ec4c70e9e68b45",
+      "call_count": 8,
+      "review_basis": "configured-product-boundary"
+    },
+    {
+      "path": "components/runner/runner_test.go",
+      "source_sha256": "711cd2396502b8594d976a01ebf133a3c37201eef36661b6e3bf2a6f229dc008",
+      "calls_sha256": "6b5a66ed1794109b2f6ee8f24e9cb67f6321dd5b68dc9174c4fbf6ebc621b46a",
+      "call_count": 1,
+      "review_basis": "native-fixture-only"
+    },
+    {
+      "path": "components/setup/setup.go",
+      "source_sha256": "a3156d49f62420ffa950a974b950e600dd3e68e523ed5c0126b03028ce913d08",
+      "calls_sha256": "58573902528618a43d51e19615f2a1819de638b78afe020bc67f94232176c524",
+      "call_count": 3,
+      "review_basis": "setup-verified-artifact"
+    },
+    {
+      "path": "main_test.go",
+      "source_sha256": "7d60a72c24e4cc238d1f3b3030bdb90cf90491c69ec1159373531bf9414c6f78",
+      "calls_sha256": "320c206285f66b1aaa54d822d76ba3b97c8490144e2345da22b400c5ca41317c",
+      "call_count": 12,
+      "review_basis": "native-fixture-only"
+    }
+  ]
 }
 ```
 
