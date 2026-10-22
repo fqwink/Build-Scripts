@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -13,13 +14,605 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/fqwink/build-scripts/components/security"
+	"github.com/fqwink/build-scripts/components/statefile"
 )
+
+type cicdAuthTestBackend struct {
+	identity    statefile.CICDIdentity
+	service     statefile.CICDIdentity
+	grants      []security.CICDGrant
+	generation  int64
+	logins      int
+	swapService bool
+	afterLogin  func()
+}
+
+func (b *cicdAuthTestBackend) Login(id, password, requestID string, now time.Time, admin func() (string, bool, error)) (statefile.CICDLoginResult, error) {
+	b.logins++
+	if id != b.identity.ID || !b.identity.Enabled || password != "password123" {
+		return statefile.CICDLoginResult{}, security.ErrCICDAuth
+	}
+	result := statefile.CICDLoginResult{Identity: b.identity, PasswordVerified: true, MustChange: "none"}
+	if id == "admin" {
+		var err error
+		result.MustChange, result.PasswordVerified, err = admin()
+		if err != nil {
+			return result, err
+		}
+	} else {
+		credential := *b.identity.Credential
+		credential.LoginCount++
+		b.identity.Credential = &credential
+		result.Identity.Credential = &credential
+		if credential.MustChange {
+			result.MustChange = "prompt"
+			if credential.LoginCount >= 5 {
+				result.MustChange = "forced"
+			}
+		}
+		b.generation++
+	}
+	if b.afterLogin != nil {
+		b.afterLogin()
+	}
+	return result, nil
+}
+
+func (b *cicdAuthTestBackend) ReadService(hash string) (statefile.CICDIdentity, error) {
+	if hash != b.service.TokenSHA256 {
+		return statefile.CICDIdentity{}, security.ErrCICDAuth
+	}
+	identity := b.service
+	if b.swapService {
+		b.service.TokenSHA256 = strings.Repeat("f", 64)
+	}
+	return identity, nil
+}
+
+func (b *cicdAuthTestBackend) Authorize(p security.CICDPrincipal, a security.CICDAccess, now time.Time, check func(statefile.CICDIdentity) error) (security.CICDAuthorization, error) {
+	identity := b.identity
+	if p.Kind == "service" {
+		identity = b.service
+	}
+	if p.ID != identity.ID || check == nil {
+		return security.CICDAuthorization{}, security.ErrCICDAuth
+	}
+	if err := check(identity); err != nil {
+		return security.CICDAuthorization{}, err
+	}
+	snapshot := security.CICDAuthorizationSnapshot{Generation: b.generation, Subject: security.CICDSubject{Kind: p.Kind, ID: identity.ID, Enabled: identity.Enabled}, Grants: b.grants, ProjectExists: true, ProjectEnabled: true}
+	if p.Kind == "service" {
+		snapshot.Subject.ExpiresAt = &identity.ExpiresAt
+	}
+	return security.AuthorizeCICD(p, snapshot, a, now)
+}
+
+func cicdAuthTestFixture(t *testing.T) (*cicdAuthHTTP, *cicdAuthTestBackend) {
+	t.Helper()
+	legacy := newTestAPI(t, newAPIState(t))
+	b := &cicdAuthTestBackend{identity: statefile.CICDIdentity{Kind: "user", ID: "alice", Revision: 1, Enabled: true, Credential: &security.CICDCredential{PasswordHash: strings.Repeat("a", 64), Salt: strings.Repeat("b", 64), Algorithm: security.CredentialAlgorithmPBKDF2HMACSHA256V1, Iterations: security.CredentialIterations, UpdatedAt: "2026-09-17T01:00:00Z"}}, generation: 1, grants: []security.CICDGrant{{SubjectKind: "user", SubjectID: "alice", ProjectID: "p", Role: "operator", Enabled: true}}}
+	h, err := newCICDAuthHTTP(legacy, b)
+	if err != nil {
+		t.Fatal("api.phase19-auth.handler.fixture")
+	}
+	return h, b
+}
+
+func cicdAuthRequest(h *cicdAuthHTTP, path, token, body string) *httptest.ResponseRecorder {
+	r := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	r.RemoteAddr = "192.0.2.1:1234"
+	r.Header.Set("Content-Type", "application/json")
+	if token != "" {
+		r.Header.Set("Authorization", "Bearer "+token)
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	return w
+}
+
+func cicdAuthLoginToken(t *testing.T, h *cicdAuthHTTP) string {
+	t.Helper()
+	w := cicdAuthRequest(h, "/api/cicd/login", "", `{"user_id":"alice","password":"password123","totp":null}`)
+	var result struct {
+		Data struct {
+			Token string `json:"token"`
+		} `json:"data"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &result) != nil || security.CICDBearerKind(result.Data.Token) != "user" {
+		t.Fatal("api.phase19-auth.login.response")
+	}
+	return result.Data.Token
+}
+
+func TestCICDAuthHTTP(t *testing.T) {
+	h, b := cicdAuthTestFixture(t)
+	token := cicdAuthLoginToken(t, h)
+	if cicdAuthRequest(h, "/api/cicd/logout", token, `{"unknown":true}`).Code != 422 || len(h.sessions) != 1 {
+		t.Fatal("api.phase19-auth.logout.invalid-body-no-revoke")
+	}
+	duplicate := httptest.NewRequest("POST", "/api/cicd/logout", strings.NewReader(`{}`))
+	duplicate.Header.Set("Content-Type", "application/json")
+	duplicate.Header.Add("Authorization", "Bearer "+token)
+	duplicate.Header.Add("Authorization", "Bearer "+token)
+	wire := httptest.NewRecorder()
+	h.ServeHTTP(wire, duplicate)
+	if wire.Code != 401 || len(h.sessions) != 1 {
+		t.Fatal("api.phase19-auth.bearer.duplicate")
+	}
+	if len(h.sessions) != 1 || h.legacy.validSession(token) {
+		t.Fatal("api.phase19-auth.namespace.separate")
+	}
+	auth, err := h.authorizeLocked(token, security.CICDAccess{Operation: "runGet", ProjectID: "p"}, h.legacy.cfg.Now())
+	if err != nil || auth.Generation != 2 || len(auth.Grants) != 1 || b.logins != 1 {
+		t.Fatal("api.phase19-auth.authorization.current")
+	}
+	b.grants[0].Enabled = false
+	auth, err = h.authorizeLocked(token, security.CICDAccess{Operation: "runGet", ProjectID: "p"}, h.legacy.cfg.Now())
+	if err != security.ErrCICDForbidden || len(auth.Grants) != 0 {
+		t.Fatal("api.phase19-auth.authorization.revoked-grant")
+	}
+	w := cicdAuthRequest(h, "/api/cicd/logout", token, `{}`)
+	if w.Code != 200 || len(h.sessions) != 0 || w.Header().Get("Cache-Control") != "no-store" || w.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatal("api.phase19-auth.logout.revoked")
+	}
+	if cicdAuthRequest(h, "/api/cicd/logout", token, `{}`).Code != 401 {
+		t.Fatal("api.phase19-auth.logout.reuse")
+	}
+	for _, path := range []string{".access_log", ".audit_log"} {
+		data, err := os.ReadFile(filepath.Join(h.legacy.cfg.StateDir, path))
+		if err != nil || bytes.Contains(data, []byte(token)) || bytes.Contains(data, []byte("password123")) || bytes.Contains(data, []byte(b.identity.Credential.PasswordHash)) {
+			t.Fatal("api.phase19-auth.logs.redacted")
+		}
+	}
+}
+
+func TestCICDAuthBoundary(t *testing.T) {
+	for _, mode := range []string{"expired", "revision", "credential", "disabled", "restart", "forced", "legacy", "upper-token"} {
+		t.Run(mode, func(t *testing.T) {
+			h, b := cicdAuthTestFixture(t)
+			if mode == "forced" {
+				b.identity.Credential.MustChange = true
+				b.identity.Credential.LoginCount = 4
+			}
+			token := cicdAuthLoginToken(t, h)
+			now := h.legacy.cfg.Now()
+			switch mode {
+			case "expired":
+				now = now.Add(28800 * time.Second)
+			case "revision":
+				b.identity.Revision++
+			case "credential":
+				copy := *b.identity.Credential
+				copy.PasswordHash = strings.Repeat("c", 64)
+				b.identity.Credential = &copy
+			case "disabled":
+				b.identity.Enabled = false
+			case "restart":
+				h, _ = newCICDAuthHTTP(h.legacy, b)
+			case "legacy":
+				token = login(t, h.legacy, "password123")
+			case "upper-token":
+				token = strings.ToUpper(token)
+			}
+			_, err := h.authorizeLocked(token, security.CICDAccess{Operation: "runGet", ProjectID: "p"}, now)
+			want := security.ErrCICDAuth
+			if mode == "forced" {
+				want = security.ErrCICDForbidden
+			}
+			if err != want {
+				t.Fatal("api.phase19-auth.boundary.reject")
+			}
+		})
+	}
+}
+
+func TestCICDAuthWire(t *testing.T) {
+	h, b := cicdAuthTestFixture(t)
+	for i, test := range []struct {
+		name, path, method, body, media, encoding string
+		status                                    int
+	}{
+		{"unknown-route", "/api/cicd/password", "POST", `{}`, "application/json", "", 404},
+		{"method", "/api/cicd/login", "GET", `{}`, "application/json", "", 405},
+		{"query", "/api/cicd/login?x=1", "POST", `{}`, "application/json", "", 400},
+		{"encoded-path", "/api/cicd/%6cogin", "POST", `{}`, "application/json", "", 400},
+		{"media", "/api/cicd/login", "POST", `{}`, "", "", 415},
+		{"encoding", "/api/cicd/login", "POST", `{}`, "application/json", "identity", 415},
+		{"charset", "/api/cicd/login", "POST", `{}`, "application/json;charset=ascii", "", 415},
+		{"duplicate", "/api/cicd/login", "POST", `{"user_id":"alice","user_id":"bob","password":"password123","totp":null}`, "application/json", "", 400},
+		{"trailing", "/api/cicd/login", "POST", `{} {}`, "application/json", "", 400},
+		{"unknown", "/api/cicd/login", "POST", `{"user_id":"alice","password":"password123","totp":null,"x":1}`, "application/json", "", 422},
+		{"missing", "/api/cicd/login", "POST", `{"user_id":"alice","password":"password123"}`, "application/json", "", 422},
+		{"bad-totp", "/api/cicd/login", "POST", `{"user_id":"alice","password":"password123","totp":"12345a"}`, "application/json", "", 422},
+		{"depth", "/api/cicd/login", "POST", strings.Repeat("[", 33) + "0" + strings.Repeat("]", 33), "application/json", "", 400},
+		{"large", "/api/cicd/login", "POST", strings.Repeat(" ", 1048577), "application/json", "", 413},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			r := httptest.NewRequest(test.method, test.path, strings.NewReader(test.body))
+			r.RemoteAddr = fmt.Sprintf("192.0.2.%d:1000", i+1)
+			if test.media != "" {
+				r.Header.Set("Content-Type", test.media)
+			}
+			if test.encoding != "" {
+				r.Header.Set("Content-Encoding", test.encoding)
+			}
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, r)
+			if w.Code != test.status || b.logins != 0 || len(h.sessions) != 0 {
+				t.Fatal("api.phase19-auth.wire.reject")
+			}
+			var response map[string]any
+			if json.Unmarshal(w.Body.Bytes(), &response) != nil || response["authorization"] != nil || len(response["details"].([]any)) != 0 || !strings.HasPrefix(response["request_id"].(string), "o-") {
+				t.Fatal("api.phase19-auth.wire.envelope")
+			}
+		})
+	}
+	if cicdAuthRequest(h, "/api/cicd/logout", "", `{invalid`).Code != 401 {
+		t.Fatal("api.phase19-auth.wire.auth-before-body")
+	}
+	if cicdAuthRequest(h, "/api/cicd/logout", "", `{}`).Code != 401 {
+		t.Fatal("api.phase19-auth.wire.cookie-not-bearer")
+	}
+}
+
+func TestCICDAuthRate(t *testing.T) {
+	for _, mode := range []string{"ip", "user", "lockout", "capacity", "backwards"} {
+		t.Run(mode, func(t *testing.T) {
+			h, b := cicdAuthTestFixture(t)
+			if mode == "capacity" {
+				for i := 0; i < 4096; i++ {
+					h.windows[fmt.Sprint(i)] = cicdAuthWindow{start: h.legacy.cfg.Now(), count: 1}
+				}
+			}
+			if mode == "backwards" {
+				h.windows["ip:192.0.2.1"] = cicdAuthWindow{start: h.legacy.cfg.Now().Add(time.Second), count: 1}
+			}
+			for i := 0; i < 11; i++ {
+				r := httptest.NewRequest("POST", "/api/cicd/login", strings.NewReader(`{"user_id":"alice","password":"wrong-password","totp":null}`))
+				r.Header.Set("Content-Type", "application/json")
+				r.RemoteAddr = "192.0.2.1:1000"
+				if mode == "user" {
+					r.RemoteAddr = fmt.Sprintf("192.0.2.%d:1000", i+1)
+				}
+				if mode == "lockout" && i == 10 {
+					h.windows = make(map[string]cicdAuthWindow)
+				}
+				w := httptest.NewRecorder()
+				h.ServeHTTP(w, r)
+				want := 401
+				if i == 10 || mode == "capacity" || mode == "backwards" {
+					want = 429
+				}
+				if w.Code != want {
+					t.Fatal("api.phase19-auth.rate.boundary")
+				}
+			}
+			want := 10
+			if mode == "capacity" || mode == "backwards" {
+				want = 0
+			}
+			if b.logins != want {
+				t.Fatal("api.phase19-auth.rate.no-kdf-after-reject")
+			}
+			h.expire(h.legacy.cfg.Now().Add(600 * time.Second))
+			if len(h.windows) != 0 || len(h.failures) != 0 {
+				t.Fatal("api.phase19-auth.rate.expire")
+			}
+		})
+	}
+}
+
+func TestCICDAuthService(t *testing.T) {
+	for _, mode := range []string{"valid", "disabled", "expired", "changed", "logout", "noncanonical"} {
+		t.Run(mode, func(t *testing.T) {
+			h, b := cicdAuthTestFixture(t)
+			token := base64.RawURLEncoding.EncodeToString(make([]byte, 32))
+			now := h.legacy.cfg.Now()
+			b.service = statefile.CICDIdentity{Kind: "service", ID: "build", Revision: 1, Enabled: mode != "disabled", TokenSHA256: tokenHash(token), ExpiresAt: now.Add(time.Hour)}
+			if mode == "expired" {
+				b.service.ExpiresAt = now
+			}
+			if mode == "changed" {
+				b.swapService = true
+			}
+			if mode == "noncanonical" {
+				token = token[:42] + "B"
+			}
+			if mode == "logout" {
+				if cicdAuthRequest(h, "/api/cicd/logout", token, `{}`).Code != 200 {
+					t.Fatal("api.phase19-auth.service.logout")
+				}
+			}
+			_, err := h.authorizeLocked(token, security.CICDAccess{Operation: "logout"}, now)
+			if (err == nil) != (mode == "valid") {
+				t.Fatal("api.phase19-auth.service.reject")
+			}
+		})
+	}
+}
+
+func TestCICDAuthFailure(t *testing.T) {
+	for _, mode := range []string{"request-entropy", "token-entropy", "collision", "audit", "capacity", "cancelled"} {
+		t.Run(mode, func(t *testing.T) {
+			h, b := cicdAuthTestFixture(t)
+			switch mode {
+			case "request-entropy":
+				h.entropy = bytes.NewReader(nil)
+			case "token-entropy":
+				h.entropy = bytes.NewReader(make([]byte, 16))
+			case "collision":
+				h.entropy = bytes.NewReader(make([]byte, 16+32*3))
+				h.sessions[tokenHash(strings.Repeat("0", 64))] = cicdAuthSession{principal: security.CICDPrincipal{ExpiresAt: h.legacy.cfg.Now().Add(time.Hour)}}
+			case "audit":
+				if os.Mkdir(filepath.Join(h.legacy.cfg.StateDir, ".audit_log"), 0700) != nil {
+					t.Fatal("api.phase19-auth.audit.fixture")
+				}
+			case "capacity":
+				for i := 0; i < 4096; i++ {
+					h.sessions[fmt.Sprint(i)] = cicdAuthSession{principal: security.CICDPrincipal{ExpiresAt: h.legacy.cfg.Now().Add(time.Hour)}}
+				}
+			}
+			r := httptest.NewRequest("POST", "/api/cicd/login", strings.NewReader(`{"user_id":"alice","password":"password123","totp":null}`))
+			r.Header.Set("Content-Type", "application/json")
+			r.RemoteAddr = "192.0.2.1:1000"
+			if mode == "cancelled" {
+				ctx, cancel := context.WithCancel(r.Context())
+				cancel()
+				r = r.WithContext(ctx)
+			}
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, r)
+			want := 500
+			if mode == "audit" {
+				want = 507
+			}
+			if mode == "capacity" {
+				want = 429
+			}
+			if mode == "cancelled" {
+				want = 409
+			}
+			var response map[string]any
+			_ = json.Unmarshal(w.Body.Bytes(), &response)
+			if w.Code != want || response["data"] != nil || response["authorization"] != nil {
+				t.Fatal("api.phase19-auth.failure.no-token")
+			}
+			if mode == "audit" && (len(h.sessions) != 0 || b.logins != 1) {
+				t.Fatal("api.phase19-auth.failure.audit-before-session")
+			}
+			if mode != "audit" && b.logins != 0 {
+				t.Fatal("api.phase19-auth.failure.before-state")
+			}
+			if mode == "request-entropy" && response["request_id"] != nil {
+				t.Fatal("api.phase19-auth.failure.no-fake-id")
+			}
+		})
+	}
+}
+
+func TestCICDAuthLogoutFailure(t *testing.T) {
+	h, _ := cicdAuthTestFixture(t)
+	token := cicdAuthLoginToken(t, h)
+	path := filepath.Join(h.legacy.cfg.StateDir, ".audit_log")
+	if os.Remove(path) != nil || os.Mkdir(path, 0700) != nil {
+		t.Fatal("api.phase19-auth.logout.audit.fixture")
+	}
+	if cicdAuthRequest(h, "/api/cicd/logout", token, `{}`).Code != 507 || len(h.sessions) != 0 {
+		t.Fatal("api.phase19-auth.logout.audit-no-rollback")
+	}
+	if _, err := h.authorizeLocked(token, security.CICDAccess{Operation: "logout"}, h.legacy.cfg.Now()); err != security.ErrCICDAuth {
+		t.Fatal("api.phase19-auth.logout.audit-still-revoked")
+	}
+}
+
+func TestCICDAuthAdmin(t *testing.T) {
+	for _, mode := range []string{"normal", "totp", "replay", "credential-race"} {
+		t.Run(mode, func(t *testing.T) {
+			h, b := cicdAuthTestFixture(t)
+			b.identity.ID = "admin"
+			b.identity.Credential = nil
+			code := any(nil)
+			if mode == "totp" || mode == "replay" {
+				secret := "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+				at := "2026-09-17T01:00:00Z"
+				if atomicWriteJSON(filepath.Join(h.legacy.cfg.StateDir, ".totp_secret"), apiTOTPSecret{Enabled: true, SecretBase32: &secret, ConfirmedAt: &at}, 0600) != nil {
+					t.Fatal("api.phase19-auth.admin.totp.fixture")
+				}
+				code = totpCode(secret, h.legacy.cfg.Now().Unix()/30)
+			}
+			if mode == "credential-race" {
+				b.afterLogin = func() {
+					path := filepath.Join(h.legacy.cfg.StateDir, ".admin_credentials")
+					cred, _ := readCredentials(path)
+					cred.PasswordHash = strings.Repeat("e", 64)
+					if atomicWriteJSON(path, cred, 0600) != nil {
+						t.Fatal("api.phase19-auth.admin.race.fixture")
+					}
+				}
+			}
+			body, _ := json.Marshal(map[string]any{"user_id": "admin", "password": "password123", "totp": code})
+			w := cicdAuthRequest(h, "/api/cicd/login", "", string(body))
+			want := 200
+			if mode == "credential-race" {
+				want = 401
+			}
+			if w.Code != want {
+				t.Fatal("api.phase19-auth.admin.result")
+			}
+			if mode == "credential-race" && len(h.sessions) != 0 {
+				t.Fatal("api.phase19-auth.admin.binding-race")
+			}
+			if mode == "replay" && cicdAuthRequest(h, "/api/cicd/login", "", string(body)).Code != 401 {
+				t.Fatal("api.phase19-auth.admin.totp-replay")
+			}
+			if len(h.legacy.sessions) != 0 {
+				t.Fatal("api.phase19-auth.admin.legacy-namespace")
+			}
+		})
+	}
+}
+
+func TestCICDAuthConcurrency(t *testing.T) {
+	h, b := cicdAuthTestFixture(t)
+	start := make(chan struct{})
+	results := make(chan string, 8)
+	var group sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			<-start
+			w := cicdAuthRequest(h, "/api/cicd/login", "", `{"user_id":"alice","password":"password123","totp":null}`)
+			var response struct {
+				Data struct {
+					Token string `json:"token"`
+				} `json:"data"`
+			}
+			if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &response) != nil {
+				results <- ""
+			} else {
+				results <- response.Data.Token
+			}
+		}()
+	}
+	close(start)
+	group.Wait()
+	close(results)
+	seen := map[string]bool{}
+	for token := range results {
+		if token == "" || seen[token] {
+			t.Fatal("api.phase19-auth.concurrent.unique")
+		}
+		seen[token] = true
+	}
+	if len(h.sessions) != 8 || b.logins != 8 || b.identity.Credential.LoginCount != 8 {
+		t.Fatal("api.phase19-auth.concurrent.serial")
+	}
+}
+
+func TestCICDAuthRealStore(t *testing.T) {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		t.Skip("P19_CAPABILITY: real authentication store requires Linux amd64")
+	}
+	state := newAPIState(t)
+	if os.Chmod(state, 0700) != nil {
+		t.Fatal("api.phase19-auth.real.mode")
+	}
+	credential, err := readCredentials(filepath.Join(state, ".admin_credentials"))
+	if err != nil {
+		t.Fatal("api.phase19-auth.real.credentials")
+	}
+	root := map[string]any{"schema_version": 1, "generation": 1}
+	for _, name := range strings.Fields("projects definitions templates environments users services secrets grants workers runs deployments artifacts caches operations audits targets environment_states notifications trigger_cursors status_deliveries") {
+		root[name] = []any{}
+	}
+	root["users"] = []any{map[string]any{"id": "admin", "name": "Admin", "revision": 1, "enabled": true, "credential": nil, "totp": nil, "created_at": "2026-09-17T01:00:00Z"}, map[string]any{"id": "alice", "name": "Alice", "revision": 1, "enabled": true, "credential": credential, "totp": nil, "created_at": "2026-09-17T01:00:00Z"}}
+	root["grants"] = []any{map[string]any{"subject_kind": "user", "subject_id": "admin", "project_id": nil, "environment_id": nil, "role": "platform-admin", "enabled": true, "expires_at": nil}}
+	data, _ := json.Marshal(root)
+	data, err = statefile.CanonicalCICDJSON(data)
+	if err != nil {
+		t.Fatal("api.phase19-auth.real.root")
+	}
+	if os.MkdirAll(filepath.Join(state, "cicd", "snapshots"), 0700) != nil {
+		t.Fatal("api.phase19-auth.real.directory")
+	}
+	head, _ := json.Marshal(map[string]any{"schema_version": 1, "generation": 1, "sha256": fmt.Sprintf("%x", sha256.Sum256(data))})
+	for path, value := range map[string][]byte{"cicd/snapshots/g-1.json": data, "cicd/head.json": head, "cicd/state.lock": {}} {
+		if os.WriteFile(filepath.Join(state, path), value, 0600) != nil {
+			t.Fatal("api.phase19-auth.real.write")
+		}
+	}
+	store, err := statefile.OpenCICDIdentityStore(state)
+	if err != nil {
+		t.Fatalf("api.phase19-auth.real.open: %v", err)
+	}
+	h, err := newCICDAuthHTTP(newTestAPI(t, state), store)
+	if err != nil {
+		t.Fatal("api.phase19-auth.real.handler")
+	}
+	token := cicdAuthLoginToken(t, h)
+	identity, err := store.ReadIdentity("user", "alice")
+	if err != nil || identity.Credential.LoginCount != 1 {
+		t.Fatal("api.phase19-auth.real.counter")
+	}
+	if cicdAuthRequest(h, "/api/cicd/logout", token, `{}`).Code != 200 {
+		t.Fatal("api.phase19-auth.real.logout")
+	}
+	if cicdAuthRequest(h, "/api/cicd/login", "", `{"user_id":"alice","password":"wrong-password","totp":null}`).Code != 401 {
+		t.Fatal("api.phase19-auth.real.wrong-password")
+	}
+	if cicdAuthRequest(h, "/api/cicd/login", "", `{"user_id":"admin","password":"password123","totp":null}`).Code != 200 {
+		t.Fatal("api.phase19-auth.real.admin")
+	}
+}
+
+func TestCICDAuthMutations(t *testing.T) {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		t.Skip("P19_CAPABILITY: authentication mutations require Linux amd64")
+	}
+	for _, mutation := range []struct{ id, path, old, new, reason string }{
+		{"binding", "api/execute.go", "if !tokenHashEqual(session.binding, cicdAuthIdentityBinding(identity)) {", "if false && !tokenHashEqual(session.binding, cicdAuthIdentityBinding(identity)) {", "api.phase19-auth.boundary.reject"},
+		{"audit", "api/execute.go", "if err := h.logAuth(r, \"login_success\", userID, true); err != nil {", "if err := h.logAuth(r, \"login_success\", userID, true); false {", "api.phase19-auth.failure.no-token"},
+		{"logout", "api/execute.go", "} else {\n\t\tdelete(h.sessions, tokenHash(token))\n\t}", "} else {\n\t\t_ = tokenHash(token)\n\t}", "api.phase19-auth.logout.revoked"},
+		{"rate", "api/execute.go", "window.count >= 10", "false", "api.phase19-auth.rate.boundary"},
+		{"user-rate", "api/execute.go", "h.rate(\"user:\"+userID, now)", "h.rate(\"user:\"+ip, now)", "api.phase19-auth.rate.boundary"},
+		{"service-revocation", "api/execute.go", "if _, revoked := h.revoked[tokenHash(token)]; revoked {", "if _, revoked := h.revoked[tokenHash(token)]; false && revoked {", "api.phase19-auth.service.reject"},
+		{"service-check", "api/execute.go", "if !tokenHashEqual(current.TokenSHA256, tokenHash(token)) {", "if false && !tokenHashEqual(current.TokenSHA256, tokenHash(token)) {", "api.phase19-auth.service.reject"},
+		{"admin-race", "api/execute.go", "session.adminBinding = adminBinding", "session.adminBinding, _ = h.adminBinding()", "api.phase19-auth.admin.result"},
+		{"password", "statefile/execute.go", "if !security.VerifyCICDPassword(*identity.Credential, password) {", "if false && !security.VerifyCICDPassword(*identity.Credential, password) {", "api.phase19-auth.real.wrong-password"},
+		{"login-count", "statefile/execute.go", "if credential.LoginCount < 9007199254740991 {", "if false && credential.LoginCount < 9007199254740991 {", "api.phase19-auth.real.counter"},
+	} {
+		t.Run(mutation.id, func(t *testing.T) {
+			copyDir := t.TempDir()
+			for _, owner := range []string{"api", "statefile", "security"} {
+				target := filepath.Join(copyDir, "components", owner)
+				if os.MkdirAll(target, 0700) != nil {
+					t.Fatal("api.phase19-auth.mutation.directory")
+				}
+				for _, name := range []string{owner + ".go", "model.go", "validate.go", "execute.go", owner + "_test.go"} {
+					data, err := os.ReadFile(filepath.Join("..", owner, name))
+					if err != nil {
+						t.Fatal("api.phase19-auth.mutation.source")
+					}
+					if owner+"/"+name == mutation.path {
+						if strings.Count(string(data), mutation.old) != 1 {
+							t.Fatal("api.phase19-auth.mutation.target")
+						}
+						data = []byte(strings.Replace(string(data), mutation.old, mutation.new, 1))
+					}
+					if os.WriteFile(filepath.Join(target, name), data, 0600) != nil {
+						t.Fatal("api.phase19-auth.mutation.copy")
+					}
+				}
+			}
+			if os.WriteFile(filepath.Join(copyDir, "go.mod"), []byte("module github.com/fqwink/build-scripts\n\ngo 1.22\n"), 0600) != nil {
+				t.Fatal("api.phase19-auth.mutation.module")
+			}
+			compile := exec.Command("go", "test", "-c", "-o", "mutation.test", "./components/api")
+			compile.Dir = copyDir
+			compile.Env = append(os.Environ(), "GOENV=off", "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
+			if _, err := compile.CombinedOutput(); err != nil {
+				t.Fatal("api.phase19-auth.mutation.compile-invalid")
+			}
+			command := exec.Command("./mutation.test", "-test.run=^TestCICDAuth(HTTP|Boundary|Wire|Rate|Service|Failure|Admin|Concurrency|RealStore)$")
+			command.Dir = copyDir
+			output, err := command.CombinedOutput()
+			if err == nil || !bytes.Contains(output, []byte(mutation.reason)) {
+				t.Fatal("api.phase19-auth.mutation.not-killed")
+			}
+		})
+	}
+}
 
 func TestRunAPICLI(t *testing.T) {
 	t.Run("help", func(t *testing.T) {

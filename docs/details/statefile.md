@@ -750,6 +750,11 @@ mutateは業務差分とtarget identity、初回だけ返すmemory result/one_ti
 
 clockはlock取得後に1回だけUTC秒へ固定する内部注入点で、API/configから指定不可。監査時刻逆転と範囲外を拒否する。operation GCは同じlock下で本書lifecycleの適格条件だけを評価し、Run/Deploymentのactive状態、対応lease、JobResult.execution_id、Artifact.pins、CacheEntry.in_use、保存Route.operation_idを保護参照として照合する。任意textやenv値の一致を保護参照へ読み替えない。新規受付のGCはkey照合後の同commitに含め、callback失敗時にGCだけを先にcommitしない。明示GCも読取adapterから起動しない。これらの内部adapterはHTTP登録/認証session発行/各owner全意味制約の実装完了までpackage非公開とし、低水準Root書込を一般callerへ開放しない。
 
+<a id="phase-19-identity-store-boundary"></a>
+**認証専用Go adapter：** `OpenCICDIdentityStore(stateDir)` は既存snapshotを使用し、初期化/import/任意Root書込を公開しない。User/Serviceの独立copyと認可projectionだけを返す。`Login` はLOCK_EX下で最新Userを確認し、named userは現在Credentialを既存KDFで照合してlogin_countを9007199254740991で飽和加算しlast_login_atを更新する。revision/credential/grantの事前snapshotから上書きしない。adminのcredential=nullだけはAPI所有の専用既存credential/TOTP adapterを呼び、Rootへ複製しない。このcallbackだけは既存認証fileのlock/read-modify-writeを許可する（Root lock→legacy認証transaction→既存file lockの順）。legacy側からRoot lockを取得しない。途中失敗の既存認証file差分は保持し、Root不確定も含めsession発行を禁止する。汎用operation mutateのI/O禁止は維持する。
+
+`Authorize` は同じRoot guard下で現在identityの失効checkを必須実行して既存純粋認可へ接続する。読取・service hash照合・認可では世代/監査を変更しない。service同一hashの複数主体を拒否する。内部Credential/hashはHTTP projectionへ渡さない。clockはAPIが1要求に固定したUTC秒、時刻範囲外/last_login_atより前の新loginはP19_STATE_CORRUPT。auth adapterは認証以外のentity更新を提供しない。
+
 <a id="phase-19-log-invariants"></a>
 **Logの保存整合：** 全read/writeでschemaに加え `0<=first_offset<=next_offset<=9007199254740991`、UTF-8有効、`next_offset-first_offset=len(data bytes)`、truncated=(first_offset>0)を検証する。同一identityの更新はfirst/nextを減算せず、gap=trueをfalseへ戻さない。terminal=trueは封印済みであり、以後は完全同一Logの再送を既存値として返すだけとし、byte/offset/flagを更新しない。terminal=false同士でも保存済みと重なる絶対offset区間のbyte不一致を拒否する。新規は両offset=0/data空/truncated=false/gap=false/terminal=false。空streamもEOF時にterminal=trueを保存する。破損はP19_STATE_CORRUPTで自動修復しない。容量はJSON escapeと全fieldを含むserialized byte長で検証し、既存fileを置換する前に上限超過をP19_STORAGEで拒否する。全NULのdata最大長はescapeだけで6291456 bytesを使うため、path表のenvelope込み上限を適用し、schema上有効な最大dataをheader分で欠落させない。書込失敗時のjob停止は [docs/details/runner.md 詳細本文責務 streaming log](runner.md#phase-19-streaming-log-contract) を参照する。
 

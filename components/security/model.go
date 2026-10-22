@@ -9,6 +9,18 @@ var ErrCICDAuth = errors.New("P19_AUTH")
 var ErrCICDForbidden = errors.New("P19_FORBIDDEN")
 var ErrCICDQuota = errors.New("P19_QUOTA")
 
+// CICDCredential is an internal identity-store value, never an HTTP projection.
+type CICDCredential struct {
+	PasswordHash string  `json:"password_hash"`
+	Salt         string  `json:"salt"`
+	Algorithm    string  `json:"algorithm"`
+	Iterations   int     `json:"iterations"`
+	MustChange   bool    `json:"must_change"`
+	LoginCount   int64   `json:"login_count"`
+	LastLoginAt  *string `json:"last_login_at"`
+	UpdatedAt    string  `json:"updated_at"`
+}
+
 type CICDPrincipal struct {
 	Kind, ID   string
 	ExpiresAt  time.Time

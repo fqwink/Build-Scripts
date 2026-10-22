@@ -124,6 +124,11 @@ Operation.idはclient key、kindは上表のoperation ID。返却Authorization/r
 <a id="phase-19-operation-adapter-route"></a>
 内部Go実装の入口は [statefile詳細本文責務 操作transaction](statefile.md#phase-19-operation-go-boundary)、認可判定は [security詳細本文責務 Go境界](security.md#phase-19-authorization-go-boundary) を参照する。保存層のreplyはHTTP envelopeではなくOperationとcommit世代・初回memory値だけを返す。HTTP ownerは応答時に最新の認証/認可snapshotを取得し、その世代のAuthorizationを構成する。更新前のGrantへ新世代番号だけを付け直して応答しない。これらの内部実装だけでHTTP route/loginを有効化しない。
 
+<a id="phase-19-auth-http-boundary"></a>
+**認証HTTP内部境界：** cicd専用handlerの実装対象はcatalogのlogin/logoutと、後続ownerが使用する現在Bearer認証・認可の内部入口とする。既存mux/CLI/listenerへ登録せず、SDK/UIの既存操作も変更しない。未接続routeの仮成功を返さない。認証処理は独立した2秒上限のcontext-aware gateで直列化し、待機取消/期限はP19_BUSY、失効checkをRoot guard内で再評価する。body上限/深度/duplicate/unknown/末尾tokenは共通wire契約、logoutは認証→body検査の順でEmptyを要求する。Authorization headerは1個の`Bearer TOKEN`だけ、Cookie/forwarded header/legacy tokenを代用しない。responseのAuthorizationは同世代の本人有効grantをwire keyへ変換し、code/messageはerror catalogだけを使用する。request_id entropy失敗時はHTTP500/P19_ENTROPY、request_id=nullとし、偽IDを作らず認証/状態処理へ進まない。
+
+rateとsession/失効・発行順は [security認証runtime正本](security.md#phase-19-auth-runtime-boundary)、現在identity/ログイン更新は [statefile認証adapter正本](statefile.md#phase-19-identity-store-boundary) を参照する。Content-Typeはapplication/json（省略なし、charset指定はutf-8のみ）、Content-Encodingはidentityを含め指定を拒否する。query/encoded pathはこの2routeでは認めない。既存legacy namespaceのlogin/logout/TOTP responseと保存順を変更しない。この内部境界の検証成功をcicd CLI/全53操作/SDK/UI接続完了へ読み替えない。
+
 <a id="phase-19-log-page-contract"></a>
 **log page固定契約：**
 

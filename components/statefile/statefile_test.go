@@ -31,6 +31,156 @@ func cicdOperationFixture(t *testing.T) (*cicdSnapshotStore, cicdOperationReques
 	return s, request
 }
 
+func cicdIdentityFixture(t *testing.T) (*CICDIdentityStore, time.Time) {
+	t.Helper()
+	s, request := cicdOperationFixture(t)
+	record, err := security.NewPasswordRecord("Fixture-password-2026")
+	if err != nil {
+		t.Fatal("statefile.phase19-identity.credential.fixture")
+	}
+	credential := security.CICDCredential{PasswordHash: record.PasswordHash, Salt: record.Salt, Algorithm: record.Algorithm, Iterations: record.Iterations, MustChange: true, UpdatedAt: "2026-10-22T00:00:00Z"}
+	encoded, _ := json.Marshal(credential)
+	value, _ := decodeCICDValue(encoded)
+	if _, err := s.commit(1, request.id, func(root map[string]any) error {
+		root["users"] = append(cicdList(root["users"]), map[string]any{"id": "alice", "name": "Alice", "revision": json.Number("1"), "enabled": true, "credential": value, "totp": nil, "created_at": "2026-10-22T00:00:00Z"})
+		root["services"] = []any{map[string]any{"id": "build", "revision": json.Number("1"), "enabled": true, "token_sha256": strings.Repeat("a", 64), "expires_at": "2026-10-23T00:00:00Z"}}
+		return nil
+	}); err != nil {
+		t.Fatal("statefile.phase19-identity.root.fixture")
+	}
+	return &CICDIdentityStore{store: s}, s.clock()
+}
+
+func TestCICDIdentityStore(t *testing.T) {
+	s, now := cicdIdentityFixture(t)
+	before, head, _ := s.store.read()
+	if _, err := s.Login("alice", "wrong-password", cicdTestOperation, now, nil); err != security.ErrCICDAuth {
+		t.Fatal("statefile.phase19-identity.password.reject")
+	}
+	_, after, _ := s.store.read()
+	if head != after {
+		t.Fatal("statefile.phase19-identity.reject.no-write")
+	}
+	result, err := s.Login("alice", "Fixture-password-2026", cicdTestOperation, now, nil)
+	if err != nil || !result.PasswordVerified || result.MustChange != "prompt" || result.Identity.Credential.LoginCount != 1 {
+		t.Fatal("statefile.phase19-identity.login.count")
+	}
+	result.Identity.Credential.PasswordHash = strings.Repeat("c", 64)
+	identity, err := s.ReadIdentity("user", "alice")
+	if err != nil || identity.Credential.LoginCount != 1 || identity.Credential.PasswordHash == strings.Repeat("c", 64) {
+		t.Fatal("statefile.phase19-identity.read.copy")
+	}
+	p := security.CICDPrincipal{Kind: "user", ID: "alice", ExpiresAt: now.Add(time.Hour), MustChange: "prompt"}
+	if _, err := s.Authorize(p, security.CICDAccess{Operation: "logout"}, now, nil); err != security.ErrCICDAuth {
+		t.Fatal("statefile.phase19-identity.auth.check-required")
+	}
+	if _, err := s.Authorize(p, security.CICDAccess{Operation: "logout"}, now, func(CICDIdentity) error { return security.ErrCICDAuth }); err != security.ErrCICDAuth {
+		t.Fatal("statefile.phase19-identity.auth.revoked")
+	}
+	_, head, _ = s.store.read()
+	auth, err := s.Authorize(p, security.CICDAccess{Operation: "logout"}, now, func(current CICDIdentity) error {
+		if current.ID != "alice" {
+			t.Fatal("statefile.phase19-identity.auth.subject")
+		}
+		return nil
+	})
+	if err != nil || auth.Generation != head.Generation || len(auth.Grants) != 0 {
+		t.Fatal("statefile.phase19-identity.auth.current")
+	}
+	service, err := s.ReadService(strings.Repeat("a", 64))
+	if err != nil || service.ID != "build" {
+		t.Fatal("statefile.phase19-identity.service.match")
+	}
+	if _, err := s.ReadService(strings.Repeat("b", 64)); err != security.ErrCICDAuth {
+		t.Fatal("statefile.phase19-identity.service.unknown")
+	}
+	_, after, _ = s.store.read()
+	if head != after || len(cicdList(before["audits"])) != 0 {
+		t.Fatal("statefile.phase19-identity.read.no-write")
+	}
+	if _, err := s.store.commit(head.Generation, cicdTestOperation, func(root map[string]any) error {
+		duplicate := cloneCICDObject(cicdObject(cicdList(root["services"])[0]))
+		duplicate["id"] = "other"
+		root["services"] = append(cicdList(root["services"]), duplicate)
+		return nil
+	}); err != nil {
+		t.Fatal("statefile.phase19-identity.service.duplicate.fixture")
+	}
+	if _, err := s.ReadService(strings.Repeat("a", 64)); err != ErrCICDCorrupt {
+		t.Fatal("statefile.phase19-identity.service.duplicate")
+	}
+}
+
+func TestCICDIdentityFaults(t *testing.T) {
+	for _, stage := range []string{"snapshot.write", "head.directory-sync"} {
+		t.Run(stage, func(t *testing.T) {
+			s, now := cicdIdentityFixture(t)
+			s.store.fault = func(actual string) error {
+				if actual == stage {
+					return errors.New("PRIVATE_AUTH_IO")
+				}
+				return nil
+			}
+			result, err := s.Login("alice", "Fixture-password-2026", cicdTestOperation, now, nil)
+			want := ErrCICDStorage
+			if stage == "head.directory-sync" {
+				want = ErrCICDUncertain
+			}
+			if err != want || result.Identity.ID != "" || result.MustChange != "" {
+				t.Fatal("statefile.phase19-identity.fault.no-identity")
+			}
+		})
+	}
+}
+
+func TestCICDIdentityConcurrency(t *testing.T) {
+	s, now := cicdIdentityFixture(t)
+	start := make(chan struct{})
+	errs := make(chan error, 4)
+	var group sync.WaitGroup
+	for i := 0; i < 4; i++ {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			<-start
+			_, err := s.Login("alice", "Fixture-password-2026", cicdTestOperation, now, nil)
+			errs <- err
+		}()
+	}
+	close(start)
+	group.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal("statefile.phase19-identity.concurrent.result")
+		}
+	}
+	identity, _ := s.ReadIdentity("user", "alice")
+	if identity.Credential.LoginCount != 4 {
+		t.Fatal("statefile.phase19-identity.concurrent.no-lost-update")
+	}
+	result, err := s.Login("alice", "Fixture-password-2026", cicdTestOperation, now, nil)
+	if err != nil || result.MustChange != "forced" {
+		t.Fatal("statefile.phase19-identity.concurrent.forced")
+	}
+	_, head, _ := s.store.read()
+	if _, err := s.store.commit(head.Generation, cicdTestOperation, func(root map[string]any) error {
+		for _, value := range cicdList(root["users"]) {
+			user := cicdObject(value)
+			if user["id"] == "alice" {
+				cicdObject(user["credential"])["login_count"] = json.Number("9007199254740991")
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal("statefile.phase19-identity.saturation.fixture")
+	}
+	result, err = s.Login("alice", "Fixture-password-2026", cicdTestOperation, now, nil)
+	if err != nil || result.Identity.Credential.LoginCount != 9007199254740991 {
+		t.Fatal("statefile.phase19-identity.saturation.value")
+	}
+}
+
 func cicdProjectFixture() map[string]any {
 	return map[string]any{"id": "p", "name": "Project", "revision": json.Number("1"), "enabled": false, "source_owner": "owner", "source_repo": "repo", "definition_id": nil, "definition_revision": json.Number("0"), "toolchain_digest": nil, "quota": map[string]any{"parallel": json.Number("1"), "queue": json.Number("64"), "artifact_mb": json.Number("1024"), "cache_mb": json.Number("256"), "retention_days": json.Number("7")}}
 }

@@ -10,6 +10,13 @@ ownerは `security`、実装主体は [components/security/](../../components/se
 
 service tokenは32 random bytes、base64url paddedなし43文字、DBにはSHA256だけ、期限は発行から1秒〜30日、responseで1回だけ返す。Bearerでsessionと同じ入口へ渡し定時間比較、role/grantを毎回再検査する。serviceの承認・user/grant操作は禁止。serviceへのplatform-admin grantは保存拒否し、session tokenとservice tokenは型別に長さ/encodingを検査してから照合する。worker SSH identityはAPI Bearerではない。
 
+<a id="phase-19-auth-runtime-boundary"></a>
+**認証runtime境界：** cicd専用のsession/rate/lockout辞書はapi ownerのmemoryに保持し、legacy辞書を参照・更新しない。sessionは4096件以下、期限切れだけを回収し、満杯はP19_QUOTA。token生成は32 bytesのlowercase hex、hash衝突は3回まで再生成しP19_ENTROPY、entropy失敗も同codeとする。候補tokenはcredentials更新前に生成し、credentials確定→必須access/audit→最新認可再取得のすべてが成功した後だけmemoryへ登録する。途中失敗でtokenを返さず、既に保存したlogin_count/TOTP stepを巻き戻さない。user revisionまたはcredential fingerprintが変わったsessionは失効し、login_count/last_login_atの更新だけでは他sessionを失効させない。adminは既存credential/TOTPの現在fingerprintも照合する。全sessionは再起動で消失する。
+
+loginのIP keyはRemoteAddrのIPだけ（forwarded header不使用、不正値はunknown）、user keyは検証済Idとする。IPの10回/60秒をbody decode前、userの同limitをdecode後/credential検査前に適用する。各fixed windowは初回受付時から60秒、now>=終端で更新し、時計逆行は拒否する。rate辞書とpassword失敗辞書はそれぞれ4096 key以下、期限切れだけを回収し、満杯はP19_RATE。password不一致の10回目でIPを600秒lockし、その後はKDF未実行でP19_RATE。未lockの失敗entryは最終失敗から600秒で回収する。password一致で失敗entryを削除し、TOTP不一致/JSON不正/rate拒否をpassword失敗へ加算しない。未知/disabled userも同じ認証拒否とし、不存在入力では固定dummy KDFを実行する。
+
+service Bearerはcanonicalなbase64url無padding43文字/decoded32 bytesのみ、session Bearerはlowercase hex64文字のみとして分離する。service照合は全保存hashとの定時間比較を行い、複数一致は状態破損として拒否する。毎requestで現在enabled/期限/hash/grantを読み直す。logoutは現在sessionを削除し、serviceの場合は現在hashを期限までmemory拒否集合へ追加する（上限4096、満杯P19_QUOTA）。これは永続service無効化ではなく、service拒否集合も再起動で消失する。資格情報を永続失効させる場合はservice更新のenabled=falseを使用する。logout後の必須log失敗でも削除/拒否を戻さない。認証・認可失敗はOperation/Root監査を作らず、既存access/auditの固定fieldだけへ記録し、認証前actorはsystemとする。
+
 <a id="phase-19-permission-matrix"></a>
 **権限行列：**
 

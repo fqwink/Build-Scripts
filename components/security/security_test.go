@@ -1,11 +1,48 @@
 package security
 
 import (
+	"encoding/base64"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestCICDBearerAndCredentialBinding(t *testing.T) {
+	service := base64.RawURLEncoding.EncodeToString(make([]byte, 32))
+	for _, test := range []struct{ token, kind string }{
+		{strings.Repeat("a", 64), "user"}, {service, "service"},
+		{strings.Repeat("A", 64), ""}, {"acs_" + strings.Repeat("a", 64), ""},
+		{service + "=", ""}, {service[:42] + "B", ""}, {" " + service, ""},
+		{service + "\n", ""}, {strings.Repeat("a", 63), ""}, {"", ""},
+	} {
+		if CICDBearerKind(test.token) != test.kind {
+			t.Fatal("security.phase19-auth.bearer.kind")
+		}
+	}
+	record, err := NewPasswordRecord("Fixture-password-2026")
+	if err != nil {
+		t.Fatal("security.phase19-auth.credential.fixture")
+	}
+	credential := CICDCredential{PasswordHash: record.PasswordHash, Salt: record.Salt, Algorithm: record.Algorithm, Iterations: record.Iterations, UpdatedAt: "2026-10-22T00:00:00Z"}
+	if !VerifyCICDPassword(credential, "Fixture-password-2026") || VerifyCICDPassword(credential, "wrong-password") {
+		t.Fatal("security.phase19-auth.credential.verify")
+	}
+	binding := CICDCredentialFingerprint(credential)
+	at := "2026-10-22T00:01:00Z"
+	credential.LoginCount, credential.LastLoginAt = 5, &at
+	if CICDCredentialFingerprint(credential) != binding {
+		t.Fatal("security.phase19-auth.credential.login-stable")
+	}
+	credential.MustChange = true
+	if CICDCredentialFingerprint(credential) == binding {
+		t.Fatal("security.phase19-auth.credential.changed")
+	}
+	credential.Iterations = 1
+	if VerifyCICDPassword(credential, "Fixture-password-2026") {
+		t.Fatal("security.phase19-auth.credential.invalid")
+	}
+}
 
 func cicdAuthorizationFixture() (CICDPrincipal, CICDAuthorizationSnapshot, time.Time) {
 	now := time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC)

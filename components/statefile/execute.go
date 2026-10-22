@@ -3,6 +3,7 @@ package statefile
 import (
 	"bytes"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,6 +29,185 @@ func cicdValueBytes(value any) []byte {
 
 func cicdValueDigest(value any) string {
 	return fmt.Sprintf("%x", sha256.Sum256(cicdValueBytes(value)))
+}
+
+func OpenCICDIdentityStore(path string) (*CICDIdentityStore, error) {
+	store, err := newCICDSnapshotStore(path)
+	if err != nil {
+		return nil, err
+	}
+	if _, _, err := store.read(); err != nil {
+		return nil, err
+	}
+	return &CICDIdentityStore{store: store}, nil
+}
+
+func cicdIdentity(root map[string]any, kind, id string) (CICDIdentity, error) {
+	collection := "users"
+	if kind == "service" {
+		collection = "services"
+	} else if kind != "user" {
+		return CICDIdentity{}, security.ErrCICDAuth
+	}
+	for _, value := range cicdList(root[collection]) {
+		object := cicdObject(value)
+		if object["id"] != id {
+			continue
+		}
+		identity := CICDIdentity{Kind: kind, ID: id, Revision: cicdInt(object["revision"]), Enabled: object["enabled"] == true}
+		if kind == "service" {
+			identity.TokenSHA256 = object["token_sha256"].(string)
+			identity.ExpiresAt, _ = time.Parse(time.RFC3339, object["expires_at"].(string))
+		} else if object["credential"] != nil {
+			var credential security.CICDCredential
+			if json.Unmarshal(cicdValueBytes(object["credential"]), &credential) != nil {
+				return CICDIdentity{}, ErrCICDCorrupt
+			}
+			identity.Credential = &credential
+		}
+		return identity, nil
+	}
+	return CICDIdentity{}, security.ErrCICDAuth
+}
+
+func (s *CICDIdentityStore) ReadIdentity(kind, id string) (CICDIdentity, error) {
+	if s == nil || s.store == nil {
+		return CICDIdentity{}, ErrCICDCorrupt
+	}
+	dir, snapshots, unlock, err := s.store.lock(false)
+	if err != nil {
+		return CICDIdentity{}, err
+	}
+	defer unlock()
+	root, _, err := s.store.readFrom(dir, snapshots)
+	if err != nil {
+		return CICDIdentity{}, err
+	}
+	return cicdIdentity(root, kind, id)
+}
+
+func (s *CICDIdentityStore) ReadService(hash string) (CICDIdentity, error) {
+	if s == nil || s.store == nil {
+		return CICDIdentity{}, ErrCICDCorrupt
+	}
+	if !cicdLowerHex(hash, 64) {
+		return CICDIdentity{}, security.ErrCICDAuth
+	}
+	dir, snapshots, unlock, err := s.store.lock(false)
+	if err != nil {
+		return CICDIdentity{}, err
+	}
+	defer unlock()
+	root, _, err := s.store.readFrom(dir, snapshots)
+	if err != nil {
+		return CICDIdentity{}, err
+	}
+	count, id := 0, ""
+	for _, value := range cicdList(root["services"]) {
+		service := cicdObject(value)
+		if subtle.ConstantTimeCompare([]byte(hash), []byte(service["token_sha256"].(string))) == 1 {
+			count++
+			id = service["id"].(string)
+		}
+	}
+	if count > 1 {
+		return CICDIdentity{}, ErrCICDCorrupt
+	}
+	if count == 0 {
+		return CICDIdentity{}, security.ErrCICDAuth
+	}
+	return cicdIdentity(root, "service", id)
+}
+
+// Login owns the named-user read-modify-write; only the admin alias uses legacy I/O.
+func (s *CICDIdentityStore) Login(id, password, requestID string, now time.Time, admin func() (string, bool, error)) (CICDLoginResult, error) {
+	result := CICDLoginResult{}
+	if s == nil || s.store == nil {
+		return result, ErrCICDCorrupt
+	}
+	if !validCICDEntityID(requestID, "o-") || now.Year() < 1970 || now.Year() > 9999 || now.Format(time.RFC3339) != now.UTC().Truncate(time.Second).Format(time.RFC3339) || now.Nanosecond() != 0 {
+		return result, ErrCICDSchema
+	}
+	_, err := s.store.transact(requestID, func(root map[string]any, _ cicdHead) error {
+		identity, err := cicdIdentity(root, "user", id)
+		if err != nil || !identity.Enabled {
+			security.VerifyCICDPassword(security.CICDCredential{PasswordHash: strings.Repeat("0", 64), Salt: strings.Repeat("0", 64), Algorithm: security.CredentialAlgorithmPBKDF2HMACSHA256V1, Iterations: security.CredentialIterations}, password)
+			return security.ErrCICDAuth
+		}
+		if id == "admin" {
+			if identity.Credential != nil || admin == nil {
+				return ErrCICDCorrupt
+			}
+			result.MustChange, result.PasswordVerified, err = admin()
+			if err != nil {
+				return err
+			}
+			if !result.PasswordVerified || result.MustChange != "none" && result.MustChange != "prompt" && result.MustChange != "forced" {
+				return ErrCICDCorrupt
+			}
+		} else {
+			if identity.Credential == nil {
+				return ErrCICDCorrupt
+			}
+			if !security.VerifyCICDPassword(*identity.Credential, password) {
+				return security.ErrCICDAuth
+			}
+			result.PasswordVerified = true
+			credential := *identity.Credential
+			at := now.Format(time.RFC3339)
+			if credential.LastLoginAt != nil && at < *credential.LastLoginAt {
+				return ErrCICDCorrupt
+			}
+			if credential.LoginCount < 9007199254740991 {
+				credential.LoginCount++
+			}
+			credential.LastLoginAt = &at
+			result.MustChange = "none"
+			if credential.MustChange {
+				result.MustChange = "prompt"
+				if credential.LoginCount >= 5 {
+					result.MustChange = "forced"
+				}
+			}
+			for _, value := range cicdList(root["users"]) {
+				user := cicdObject(value)
+				if user["id"] == id {
+					encoded, _ := json.Marshal(credential)
+					user["credential"], _ = decodeCICDValue(encoded)
+				}
+			}
+			identity.Credential = &credential
+		}
+		result.Identity = identity
+		return nil
+	})
+	if err != nil {
+		return CICDLoginResult{PasswordVerified: result.PasswordVerified}, err
+	}
+	return result, nil
+}
+
+func (s *CICDIdentityStore) Authorize(principal security.CICDPrincipal, access security.CICDAccess, now time.Time, check func(CICDIdentity) error) (security.CICDAuthorization, error) {
+	if s == nil || s.store == nil {
+		return security.CICDAuthorization{}, ErrCICDCorrupt
+	}
+	dir, snapshots, unlock, err := s.store.lock(false)
+	if err != nil {
+		return security.CICDAuthorization{}, err
+	}
+	defer unlock()
+	root, _, err := s.store.readFrom(dir, snapshots)
+	if err != nil {
+		return security.CICDAuthorization{}, err
+	}
+	identity, err := cicdIdentity(root, principal.Kind, principal.ID)
+	if err != nil || check == nil {
+		return security.CICDAuthorization{}, security.ErrCICDAuth
+	}
+	if err := check(identity); err != nil {
+		return security.CICDAuthorization{}, err
+	}
+	return authorizeCICDRoot(root, principal, access, now)
 }
 
 func newCICDSnapshotStore(path string) (*cicdSnapshotStore, error) {

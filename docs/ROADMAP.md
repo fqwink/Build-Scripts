@@ -97,7 +97,7 @@ Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない�
 `改訂予定` の行に記載する詳細入口は、仕様策定先または再評価先を示す。`改訂予定` の詳細入口は、実装着手根拠、Phase 11 実装対象、または `仕様化済み・未実装` の代替根拠として扱わない。`仕様化済み・未実装` の行であっても、実装着手可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze)、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を同時に満たす場合だけ成立する。
 
 <a id="specification-completeness-status"></a>
-**仕様全般詳細化の現在状態：** 統合機能インベントリの既存要求について、owner本文・入力/出力/状態/異常系/復旧・具体fixture入力/expected・Phase/実装PR境界を照合し、検出済み仕様不備は解消した。Phase20/21の各機能は仕様成熟度として `仕様化済み・未実装` とする。根拠は [同一仕様PRのinventory/batch/反復検査証跡](https://github.com/fqwink/Build-Scripts/pull/100)。これは製品機能テスト完了、実機受入完了、実装着手許可、active Phase設定を意味しない。既存namespaceとPhase19専用namespaceの割当は独立のまま、Phase19の製品基礎実装に着手した。共有schemaとsnapshot保存層の検証入口は [fixture証跡責務 snapshot検証](details/fixture.md#phase-19-snapshot-evidence)。操作transactionと純粋認可の接続に着手し、[実行検証入口](details/fixture.md#phase-19-operation-runtime-evidence) を追加した。HTTP認証・各ownerの実体処理・必須1GB実機検証は完了していない。
+**仕様全般詳細化の現在状態：** 統合機能インベントリの既存要求について、owner本文・入力/出力/状態/異常系/復旧・具体fixture入力/expected・Phase/実装PR境界を照合し、検出済み仕様不備は解消した。Phase20/21の各機能は仕様成熟度として `仕様化済み・未実装` とする。根拠は [同一仕様PRのinventory/batch/反復検査証跡](https://github.com/fqwink/Build-Scripts/pull/100)。これは製品機能テスト完了、実機受入完了、実装着手許可、active Phase設定を意味しない。既存namespaceとPhase19専用namespaceの割当は独立のまま、Phase19の製品基礎実装に着手した。共有schemaとsnapshot保存層の検証入口は [fixture証跡責務 snapshot検証](details/fixture.md#phase-19-snapshot-evidence)。操作transactionと純粋認可の接続に着手し、[実行検証入口](details/fixture.md#phase-19-operation-runtime-evidence) を追加した。専用認証とlogin/logout内部HTTP境界の実装・検証は [認証証跡入口](details/fixture.md#phase-19-authentication-evidence) を参照する。既存listener/専用CLI/SDK/UIへの接続・各ownerの実体処理・必須1GB実機検証は完了していない。
 
 | 仕様化済み範囲 | 現在状態 / 詳細・検証入口 |
 |---|---|

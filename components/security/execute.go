@@ -4,12 +4,38 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"io"
 	"time"
 )
+
+func VerifyCICDPassword(credential CICDCredential, password string) bool {
+	ok, err := VerifyPassword(PasswordRecord{PasswordHash: credential.PasswordHash, Salt: credential.Salt, Algorithm: credential.Algorithm, Iterations: credential.Iterations}, password)
+	return err == nil && ok
+}
+
+func CICDBearerKind(token string) string {
+	if isLowerHex(token, 64) {
+		return "user"
+	}
+	if len(token) == 43 {
+		decoded, err := base64.RawURLEncoding.Strict().DecodeString(token)
+		if err == nil && len(decoded) == 32 && base64.RawURLEncoding.EncodeToString(decoded) == token {
+			return "service"
+		}
+	}
+	return ""
+}
+
+func CICDCredentialFingerprint(credential CICDCredential) string {
+	credential.LoginCount, credential.LastLoginAt = 0, nil
+	data, _ := json.Marshal(credential)
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
 
 // AuthorizeCICD consumes a current snapshot; it does not authenticate credentials.
 func AuthorizeCICD(principal CICDPrincipal, snapshot CICDAuthorizationSnapshot, access CICDAccess, now time.Time) (CICDAuthorization, error) {

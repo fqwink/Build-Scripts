@@ -11,6 +11,23 @@ import (
 
 var ErrCICDSchema = errors.New("P19_SCHEMA")
 
+type CICDIdentityStore struct{ store *cicdSnapshotStore }
+
+type CICDIdentity struct {
+	Kind, ID    string
+	Revision    int64
+	Enabled     bool
+	Credential  *security.CICDCredential
+	TokenSHA256 string
+	ExpiresAt   time.Time
+}
+
+type CICDLoginResult struct {
+	Identity         CICDIdentity
+	MustChange       string
+	PasswordVerified bool
+}
+
 var (
 	ErrCICDCorrupt     = errors.New("P19_STATE_CORRUPT")
 	ErrCICDBusy        = errors.New("P19_BUSY")
