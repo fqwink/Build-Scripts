@@ -33,6 +33,15 @@ Definition / Template / Projectを保存する時とplan時に次の順序で検
 7. GitHub Trees/Blobs APIをsource.sha固定で読む。owner/repoは既存GitHub入力規則を使用し、recursive treeのtruncated=true、submodule、symlink、未知mode、file10000超、単体10 MiB超、合計100 MiB超を拒否する。regular mode100644/100755だけを採用し、blobのGit SHA1を検証してからSHA256を計算する。変更pathはwatchの前SHAと今回SHAの完全treeのpath+digest差分（削除含む）。前SHAなしは全path。取得失敗を変更なしへ変換しない。
 8. 取得済sourceと解決済入力から条件選択を確定し、selected jobのcapability・executor・資源・quota・成果物参照を検査し、PlanDataとそのcanonical SHA256をPlanにする。source.files、Project.toolchain_digestをPlanDataへ固定し、実行開始時にWorker.toolchain_digestと照合する。有効Projectはtoolchain_digest必須、未設定はP19_CAPABILITY。一致workerの能力検査はselected=trueのworker実行jobだけに適用し、選択されないjobやcoordinator専用jobのためにworkerを要求しない。PlanData canonical長は524288 bytes以下（超過P19_BODY）。run受付ではplan digest / source / revisionを再取得して一致を確認し、不一致はP19_STALE、未検査の値を最新値で補完しない。
 
+<a id="phase-19-plan-go-boundary"></a>
+**計画のGo境界：** `PrepareCICDPlan(project,definition,values json.RawMessage,templates []json.RawMessage) (*CICDPlanDraft,error)` はschema検査、入力確定、指定revisionのtemplate展開、置換、matrix、DAG、selector構文までを副作用なしで行う。templatesは同projectの保存済みTemplate投影（最大1024件、一意keyはid/revision）であり、要求revision以外を代用しない。valuesは空objectを許すがnil/nullを補完しない。draftは未公開fieldだけを持ち、入力bytes/mapとの共有を残さない。保存時にも同じ意味検査を使用できるが、Project.enabledはこの段階では要求しない。
+
+`(*CICDPlanDraft).Resolve(source json.RawMessage,changedPaths []string,context CICDPlanContext) (json.RawMessage,error)` は固定Sourceと読取投影を受け、条件選択と選択jobの実行前提を検査してcanonical Planを返す純粋関数とする。contextはWorkers/Secrets/Artifacts/Environmentsの各schema型のJSON配列投影だけとし、Root全体やsecret平文を渡さない。nil changedPathsは今回全path、非nilはwatch差分のUTF-8 byte昇順・一意・最大20000pathとする。`CICDChangedPaths(previous,current json.RawMessage)` はSource.filesのpath/SHA256差分を同順で返し、previous=nilは初回だけを表す。両Sourceのowner/repo/ref_kind/refが違う場合は拒否する。Sourceのblob検証は取得adapterの責務であり、Resolveでmetadataのdigest一致だけから実file取得成功を推定しない。
+
+Resolveは有効Projectとsource owner/repo一致、path順/容量/tree_digestを要求する。現在のsecret版、非deleting artifact、deploy先Environment、cache有効時のcache quotaを選択jobについて検査する。workerの恒久能力はenabled/project/capability/toolchain/memoryで判断し、draining/空slot待ちは永久能力不足へ変換しない。失敗時はdraft/入力不変・戻りPlan空、errorは固定codeだけ。受付時の現在認可・revision再照合・quota予約は呼出側のtransaction責務に残す。draftの並行Resolveは入力/共有状態を変更せず、zero/nil draftはP19_SCHEMAとする。
+
+Go境界へのproject/definition/values/templatesの合計、およびResolveのcontext投影の合計は、それぞれRoot上限と同じ32 MiB以下とし、超過はP19_BODY。watch/scheduleのIDは各配列内で一意とする。自動triggerとrequired inputの保存条件は [自動triggerの入力](#phase-19-trigger-admission) を参照する。
+
 <a id="phase-19-input-normalization"></a>
 **型付き入力の確定：** 入力objectのkeyは宣言inputsの部分集合とし、未知keyを拒否する。required=trueはdefault=null/明示値必須。required=falseは未指定時だけ非null defaultを使用し、default=nullならそのkeyを結果mapから除く。明示nullはScalarではなく拒否、defaultへの読み替えをしない。未指定と空string/false/0を区別する。結果mapはdefault適用後の値だけで、欠落key参照（input_equalsを含む）はP19_SCHEMA。stringはUTF-8 byte長のmin/max（0〜4096）、integerはJSON整数の数値範囲、booleanはmin=0/max=1固定。defaultとchoicesもkind/範囲に一致を要求し、choicesは型を区別した完全一致、一意、空なら列挙制限なし。非null defaultも非空choicesの要素でなければ拒否する。文字列数値、booleanと0/1、小数/指数/負の0を暗黙変換しない。エラーはP19_SCHEMAでsource取得/実行前に停止する。TemplateUse.valuesはliteral Scalarだけを同規則で解決し、template内input参照は当該templateのinputsに限る。親input/matrixへの跨り参照や値中の二重展開を許可しない。
 
@@ -62,6 +71,8 @@ topological順で `selected=own_match && all(needs.selected)` を一度だけ確
 | deploy / deploy | 外部commandなし。本書配備state machineへ渡す。job workerへ配備secretを送らない。 |
 
 Go環境追加は `CGO_ENABLED=0 GOPROXY=off GOSUMDB=off GOENV=off GOWORK=off GOTOOLCHAIN=local GOCACHE=/job/gocache GOMODCACHE=/job/modcache GOMAXPROCS=1`。全Go commandへbuild flag `-p=1`をcommand名直後に加え、trusted wrapper/builder/Go toolのGOMEMLIMITは `(memory_mb-disk_mb-32)MiB` とする。これはsoft limitでありcgroup MemoryMaxを置き換えない。go.mod require/replace、vendor、go:generate、exec script、Node関連manifest/runtime入力を拒否する。go.modはmodule/go/toolchain行と空白/commentだけを受理し、require/replace/exclude/retract/useを含む行やblockは拒否する。Go compilerが解釈する前にこの閉じたgrammarを検査し、toolchain行は導入版と一致しなければ拒否する。sourceから任意command、plugin、download、外部module解決を行わない。source file admissionはNode禁止契約に従う。Go testのcompile段階とtest実行段階はsandboxを作り直し、前者の実行allowlistはGo toolchain、後者は検証済みtest digestとtrusted wrapperだけにする。実行しない検証結果をexit0へ変換しない。
+
+executorへ位置引数として渡すgo-test/go-vetのpackages、go-buildのpackage、deno-checkのfilesは、展開後の各値が `-` 始まりならplan保存前にP19_SCHEMAで拒否する。file名を追加flagとして解釈させず、slash後の `-`（例 `src/-name`）はflag先頭ではないためこの制限に含めない。deno-check.filesは同時に末尾.jsを要求する。この入力検査をsandboxや実行時のflag errorで代用しない。
 
 <a id="phase-19-trigger-state"></a>
 **trigger / queue / attempt：**

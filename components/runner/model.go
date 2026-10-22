@@ -1,13 +1,40 @@
 package runner
 
-import "errors"
+import (
+	"encoding/json"
+	"errors"
+)
 
 var (
 	ErrCICDSchema       = errors.New("P19_SCHEMA")
 	ErrCICDCapability   = errors.New("P19_CAPABILITY")
 	ErrCICDStateCorrupt = errors.New("P19_STATE_CORRUPT")
 	ErrCICDBusy         = errors.New("P19_BUSY")
+	ErrCICDMatrix       = errors.New("P19_MATRIX")
+	ErrCICDDAG          = errors.New("P19_DAG")
+	ErrCICDBody         = errors.New("P19_BODY")
+	ErrCICDForbidden    = errors.New("P19_FORBIDDEN")
+	ErrCICDSecret       = errors.New("P19_SECRET")
+	ErrCICDNotFound     = errors.New("P19_NOT_FOUND")
+	ErrCICDQuota        = errors.New("P19_QUOTA")
 )
+
+// Raw projections use statefile's closed schemas, never an entire Root or plaintext secrets.
+type CICDPlanContext struct {
+	Workers      []json.RawMessage
+	Secrets      []json.RawMessage
+	Artifacts    []json.RawMessage
+	Environments []json.RawMessage
+}
+
+type CICDPlanDraft struct {
+	project, definition, values map[string]any
+	jobs                        []cicdDraftJob
+}
+
+type cicdDraftJob struct {
+	job, condition, values map[string]any
+}
 
 type CICDResources struct {
 	CPUPercent     int64 `json:"cpu_percent"`

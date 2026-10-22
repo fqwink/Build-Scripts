@@ -44,6 +44,15 @@ assertion IDは `statefile.phase19-schema.<case>.<result>`、`statefile.phase19-
 
 `TestCICDManagementMutations` は既存api/setup/statefile/security packageの隔離copyでcompile後に正本と結び付いたassertion失敗を要求する。選択11件は必須shape、file mode、専用親mode、hardlink、group membership、account、filename、CLI重複、namespace分離、profile混在、drain。compile失敗をkillへ算入しない。既存認証mutationもsetup依存をcopyし、製品commandや外部runtimeを追加しない。Go/race/Linux Actionsを実行入口とし、正式root384 assertion・18 record closure・全53操作/SDK/UI・実cohort導入・最低1GB minimum-liveのopen itemは本検証でclosedにしない。
 
+<a id="phase-19-plan-runtime-evidence"></a>
+**計画エンジンの実行検証：** [runner計画Go境界](runner.md#phase-19-plan-go-boundary) と [statefile未展開job値の境界](statefile.md#phase-19-deferred-task-shape) を参照する。[components/runner/runner_test.go](../../components/runner/runner_test.go) の `TestCICDPlan` / `Inputs` / `Matrix` / `DAG` / `Glob` / `TemplateAndSubstitution` / `Selection` / `Prerequisites` / `Deploy` / `Source` / `Wire` / `DeferredSchema` / `TaskSyntax` は製品Prepare/Resolveを呼び、独立した完全JSON期待値と標準SHA256でPlan全bytes/digestを比較する。型と未指定/null/default、UTF-8 byte長、template revision/prefix/scope、置換後の型・再走査0、axis/tuple順・除外/再追加・256/257境界、循環/自己/重複/生成ID衝突、Kahn同順位、Unicode globとDP上限、ref/path/input AND・依存への非選択伝播を確認する。
+
+現在のsecret版・artifact削除中・environment不在・cache前提・worker能力/実測896 MiBでの恒久メモリ不足、disabledとdrainingの区別、coordinator専用/非選択jobのworker不要、source順序/容量/tree digest・追加/変更/削除path・Plan byte上限を照合する。schema検証は未展開Jobだけの参照許可とPlannedJobの厳密型を区別する。`TestCICDPlanConcurrent` は同じdraft/source/contextをbarrierで8goroutineへ渡し、各8回の同一出力・入力不変をrace detectorで検証する。assertion IDは `runner.phase19-plan-unit.<case>.<result>`。正式384 assertionのID・件数へ流用しない。
+
+`TestCICDPlanMutations` はrunner/statefile/securityの既存5fileだけを隔離copyし、default、UTF-8長、matrix順/重複/単体上限、DAG循環/未知参照、選択伝播、有効project、Plan容量、削除中artifact、secret版、未展開schema、位置引数の14制御を変異させる。各compile成功後、対応する固定assertion失敗を要求する。matrixの単体上限と全job上限は独立に検査し、一方の代替拒否だけを前者のkillへ数えない。native Go標準libraryのみで動作し、source取得/実command/HTTP登録/SDK/UI/queue/worker通信/保存Planの再起動をこの結果でclosedにしない。正式root・18 record closure・必須minimum-liveは引き続き完了条件に残る。
+
+process reviewの追加2callは、検証済みnative GoのGOROOT/bin/goによる固定3packageのcompileと、0700のtest temporary内でcompile成功したmutation.testの起動だけ。入力はnative test内の固定mutation/固定test名であり、repository外の利用者command・shell・外部module・未検証runtimeを注入しない。既存1callを含む集合は [Go process review固定入力](#development-actions-go-process-review-input) でbyte/hash照合し、既知禁止commandの例外を作らない。
+
 <a id="phase-19-memory-evidence"></a>
 **最低実働メモリの単体検証と実測証跡：** [components/runner/runner_test.go](../../components/runner/runner_test.go) の `TestCICDResources` / `TestCICDMemoryAdmission` / `TestCICDHostMemoryParser` / `TestCICDMemorySpecification` は [docs/details/statefile.md 詳細本文責務 Resources](statefile.md#phase-19-schema-registry)、[docs/details/setup.md 詳細本文責務 host観測](setup.md#phase-19-memory-profile)、[docs/details/runner.md 詳細本文責務 メモリ受付](runner.md#phase-19-memory-admission) を独立期待値で検査する。入力には実測896/960/1024 MiB、Available319/320、単独budget384/385、slot境界1535/1536、既存claim合計1536/1537、4slot満杯、不正claim/overflow/順序優先、meminfoのKiB丸め前超過・単位・重複・I/O失敗・65536/65537 bytesを含む。小メモリの2job目はP19_BUSY、単独で成立しない旧既定jobはP19_CAPABILITY、入力値/claim配列不変、エラーの秘密文字列漏えい0とする。schema/default/複合制約をmemory copyで変更する5negative controlを拒否する。assertion IDは `runner.phase19-memory.<case>.value/parse/admit/reject`。これらはbudget計算/読取/資源境界の検証であり、未実装のcoordinator/broker接続・OOM回収や1GB実働成功を証明しない。
 
@@ -3506,6 +3515,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
 }
 ```
 
+<a id="development-actions-go-process-review-input"></a>
 **Go process review固定入力：** source bytesと未解決call集合のhashをnative Goで照合する。basisの対応はmain_test.go/components/runner/runner_test.go=`native-fixture-only`、components/release/release.go=`release-owned-toolchain`、components/setup/setup.go=`setup-verified-artifact`、components/api/api.go=`fixed-systemctl`、components/runner/runner.go=`configured-product-boundary`に固定する。根拠は [docs/details/fixture.md fixture証跡責務 開発Actions検証接続](#development-actions-evidence-contract)、[docs/details/release.md 詳細本文責務](release.md)、[docs/details/setup.md 詳細本文責務](setup.md)、[docs/details/api.md 詳細本文責務](api.md)、[docs/details/runner.md 詳細本文責務](runner.md) を使い、製品境界の新たな実装・例外許可は行わない。
 
 ```json
@@ -3535,9 +3545,9 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
     },
     {
       "path": "components/runner/runner_test.go",
-      "source_sha256": "33f7154e97fc4a704df7d6249d6955f1ef15ac4723371b316f8d07bf1ac180fd",
-      "calls_sha256": "6b5a66ed1794109b2f6ee8f24e9cb67f6321dd5b68dc9174c4fbf6ebc621b46a",
-      "call_count": 1,
+      "source_sha256": "dd1b7dff8e234eb53b520cfca41c2b457edab99e9c703c366de052801e8b895b",
+      "calls_sha256": "dcec1858dbb77e2ca875dd0a332686edf05dd51dfe17b8ff593acdc8d6c74788",
+      "call_count": 3,
       "review_basis": "native-fixture-only"
     },
     {

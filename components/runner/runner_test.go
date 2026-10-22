@@ -4,7 +4,9 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,7 +25,769 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/fqwink/build-scripts/components/statefile"
 )
+
+func cicdPlanTestObject(t *testing.T, raw string) map[string]any {
+	t.Helper()
+	decoder := json.NewDecoder(strings.NewReader(raw))
+	decoder.UseNumber()
+	var result map[string]any
+	if decoder.Decode(&result) != nil {
+		t.Fatal("runner.phase19-plan-unit.fixture.decode")
+	}
+	return result
+}
+
+func cicdPlanTestRaw(t *testing.T, value any) json.RawMessage {
+	t.Helper()
+	data, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal("runner.phase19-plan-unit.fixture.encode")
+	}
+	return data
+}
+
+func cicdPlanTestFixture(t *testing.T) (map[string]any, map[string]any, map[string]any, CICDPlanContext) {
+	t.Helper()
+	project := cicdPlanTestObject(t, `{"id":"p","name":"Project","revision":1,"enabled":true,"source_owner":"owner","source_repo":"repo","definition_id":"d","definition_revision":1,"quota":{"parallel":1,"queue":64,"artifact_mb":1024,"cache_mb":256,"retention_days":7},"toolchain_digest":"`+strings.Repeat("a", 64)+`"}`)
+	definition := cicdPlanTestObject(t, `{"project_id":"p","id":"d","revision":1,"inputs":{},"manual":true,"watches":[],"schedules":[],"templates":[],"jobs":[{"id":"build","needs":[],"condition":{"branches":[],"tags":[],"paths":[],"input_equals":{}},"task":{"kind":"builder","source":".","output":"site"},"matrix":{"axes":{},"exclude":[],"include":[]},"resources":{"cpu_percent":100,"memory_mb":256,"disk_mb":128,"tasks":64,"timeout_seconds":900,"output_mb":16},"retry":{"max_attempts":1,"backoff_seconds":1},"cache":{"enabled":false,"paths":[],"ttl_seconds":604800},"env":{},"secrets":{},"optional":false}],"fail_fast":false}`)
+	source := cicdPlanTestObject(t, `{"owner":"owner","repo":"repo","ref_kind":"branch","ref":"main","sha":"`+strings.Repeat("b", 40)+`","tree_digest":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945","files":[]}`)
+	worker := json.RawMessage(`{"id":"w","revision":1,"enabled":true,"draining":false,"host":"worker.invalid","port":22,"user":"worker","allowed_projects":["p"],"capabilities":["builder","go","deno"],"slots":1,"last_seen":null,"leases":[],"toolchain_digest":"` + strings.Repeat("a", 64) + `","total_memory_mb":896}`)
+	return project, definition, source, CICDPlanContext{Workers: []json.RawMessage{worker}}
+}
+
+func cicdPlanTestJob(t *testing.T, id string) map[string]any {
+	t.Helper()
+	_, d, _, _ := cicdPlanTestFixture(t)
+	job := d["jobs"].([]any)[0].(map[string]any)
+	job["id"] = id
+	return job
+}
+
+func cicdPlanTestDraft(t *testing.T, p, d map[string]any, values string, templates ...json.RawMessage) *CICDPlanDraft {
+	t.Helper()
+	draft, err := PrepareCICDPlan(cicdPlanTestRaw(t, p), cicdPlanTestRaw(t, d), json.RawMessage(values), templates)
+	if err != nil || draft == nil {
+		t.Fatal("runner.phase19-plan-unit.prepare.accept", err)
+	}
+	return draft
+}
+
+func TestCICDPlan(t *testing.T) {
+	p, d, s, context := cicdPlanTestFixture(t)
+	projectRaw, definitionRaw, sourceRaw := cicdPlanTestRaw(t, p), cicdPlanTestRaw(t, d), cicdPlanTestRaw(t, s)
+	draft, err := PrepareCICDPlan(projectRaw, definitionRaw, json.RawMessage(`{}`), nil)
+	if err != nil {
+		t.Fatal("runner.phase19-plan-unit.normal.prepare", err)
+	}
+	got, err := draft.Resolve(sourceRaw, nil, context)
+	if err != nil {
+		t.Fatal("runner.phase19-plan-unit.normal.resolve", err)
+	}
+	expectedJob := cicdPlanTestObject(t, `{"id":"build","base_job_id":"build","selected":true,"matrix_values":{},"needs":[],"task":{"kind":"builder","source":".","output":"site"},"resources":{"cpu_percent":100,"memory_mb":256,"disk_mb":128,"tasks":64,"timeout_seconds":900,"output_mb":16},"retry":{"max_attempts":1,"backoff_seconds":1},"cache":{"enabled":false,"paths":[],"ttl_seconds":604800},"env":{},"secrets":{},"optional":false}`)
+	expectedData := map[string]any{"project_id": "p", "definition_id": "d", "definition_revision": json.Number("1"), "source": s, "values": map[string]any{}, "jobs": []any{expectedJob}, "fail_fast": false, "toolchain_digest": strings.Repeat("a", 64)}
+	data := cicdPlanTestRaw(t, expectedData)
+	digest := sha256.Sum256(data)
+	want := cicdPlanTestRaw(t, map[string]any{"digest": hex.EncodeToString(digest[:]), "data": expectedData})
+	if !bytes.Equal(got, want) || statefile.ValidateCICDValue("Plan", got) != nil {
+		t.Fatal("runner.phase19-plan-unit.normal.plan: bytes or digest differ")
+	}
+	if !bytes.Equal(projectRaw, cicdPlanTestRaw(t, p)) || !bytes.Equal(definitionRaw, cicdPlanTestRaw(t, d)) || !bytes.Equal(sourceRaw, cicdPlanTestRaw(t, s)) {
+		t.Fatal("runner.phase19-plan-unit.normal.immutable")
+	}
+	for _, data := range [][]byte{projectRaw, definitionRaw} {
+		for i := range data {
+			data[i] = 'x'
+		}
+	}
+	got[0] = 'x'
+	again, err := draft.Resolve(sourceRaw, nil, context)
+	if err != nil || !bytes.Equal(again, want) {
+		t.Fatal("runner.phase19-plan-unit.normal.alias")
+	}
+	for _, empty := range []*CICDPlanDraft{nil, {}} {
+		if got, err := empty.Resolve(sourceRaw, nil, context); got != nil || err != ErrCICDSchema {
+			t.Fatal("runner.phase19-plan-unit.zero.reject")
+		}
+	}
+}
+
+func TestCICDPlanInputs(t *testing.T) {
+	for _, test := range []struct {
+		id, declaration, supplied, want string
+		bad                             bool
+	}{
+		{"required-zero", `{"kind":"integer","required":true,"default":null,"choices":[],"min":0,"max":4}`, `{"x":0}`, `{"x":0}`, false},
+		{"required-false", `{"kind":"boolean","required":true,"default":null,"choices":[],"min":0,"max":1}`, `{"x":false}`, `{"x":false}`, false},
+		{"required-empty", `{"kind":"string","required":true,"default":null,"choices":[],"min":0,"max":4}`, `{"x":""}`, `{"x":""}`, false},
+		{"utf8-limit", `{"kind":"string","required":true,"default":null,"choices":[],"min":2,"max":2}`, `{"x":"é"}`, `{"x":"é"}`, false},
+		{"utf8-excess", `{"kind":"string","required":true,"default":null,"choices":[],"min":0,"max":1}`, `{"x":"é"}`, ``, true},
+		{"optional-omit", `{"kind":"integer","required":false,"default":null,"choices":[],"min":0,"max":4}`, `{}`, `{}`, false},
+		{"default-zero", `{"kind":"integer","required":false,"default":0,"choices":[0,2],"min":0,"max":4}`, `{}`, `{"x":0}`, false},
+		{"explicit-wins", `{"kind":"integer","required":false,"default":0,"choices":[0,2],"min":0,"max":4}`, `{"x":2}`, `{"x":2}`, false},
+		{"required-missing", `{"kind":"integer","required":true,"default":null,"choices":[],"min":0,"max":4}`, `{}`, ``, true},
+		{"required-default", `{"kind":"integer","required":true,"default":0,"choices":[],"min":0,"max":4}`, `{"x":0}`, ``, true},
+		{"explicit-null", `{"kind":"integer","required":false,"default":0,"choices":[],"min":0,"max":4}`, `{"x":null}`, ``, true},
+		{"numeric-string", `{"kind":"integer","required":true,"default":null,"choices":[],"min":0,"max":4}`, `{"x":"0"}`, ``, true},
+		{"boolean-number", `{"kind":"boolean","required":true,"default":null,"choices":[],"min":0,"max":1}`, `{"x":0}`, ``, true},
+		{"negative-zero", `{"kind":"integer","required":true,"default":null,"choices":[],"min":-4,"max":4}`, `{"x":-0}`, ``, true},
+		{"exponent", `{"kind":"integer","required":true,"default":null,"choices":[],"min":0,"max":4}`, `{"x":1e0}`, ``, true},
+		{"fraction", `{"kind":"integer","required":true,"default":null,"choices":[],"min":0,"max":4}`, `{"x":1.0}`, ``, true},
+		{"below", `{"kind":"integer","required":true,"default":null,"choices":[],"min":0,"max":4}`, `{"x":-1}`, ``, true},
+		{"above", `{"kind":"integer","required":true,"default":null,"choices":[],"min":0,"max":4}`, `{"x":5}`, ``, true},
+		{"reverse-range", `{"kind":"integer","required":true,"default":null,"choices":[],"min":4,"max":0}`, `{"x":2}`, ``, true},
+		{"boolean-range", `{"kind":"boolean","required":true,"default":null,"choices":[],"min":1,"max":1}`, `{"x":true}`, ``, true},
+		{"string-range", `{"kind":"string","required":true,"default":null,"choices":[],"min":-1,"max":4097}`, `{"x":""}`, ``, true},
+		{"duplicate-choice", `{"kind":"integer","required":true,"default":null,"choices":[1,1],"min":0,"max":4}`, `{"x":1}`, ``, true},
+		{"choice-type", `{"kind":"integer","required":true,"default":null,"choices":[false],"min":0,"max":4}`, `{"x":0}`, ``, true},
+		{"choice-range", `{"kind":"integer","required":true,"default":null,"choices":[5],"min":0,"max":4}`, `{"x":0}`, ``, true},
+		{"choice-missing", `{"kind":"integer","required":true,"default":null,"choices":[1],"min":0,"max":4}`, `{"x":0}`, ``, true},
+		{"default-choice", `{"kind":"integer","required":false,"default":0,"choices":[1],"min":0,"max":4}`, `{}`, ``, true},
+		{"unknown-input", `{"kind":"integer","required":false,"default":null,"choices":[],"min":0,"max":4}`, `{"other":0}`, ``, true},
+		{"duplicate-input", `{"kind":"integer","required":false,"default":null,"choices":[],"min":0,"max":4}`, `{"x":0,"x":1}`, ``, true},
+	} {
+		t.Run(test.id, func(t *testing.T) {
+			p, d, s, context := cicdPlanTestFixture(t)
+			d["inputs"] = map[string]any{"x": cicdPlanTestObject(t, test.declaration)}
+			draft, err := PrepareCICDPlan(cicdPlanTestRaw(t, p), cicdPlanTestRaw(t, d), json.RawMessage(test.supplied), nil)
+			if test.bad {
+				if err != ErrCICDSchema || draft != nil {
+					t.Fatal("runner.phase19-plan-unit.inputs.reject")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal("runner.phase19-plan-unit.inputs.prepare", err)
+			}
+			got, err := draft.Resolve(cicdPlanTestRaw(t, s), nil, context)
+			if err != nil || got == nil {
+				t.Fatal("runner.phase19-plan-unit.inputs.resolve", err)
+			}
+			plan := cicdPlanTestObject(t, string(got))
+			if !reflect.DeepEqual(plan["data"].(map[string]any)["values"], cicdPlanTestObject(t, test.want)) {
+				t.Fatal("runner.phase19-plan-unit.inputs.value")
+			}
+		})
+	}
+}
+
+func TestCICDPlanMatrix(t *testing.T) {
+	for _, test := range []struct {
+		id, matrix, want string
+		bad              bool
+	}{
+		{"empty", `{"axes":{},"exclude":[],"include":[]}`, `[{}]`, false},
+		{"axis-order", `{"axes":{"z":[true,false],"a":[2,1]},"exclude":[],"include":[]}`, `[{"a":2,"z":true},{"a":2,"z":false},{"a":1,"z":true},{"a":1,"z":false}]`, false},
+		{"exclude-reinclude", `{"axes":{"a":[1,2],"b":["x","y"]},"exclude":[{"a":1}],"include":[{"a":1,"b":"x"},{"a":3,"b":"z"}]}`, `[{"a":2,"b":"x"},{"a":2,"b":"y"},{"a":1,"b":"x"},{"a":3,"b":"z"}]`, false},
+		{"empty-exclude", `{"axes":{"a":[1]},"exclude":[{}],"include":[]}`, ``, true},
+		{"unknown-exclude", `{"axes":{"a":[1]},"exclude":[{"b":1}],"include":[]}`, ``, true},
+		{"type-exclude", `{"axes":{"a":[1]},"exclude":[{"a":"1"}],"include":[]}`, ``, true},
+		{"partial-include", `{"axes":{"a":[1],"b":[2]},"exclude":[],"include":[{"a":3}]}`, ``, true},
+		{"type-include", `{"axes":{"a":[1]},"exclude":[],"include":[{"a":true}]}`, ``, true},
+		{"duplicate-include", `{"axes":{"a":[1]},"exclude":[],"include":[{"a":2},{"a":2}]}`, ``, true},
+		{"existing-include", `{"axes":{"a":[1]},"exclude":[],"include":[{"a":1}]}`, ``, true},
+		{"empty-axis-include", `{"axes":{},"exclude":[],"include":[{}]}`, ``, true},
+		{"empty-result", `{"axes":{"a":[1]},"exclude":[{"a":1}],"include":[]}`, ``, true},
+		{"mixed-axis", `{"axes":{"a":[1,true]},"exclude":[],"include":[]}`, ``, true},
+		{"duplicate-axis", `{"axes":{"a":[1,1]},"exclude":[],"include":[]}`, ``, true},
+	} {
+		t.Run(test.id, func(t *testing.T) {
+			p, d, _, _ := cicdPlanTestFixture(t)
+			matrix := cicdPlanTestObject(t, test.matrix)
+			d["jobs"].([]any)[0].(map[string]any)["matrix"] = matrix
+			draft, err := PrepareCICDPlan(cicdPlanTestRaw(t, p), cicdPlanTestRaw(t, d), json.RawMessage(`{}`), nil)
+			if test.bad {
+				if err != ErrCICDMatrix || draft != nil {
+					t.Fatal("runner.phase19-plan-unit.matrix.reject", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal("runner.phase19-plan-unit.matrix.prepare", err)
+			}
+			got := make([]any, len(draft.jobs))
+			for i, job := range draft.jobs {
+				got[i] = job.job["matrix_values"]
+				id := "build"
+				if len(matrix["axes"].(map[string]any)) != 0 {
+					id += fmt.Sprintf("_m%d", i+1)
+				}
+				if job.job["id"] != id {
+					t.Fatal("runner.phase19-plan-unit.matrix.id")
+				}
+			}
+			if string(cicdPlanTestRaw(t, got)) != test.want {
+				t.Fatal("runner.phase19-plan-unit.matrix.order")
+			}
+		})
+	}
+	for _, count := range []int{256, 257} {
+		p, d, _, _ := cicdPlanTestFixture(t)
+		axis := make([]any, 16)
+		for i := range axis {
+			axis[i] = i
+		}
+		matrix := map[string]any{"axes": map[string]any{"a": axis, "b": axis}, "exclude": []any{}, "include": []any{}}
+		if count == 257 {
+			matrix["include"] = []any{map[string]any{"a": 17, "b": 17}}
+		}
+		d["jobs"].([]any)[0].(map[string]any)["matrix"] = matrix
+		tuples, matrixErr := cicdMatrix(cicdPlanTestObject(t, string(cicdPlanTestRaw(t, matrix))))
+		if count == 256 && (matrixErr != nil || len(tuples) != 256) || count == 257 && (matrixErr != ErrCICDMatrix || tuples != nil) {
+			t.Fatal("runner.phase19-plan-unit.matrix.limit")
+		}
+		draft, err := PrepareCICDPlan(cicdPlanTestRaw(t, p), cicdPlanTestRaw(t, d), json.RawMessage(`{}`), nil)
+		if count == 256 && (err != nil || len(draft.jobs) != count) || count == 257 && (err != ErrCICDMatrix || draft != nil) {
+			t.Fatal("runner.phase19-plan-unit.matrix.limit", err)
+		}
+	}
+}
+
+func TestCICDPlanDAG(t *testing.T) {
+	p, d, _, _ := cicdPlanTestFixture(t)
+	z, x, y := cicdPlanTestJob(t, "z"), cicdPlanTestJob(t, "x"), cicdPlanTestJob(t, "y")
+	z["needs"] = []any{"y", "x"}
+	d["jobs"] = []any{z, x, y}
+	draft := cicdPlanTestDraft(t, p, d, `{}`)
+	ids := make([]string, 0)
+	for _, item := range draft.jobs {
+		ids = append(ids, item.job["id"].(string))
+	}
+	if !reflect.DeepEqual(ids, []string{"x", "y", "z"}) || !reflect.DeepEqual(draft.jobs[2].job["needs"], []any{"x", "y"}) {
+		t.Fatal("runner.phase19-plan-unit.dag.order")
+	}
+	for _, test := range []struct {
+		id    string
+		alter func(map[string]any)
+		want  error
+	}{
+		{"cycle", func(d map[string]any) { d["jobs"].([]any)[1].(map[string]any)["needs"] = []any{"z"} }, ErrCICDDAG},
+		{"self", func(d map[string]any) { d["jobs"].([]any)[0].(map[string]any)["needs"] = []any{"z"} }, ErrCICDDAG},
+		{"duplicate", func(d map[string]any) { d["jobs"].([]any)[0].(map[string]any)["needs"] = []any{"x", "x"} }, ErrCICDDAG},
+		{"unknown", func(d map[string]any) { d["jobs"].([]any)[0].(map[string]any)["needs"] = []any{"missing"} }, ErrCICDDAG},
+		{"same-base", func(d map[string]any) { d["jobs"].([]any)[1].(map[string]any)["id"] = "z" }, ErrCICDDAG},
+		{"generated-collision", func(d map[string]any) {
+			d["jobs"].([]any)[1].(map[string]any)["id"] = "y_m1"
+			d["jobs"].([]any)[0].(map[string]any)["needs"] = []any{}
+			d["jobs"].([]any)[2].(map[string]any)["matrix"] = cicdPlanTestObject(t, `{"axes":{"a":[1]},"exclude":[],"include":[]}`)
+		}, ErrCICDDAG},
+	} {
+		t.Run(test.id, func(t *testing.T) {
+			copy := cicdPlanTestObject(t, string(cicdPlanTestRaw(t, d)))
+			test.alter(copy)
+			got, err := PrepareCICDPlan(cicdPlanTestRaw(t, p), cicdPlanTestRaw(t, copy), json.RawMessage(`{}`), nil)
+			if got != nil || err != test.want {
+				t.Fatal("runner.phase19-plan-unit.dag.reject", err)
+			}
+		})
+	}
+}
+
+func TestCICDPlanGlob(t *testing.T) {
+	for _, test := range []struct {
+		pattern, target string
+		want, invalid   bool
+	}{
+		{"**/a", "a", true, false}, {"**/a", "x/y/a", true, false}, {"a/**", "a", true, false},
+		{"a/**/b", "a/b", true, false}, {"a/**/b", "a/x/y/b", true, false}, {"a/*/b", "a/b", false, false},
+		{"a/*/b", "a/x/y/b", false, false}, {"a/*/b", "a/x/b", true, false}, {"?.js", "é.js", true, false},
+		{"?.js", "ab.js", false, false}, {"A", "a", false, false}, {"**", "a/b", true, false},
+		{"a/**b", "a/b", false, true}, {"[ab]", "a", false, true}, {"!a", "a", false, true},
+		{"a\\*", "a", false, true}, {"{a,b}", "a", false, true}, {"a//b", "a/b", false, true},
+		{strings.Repeat("a", 241), "a", false, true}, {strings.Repeat("a/", 32) + "a", "a", false, true},
+		{strings.Repeat("?", 240), strings.Repeat("a", 1000), false, true},
+	} {
+		got, err := cicdMatchGlob(test.pattern, test.target)
+		if test.invalid && err != ErrCICDSchema || !test.invalid && (err != nil || got != test.want) {
+			t.Fatal("runner.phase19-plan-unit.glob.match")
+		}
+	}
+}
+
+func TestCICDPlanTemplateAndSubstitution(t *testing.T) {
+	p, d, s, context := cicdPlanTestFixture(t)
+	templateJob := cicdPlanTestJob(t, "test")
+	templateJob["task"] = map[string]any{"kind": "go-test", "packages": []any{"${input.package}"}, "race": "${matrix.race}"}
+	templateJob["env"] = map[string]any{"SCOPE": "${input.package}"}
+	templateJob["matrix"] = cicdPlanTestObject(t, `{"axes":{"race":[false]},"exclude":[],"include":[]}`)
+	template := map[string]any{"project_id": "p", "id": "t", "revision": 7, "inputs": cicdPlanTestObject(t, `{"package":{"kind":"string","required":true,"default":null,"choices":[],"min":1,"max":64}}`), "jobs": []any{templateJob}}
+	d["templates"] = []any{map[string]any{"id": "t", "revision": 7, "prefix": "pre", "values": map[string]any{"package": "."}}}
+	d["jobs"].([]any)[0].(map[string]any)["needs"] = []any{"pre_test"}
+	draft := cicdPlanTestDraft(t, p, d, `{}`, cicdPlanTestRaw(t, template))
+	got, err := draft.Resolve(cicdPlanTestRaw(t, s), nil, context)
+	if err != nil {
+		t.Fatal("runner.phase19-plan-unit.template.resolve", err)
+	}
+	jobs := cicdPlanTestObject(t, string(got))["data"].(map[string]any)["jobs"].([]any)
+	first := jobs[0].(map[string]any)
+	if first["id"] != "pre_test_m1" || first["base_job_id"] != "pre_test" || first["task"].(map[string]any)["race"] != false || first["env"].(map[string]any)["SCOPE"] != "." || !reflect.DeepEqual(jobs[1].(map[string]any)["needs"], []any{"pre_test_m1"}) {
+		t.Fatal("runner.phase19-plan-unit.template.expansion")
+	}
+	for _, test := range []struct {
+		id    string
+		alter func(map[string]any, map[string]any)
+		want  error
+	}{
+		{"wrong-revision", func(d, _ map[string]any) { d["templates"].([]any)[0].(map[string]any)["revision"] = 8 }, ErrCICDSchema},
+		{"cross-input", func(_, template map[string]any) {
+			template["jobs"].([]any)[0].(map[string]any)["env"] = map[string]any{"SCOPE": "${input.parent}"}
+		}, ErrCICDSchema},
+		{"partial-reference", func(_, template map[string]any) {
+			template["jobs"].([]any)[0].(map[string]any)["env"] = map[string]any{"SCOPE": "prefix-${input.package}"}
+		}, ErrCICDSchema},
+		{"external-need", func(_, template map[string]any) {
+			template["jobs"].([]any)[0].(map[string]any)["needs"] = []any{"build"}
+		}, ErrCICDDAG},
+		{"long-prefix", func(d, _ map[string]any) {
+			d["templates"].([]any)[0].(map[string]any)["prefix"] = strings.Repeat("a", 44)
+		}, ErrCICDSchema},
+		{"parent-value", func(d, _ map[string]any) {
+			d["templates"].([]any)[0].(map[string]any)["values"] = map[string]any{"package": "${input.package}"}
+		}, ErrCICDSchema},
+		{"kind-change", func(_, template map[string]any) {
+			template["jobs"].([]any)[0].(map[string]any)["task"].(map[string]any)["race"] = true
+		}, ErrCICDSchema},
+	} {
+		t.Run(test.id, func(t *testing.T) {
+			definition := cicdPlanTestObject(t, string(cicdPlanTestRaw(t, d)))
+			copy := cicdPlanTestObject(t, string(cicdPlanTestRaw(t, template)))
+			test.alter(definition, copy)
+			got, err := PrepareCICDPlan(cicdPlanTestRaw(t, p), cicdPlanTestRaw(t, definition), json.RawMessage(`{}`), []json.RawMessage{cicdPlanTestRaw(t, copy)})
+			if got != nil || err != test.want {
+				t.Fatal("runner.phase19-plan-unit.template.reject", err)
+			}
+		})
+	}
+	for _, value := range []string{"${matrix.race}", "literal"} {
+		got, err := cicdSubstitute("${input.x}", map[string]any{"x": value}, map[string]any{"race": false})
+		if err != nil || got != value {
+			t.Fatal("runner.phase19-plan-unit.substitute.no-rescan")
+		}
+	}
+}
+
+func TestCICDPlanSelection(t *testing.T) {
+	for _, test := range []struct {
+		id                    string
+		branches, tags, paths []any
+		kind, ref             string
+		changed               []string
+		want                  bool
+	}{
+		{"unconditional", []any{}, []any{}, []any{}, "branch", "main", nil, true},
+		{"tag-only", []any{}, []any{"v*"}, []any{}, "branch", "main", nil, false},
+		{"branch-only", []any{"*"}, []any{}, []any{}, "tag", "v1", nil, false},
+		{"tag-match", []any{}, []any{"v?"}, []any{}, "tag", "v1", nil, true},
+		{"branch-or", []any{"dev", "main"}, []any{}, []any{}, "branch", "main", nil, true},
+		{"empty-source", []any{}, []any{}, []any{"**/*.go"}, "branch", "main", nil, false},
+		{"removed-path", []any{}, []any{}, []any{"**/*.go"}, "branch", "main", []string{"old/deleted.go"}, true},
+		{"nonmatch-path", []any{}, []any{}, []any{"**/*.go"}, "branch", "main", []string{"README.md"}, false},
+		{"ref-and-path", []any{"dev"}, []any{}, []any{"**/*.go"}, "branch", "main", []string{"main.go"}, false},
+	} {
+		t.Run(test.id, func(t *testing.T) {
+			p, d, s, context := cicdPlanTestFixture(t)
+			parent := d["jobs"].([]any)[0].(map[string]any)
+			parent["condition"] = map[string]any{"branches": test.branches, "tags": test.tags, "paths": test.paths, "input_equals": map[string]any{}}
+			parent["optional"] = true
+			child := cicdPlanTestJob(t, "child")
+			child["needs"] = []any{"build"}
+			d["jobs"] = []any{parent, child}
+			s["ref_kind"], s["ref"] = test.kind, test.ref
+			if !test.want {
+				context.Workers = nil
+			}
+			draft := cicdPlanTestDraft(t, p, d, `{}`)
+			got, err := draft.Resolve(cicdPlanTestRaw(t, s), test.changed, context)
+			if err != nil {
+				t.Fatal("runner.phase19-plan-unit.selection.resolve", err)
+			}
+			jobs := cicdPlanTestObject(t, string(got))["data"].(map[string]any)["jobs"].([]any)
+			if len(jobs) != 2 || jobs[0].(map[string]any)["selected"] != test.want || jobs[1].(map[string]any)["selected"] != test.want {
+				t.Fatal("runner.phase19-plan-unit.selection.cascade")
+			}
+		})
+	}
+	for _, match := range []bool{false, true} {
+		p, d, s, context := cicdPlanTestFixture(t)
+		d["inputs"] = cicdPlanTestObject(t, `{"x":{"kind":"boolean","required":false,"default":false,"choices":[],"min":0,"max":1}}`)
+		d["jobs"].([]any)[0].(map[string]any)["condition"].(map[string]any)["input_equals"] = map[string]any{"x": match}
+		draft := cicdPlanTestDraft(t, p, d, `{}`)
+		got, err := draft.Resolve(cicdPlanTestRaw(t, s), nil, context)
+		if err != nil {
+			t.Fatal("runner.phase19-plan-unit.input-equals.resolve", err)
+		}
+		job := cicdPlanTestObject(t, string(got))["data"].(map[string]any)["jobs"].([]any)[0].(map[string]any)
+		if job["selected"] != !match {
+			t.Fatal("runner.phase19-plan-unit.input-equals.typed")
+		}
+	}
+}
+
+func TestCICDPlanPrerequisites(t *testing.T) {
+	for _, test := range []struct {
+		id    string
+		alter func(map[string]any, map[string]any, *CICDPlanContext)
+		want  error
+	}{
+		{"disabled", func(p, _ map[string]any, _ *CICDPlanContext) { p["enabled"] = false }, ErrCICDForbidden},
+		{"no-toolchain", func(p, _ map[string]any, _ *CICDPlanContext) { p["toolchain_digest"] = nil }, ErrCICDCapability},
+		{"no-worker", func(_, _ map[string]any, c *CICDPlanContext) { c.Workers = nil }, ErrCICDCapability},
+		{"wrong-toolchain", func(p, _ map[string]any, _ *CICDPlanContext) { p["toolchain_digest"] = strings.Repeat("b", 64) }, ErrCICDCapability},
+		{"memory-incapable", func(_, d map[string]any, _ *CICDPlanContext) {
+			d["jobs"].([]any)[0].(map[string]any)["resources"].(map[string]any)["memory_mb"] = 385
+		}, ErrCICDCapability},
+		{"secret-absent", func(_, d map[string]any, _ *CICDPlanContext) {
+			d["jobs"].([]any)[0].(map[string]any)["secrets"] = map[string]any{"TOKEN": map[string]any{"id": "secret", "version": 1}}
+		}, ErrCICDSecret},
+		{"cache-quota", func(p, d map[string]any, _ *CICDPlanContext) {
+			p["quota"].(map[string]any)["cache_mb"] = 0
+			d["jobs"].([]any)[0].(map[string]any)["cache"] = map[string]any{"enabled": true, "paths": []any{"site"}, "ttl_seconds": 60}
+		}, ErrCICDQuota},
+		{"duplicate-worker", func(_, _ map[string]any, c *CICDPlanContext) { c.Workers = append(c.Workers, c.Workers[0]) }, ErrCICDSchema},
+		{"wrong-project", func(_, _ map[string]any, c *CICDPlanContext) {
+			c.Workers[0] = bytes.ReplaceAll(c.Workers[0], []byte(`"p"`), []byte(`"other"`))
+		}, ErrCICDCapability},
+		{"disabled-worker", func(_, _ map[string]any, c *CICDPlanContext) {
+			c.Workers[0] = bytes.ReplaceAll(c.Workers[0], []byte(`"enabled":true`), []byte(`"enabled":false`))
+		}, ErrCICDCapability},
+		{"draining-not-incapable", func(_, _ map[string]any, c *CICDPlanContext) {
+			c.Workers[0] = bytes.ReplaceAll(c.Workers[0], []byte(`"draining":false`), []byte(`"draining":true`))
+		}, nil},
+	} {
+		t.Run(test.id, func(t *testing.T) {
+			p, d, s, context := cicdPlanTestFixture(t)
+			test.alter(p, d, &context)
+			draft := cicdPlanTestDraft(t, p, d, `{}`)
+			got, err := draft.Resolve(cicdPlanTestRaw(t, s), nil, context)
+			if err != test.want || test.want != nil && got != nil || test.want == nil && len(got) == 0 {
+				t.Fatal("runner.phase19-plan-unit.prerequisite.result", err)
+			}
+		})
+	}
+	for _, test := range []struct {
+		id    string
+		alter func(map[string]any)
+	}{
+		{"cache-empty", func(j map[string]any) { j["cache"].(map[string]any)["enabled"] = true }},
+		{"cache-secret", func(j map[string]any) {
+			j["cache"] = map[string]any{"enabled": true, "paths": []any{"out"}, "ttl_seconds": 60}
+			j["secrets"] = map[string]any{"TOKEN": map[string]any{"id": "secret", "version": 1}}
+		}},
+		{"cache-overlap", func(j map[string]any) { j["cache"].(map[string]any)["paths"] = []any{"out", "out/x"} }},
+		{"cache-duplicate", func(j map[string]any) { j["cache"].(map[string]any)["paths"] = []any{"out", "out"} }},
+		{"cache-glob", func(j map[string]any) { j["cache"].(map[string]any)["paths"] = []any{"out/*"} }},
+		{"missing-equality", func(j map[string]any) {
+			j["condition"].(map[string]any)["input_equals"] = map[string]any{"missing": false}
+		}},
+		{"reserved-env", func(j map[string]any) { j["env"] = map[string]any{"GOPROXY": "off"} }},
+		{"bad-substituted-path", func(j map[string]any) { j["task"].(map[string]any)["source"] = "${input.missing}" }},
+	} {
+		t.Run(test.id, func(t *testing.T) {
+			p, d, _, _ := cicdPlanTestFixture(t)
+			test.alter(d["jobs"].([]any)[0].(map[string]any))
+			got, err := PrepareCICDPlan(cicdPlanTestRaw(t, p), cicdPlanTestRaw(t, d), json.RawMessage(`{}`), nil)
+			if err != ErrCICDSchema || got != nil {
+				t.Fatal("runner.phase19-plan-unit.preflight.reject", err)
+			}
+		})
+	}
+}
+
+func TestCICDPlanDeploy(t *testing.T) {
+	p, d, s, context := cicdPlanTestFixture(t)
+	deploy := cicdPlanTestJob(t, "publish")
+	deploy["needs"] = []any{"build"}
+	deploy["task"] = map[string]any{"kind": "deploy", "environment_id": "prod", "artifact_from": "build"}
+	d["jobs"] = append(d["jobs"].([]any), deploy)
+	context.Environments = []json.RawMessage{json.RawMessage(`{"project_id":"p","id":"prod","revision":1,"production":false,"approvals":0,"allow_self_approval":false,"targets":["site"],"strategy":"rolling","stages":[{"target_ids":["site"],"percent":100,"observe_seconds":10,"max_error_percent":0,"min_requests":0}],"freeze":[],"health_timeout_seconds":1,"retained_successes":2,"health_path":"index.html"}`)}
+	draft := cicdPlanTestDraft(t, p, d, `{}`)
+	if got, err := draft.Resolve(cicdPlanTestRaw(t, s), nil, context); got == nil || err != nil {
+		t.Fatal("runner.phase19-plan-unit.deploy.accept", err)
+	}
+	without := context
+	without.Environments = nil
+	if got, err := draft.Resolve(cicdPlanTestRaw(t, s), nil, without); got != nil || err != ErrCICDNotFound {
+		t.Fatal("runner.phase19-plan-unit.deploy.environment")
+	}
+	for _, kind := range []string{"matrix", "go-build", "not-needed"} {
+		copy := cicdPlanTestObject(t, string(cicdPlanTestRaw(t, d)))
+		builder := copy["jobs"].([]any)[0].(map[string]any)
+		switch kind {
+		case "matrix":
+			builder["matrix"] = cicdPlanTestObject(t, `{"axes":{"a":[1,2]},"exclude":[],"include":[]}`)
+		case "go-build":
+			builder["task"] = map[string]any{"kind": "go-build", "package": ".", "output": "bin"}
+		case "not-needed":
+			copy["jobs"].([]any)[1].(map[string]any)["needs"] = []any{}
+		}
+		if got, err := PrepareCICDPlan(cicdPlanTestRaw(t, p), cicdPlanTestRaw(t, copy), json.RawMessage(`{}`), nil); got != nil || err != ErrCICDSchema {
+			t.Fatal("runner.phase19-plan-unit.deploy.reference", err)
+		}
+	}
+	verify := cicdPlanTestJob(t, "verify")
+	verify["task"] = map[string]any{"kind": "artifact-verify", "artifact": strings.Repeat("c", 64)}
+	d["jobs"] = []any{verify}
+	context.Workers = nil
+	context.Artifacts = []json.RawMessage{json.RawMessage(`{"project_id":"p","digest":"` + strings.Repeat("c", 64) + `","manifest_digest":"` + strings.Repeat("d", 64) + `","size_bytes":1,"created_at":"2026-01-01T00:00:00Z","source_sha":"` + strings.Repeat("b", 40) + `","run_id":"r","attempt":1,"job_id":"build","pins":[],"deleting":false}`)}
+	draft = cicdPlanTestDraft(t, p, d, `{}`)
+	if got, err := draft.Resolve(cicdPlanTestRaw(t, s), nil, context); got == nil || err != nil {
+		t.Fatal("runner.phase19-plan-unit.verify.no-worker", err)
+	}
+	context.Artifacts[0] = bytes.ReplaceAll(context.Artifacts[0], []byte(`"deleting":false`), []byte(`"deleting":true`))
+	if got, err := draft.Resolve(cicdPlanTestRaw(t, s), nil, context); got != nil || err != ErrCICDNotFound {
+		t.Fatal("runner.phase19-plan-unit.verify.deleting")
+	}
+}
+
+func cicdPlanTestSourceFiles(t *testing.T, source map[string]any, files []any) {
+	t.Helper()
+	digest := sha256.Sum256(cicdPlanTestRaw(t, files))
+	source["files"], source["tree_digest"] = files, hex.EncodeToString(digest[:])
+}
+
+func cicdPlanTestFile(path, digest string, size int) map[string]any {
+	return map[string]any{"path": path, "blob_sha": strings.Repeat("b", 40), "sha256": strings.Repeat(digest, 64), "size": size, "executable": false}
+}
+
+func TestCICDPlanSource(t *testing.T) {
+	p, d, s, context := cicdPlanTestFixture(t)
+	draft := cicdPlanTestDraft(t, p, d, `{}`)
+	before := cicdPlanTestObject(t, string(cicdPlanTestRaw(t, s)))
+	cicdPlanTestSourceFiles(t, before, []any{cicdPlanTestFile("deleted.go", "a", 1), cicdPlanTestFile("edited.go", "a", 1), cicdPlanTestFile("unchanged.go", "a", 1)})
+	cicdPlanTestSourceFiles(t, s, []any{cicdPlanTestFile("added.go", "a", 1), cicdPlanTestFile("edited.go", "b", 1), cicdPlanTestFile("unchanged.go", "a", 1)})
+	if got, err := CICDChangedPaths(cicdPlanTestRaw(t, before), cicdPlanTestRaw(t, s)); err != nil || !reflect.DeepEqual(got, []string{"added.go", "deleted.go", "edited.go"}) {
+		t.Fatal("runner.phase19-plan-unit.source.diff", err)
+	}
+	if got, err := CICDChangedPaths(nil, cicdPlanTestRaw(t, s)); err != nil || !reflect.DeepEqual(got, []string{"added.go", "edited.go", "unchanged.go"}) {
+		t.Fatal("runner.phase19-plan-unit.source.first", err)
+	}
+	if got, err := CICDChangedPaths(cicdPlanTestRaw(t, s), cicdPlanTestRaw(t, s)); err != nil || got == nil || len(got) != 0 {
+		t.Fatal("runner.phase19-plan-unit.source.unchanged", err)
+	}
+	before["ref"] = "different"
+	if got, err := CICDChangedPaths(cicdPlanTestRaw(t, before), cicdPlanTestRaw(t, s)); got != nil || err != ErrCICDSchema {
+		t.Fatal("runner.phase19-plan-unit.source.identity")
+	}
+	for _, kind := range []string{"wrong-owner", "digest", "order", "duplicate", "excess-file", "excess-total"} {
+		copy := cicdPlanTestObject(t, string(cicdPlanTestRaw(t, s)))
+		switch kind {
+		case "wrong-owner":
+			copy["owner"] = "other"
+		case "digest":
+			copy["tree_digest"] = strings.Repeat("0", 64)
+		case "order":
+			cicdPlanTestSourceFiles(t, copy, []any{cicdPlanTestFile("z", "a", 1), cicdPlanTestFile("a", "a", 1)})
+		case "duplicate":
+			cicdPlanTestSourceFiles(t, copy, []any{cicdPlanTestFile("a", "a", 1), cicdPlanTestFile("a", "a", 1)})
+		case "excess-file":
+			cicdPlanTestSourceFiles(t, copy, []any{cicdPlanTestFile("a", "a", 10485761)})
+		case "excess-total":
+			files := make([]any, 11)
+			for i := range files {
+				files[i] = cicdPlanTestFile(fmt.Sprintf("f%02d", i), "a", 10485760)
+			}
+			cicdPlanTestSourceFiles(t, copy, files)
+		}
+		if got, err := draft.Resolve(cicdPlanTestRaw(t, copy), nil, context); got != nil || err != ErrCICDSchema {
+			t.Fatal("runner.phase19-plan-unit.source.reject", err)
+		}
+	}
+	for _, paths := range [][]string{{"z", "a"}, {"a", "a"}, {"../a"}} {
+		if got, err := draft.Resolve(cicdPlanTestRaw(t, s), paths, context); got != nil || err != ErrCICDSchema {
+			t.Fatal("runner.phase19-plan-unit.source.paths")
+		}
+	}
+	files := make([]any, 3000)
+	for i := range files {
+		files[i] = cicdPlanTestFile(fmt.Sprintf("f%04d", i), "a", 1)
+	}
+	cicdPlanTestSourceFiles(t, s, files)
+	if got, err := draft.Resolve(cicdPlanTestRaw(t, s), nil, context); got != nil || err != ErrCICDBody {
+		t.Fatal("runner.phase19-plan-unit.source.plan-size", err)
+	}
+}
+
+func TestCICDPlanConcurrent(t *testing.T) {
+	p, d, s, context := cicdPlanTestFixture(t)
+	draft := cicdPlanTestDraft(t, p, d, `{}`)
+	source := cicdPlanTestRaw(t, s)
+	want, err := draft.Resolve(source, nil, context)
+	if err != nil {
+		t.Fatal("runner.phase19-plan-unit.concurrent.control", err)
+	}
+	start := make(chan struct{})
+	results := make(chan bool, 8)
+	var ready sync.WaitGroup
+	ready.Add(8)
+	for i := 0; i < 8; i++ {
+		go func() {
+			ready.Done()
+			<-start
+			for n := 0; n < 8; n++ {
+				got, err := draft.Resolve(source, nil, context)
+				if err != nil || !bytes.Equal(got, want) {
+					results <- false
+					return
+				}
+			}
+			results <- true
+		}()
+	}
+	ready.Wait()
+	close(start)
+	for i := 0; i < 8; i++ {
+		if !<-results {
+			t.Fatal("runner.phase19-plan-unit.concurrent.immutable")
+		}
+	}
+}
+
+func TestCICDPlanWire(t *testing.T) {
+	p, d, s, context := cicdPlanTestFixture(t)
+	for _, raw := range []json.RawMessage{nil, json.RawMessage(`null`), json.RawMessage(`[]`), json.RawMessage(`{"unknown":true}`), json.RawMessage(`{} {}`), json.RawMessage(`{"x":true,"x":false}`), {0xff}} {
+		if got, err := PrepareCICDPlan(cicdPlanTestRaw(t, p), cicdPlanTestRaw(t, d), raw, nil); got != nil || err != ErrCICDSchema {
+			t.Fatal("runner.phase19-plan-unit.wire.reject")
+		}
+	}
+	for _, field := range []string{"manual", "inputs", "jobs", "fail_fast"} {
+		copy := cicdPlanTestObject(t, string(cicdPlanTestRaw(t, d)))
+		delete(copy, field)
+		if got, err := PrepareCICDPlan(cicdPlanTestRaw(t, p), cicdPlanTestRaw(t, copy), json.RawMessage(`{}`), nil); got != nil || err != ErrCICDSchema {
+			t.Fatal("runner.phase19-plan-unit.wire.required")
+		}
+	}
+	d["manual"] = false
+	draft := cicdPlanTestDraft(t, p, d, `{}`)
+	if got, err := draft.Resolve(cicdPlanTestRaw(t, s), nil, context); got == nil || err != nil {
+		t.Fatal("runner.phase19-plan-unit.wire.manual-false-preview", err)
+	}
+	for _, automatic := range []bool{false, true} {
+		d["inputs"] = cicdPlanTestObject(t, `{"x":{"kind":"boolean","required":true,"default":null,"choices":[],"min":0,"max":1}}`)
+		d["schedules"] = []any{map[string]any{"id": "daily", "ref_kind": "branch", "ref": "main", "anchor": "2026-01-01T00:00:00Z", "every_seconds": 60, "catch_up": "latest", "enabled": automatic}}
+		got, err := PrepareCICDPlan(cicdPlanTestRaw(t, p), cicdPlanTestRaw(t, d), json.RawMessage(`{"x":true}`), nil)
+		if automatic && (got != nil || err != ErrCICDSchema) || !automatic && (got == nil || err != nil) {
+			t.Fatal("runner.phase19-plan-unit.wire.automatic-input", err)
+		}
+	}
+}
+
+func TestCICDPlanDeferredSchema(t *testing.T) {
+	job := cicdPlanTestJob(t, "test")
+	job["task"] = map[string]any{"kind": "go-test", "packages": []any{"${input.package}"}, "race": "${matrix.race}"}
+	job["cache"] = map[string]any{"enabled": false, "paths": []any{"${input." + strings.Repeat("a", 63) + "}"}, "ttl_seconds": 60}
+	if statefile.ValidateCICDValue("Job", cicdPlanTestRaw(t, job)) != nil {
+		t.Fatal("runner.phase19-plan-unit.deferred.job")
+	}
+	planned := cicdPlanTestObject(t, string(cicdPlanTestRaw(t, job)))
+	delete(planned, "matrix")
+	delete(planned, "condition")
+	planned["base_job_id"], planned["selected"], planned["matrix_values"] = "test", true, map[string]any{}
+	if statefile.ValidateCICDValue("PlannedJob", cicdPlanTestRaw(t, planned)) != statefile.ErrCICDSchema {
+		t.Fatal("runner.phase19-plan-unit.deferred.planned")
+	}
+	for _, task := range []map[string]any{
+		{"kind": "go-test", "packages": "${input.package}", "race": false},
+		{"kind": "go-test", "packages": []any{"prefix-${input.package}"}, "race": false},
+		{"kind": "go-test", "packages": []any{"${other.package}"}, "race": false},
+		{"kind": "go-test", "packages": []any{"${input.Bad}"}, "race": false},
+		{"kind": "${input.kind}", "packages": []any{"."}, "race": false},
+		{"kind": "deploy", "environment_id": "${input.env}", "artifact_from": "build"},
+		{"kind": "deploy", "environment_id": "prod", "artifact_from": "${input.builder}"},
+	} {
+		job["task"] = task
+		if statefile.ValidateCICDValue("Job", cicdPlanTestRaw(t, job)) != statefile.ErrCICDSchema {
+			t.Fatal("runner.phase19-plan-unit.deferred.reject")
+		}
+	}
+}
+
+func TestCICDPlanTaskSyntax(t *testing.T) {
+	for _, test := range []struct {
+		task  map[string]any
+		valid bool
+	}{
+		{map[string]any{"kind": "go-test", "packages": []any{"./...", "sub/-race"}, "race": false}, true},
+		{map[string]any{"kind": "go-test", "packages": []any{"-race"}, "race": false}, false},
+		{map[string]any{"kind": "go-vet", "packages": []any{"-toolexec=tool"}}, false},
+		{map[string]any{"kind": "go-build", "package": "-buildmode=plugin", "output": "bin"}, false},
+		{map[string]any{"kind": "go-build", "package": ".", "output": "bin"}, true},
+		{map[string]any{"kind": "deno-check", "files": []any{"sub/--config=local.js"}}, true},
+		{map[string]any{"kind": "deno-check", "files": []any{"--config=local.js"}}, false},
+		{map[string]any{"kind": "deno-check", "files": []any{"source.ts"}}, false},
+	} {
+		p, d, _, _ := cicdPlanTestFixture(t)
+		d["jobs"].([]any)[0].(map[string]any)["task"] = test.task
+		got, err := PrepareCICDPlan(cicdPlanTestRaw(t, p), cicdPlanTestRaw(t, d), json.RawMessage(`{}`), nil)
+		if test.valid && (got == nil || err != nil) || !test.valid && (got != nil || err != ErrCICDSchema) {
+			t.Fatal("runner.phase19-plan-unit.task-syntax.result", err)
+		}
+	}
+}
+
+func TestCICDPlanMutations(t *testing.T) {
+	for _, mutation := range []struct{ id, path, old, new, reason string }{
+		{"default", "runner/validate.go", "value = d[\"default\"]", "value = nil", "runner.phase19-plan-unit.inputs.value"},
+		{"utf8-bytes", "runner/validate.go", "return ok && int64(len(v)) >= min && int64(len(v)) <= max", "return ok && int64(utf8.RuneCountInString(v)) >= min && int64(utf8.RuneCountInString(v)) <= max", "runner.phase19-plan-unit.inputs.prepare"},
+		{"matrix-order", "runner/validate.go", "keys := cicdPlanKeys(axes)", "keys := cicdPlanKeys(axes); sort.Sort(sort.Reverse(sort.StringSlice(keys)))", "runner.phase19-plan-unit.matrix.order"},
+		{"matrix-duplicate", "runner/validate.go", "if reflect.DeepEqual(previous, add) {", "if false && reflect.DeepEqual(previous, add) {", "runner.phase19-plan-unit.matrix.reject"},
+		{"matrix-limit", "runner/validate.go", "if len(result) > 256 {", "if len(result) > 257 {", "runner.phase19-plan-unit.matrix.limit"},
+		{"dag-cycle", "runner/execute.go", "if !found {\n\t\t\treturn nil, ErrCICDDAG", "if !found {\n\t\t\treturn draft, nil", "runner.phase19-plan-unit.dag.reject"},
+		{"dag-unknown", "runner/execute.go", "if _, exists := baseIndex[base]; !exists {", "if _, exists := baseIndex[base]; false && !exists {", "runner.phase19-plan-unit.dag.reject"},
+		{"selection", "runner/execute.go", "match = match && selected[need.(string)]", "match = match || selected[need.(string)]", "runner.phase19-plan-unit.selection.resolve"},
+		{"project-enabled", "runner/execute.go", "if draft.project[\"enabled\"] != true {", "if false && draft.project[\"enabled\"] != true {", "runner.phase19-plan-unit.prerequisite.result"},
+		{"plan-body", "runner/execute.go", "if len(canonical) > 524288 {", "if len(canonical) > 33554432 {", "runner.phase19-plan-unit.source.plan-size"},
+		{"artifact-gc", "runner/execute.go", "&& object[\"deleting\"] != true", "&& true", "runner.phase19-plan-unit.verify.deleting"},
+		{"secret-version", "runner/execute.go", "if !found {\n\t\t\treturn ErrCICDSecret", "if false && !found {\n\t\t\treturn ErrCICDSecret", "runner.phase19-plan-unit.prerequisite.result"},
+		{"deferred-schema", "statefile/validate.go", "if expression == \"Job\" && (key == \"task\" || key == \"cache\") {", "if false && expression == \"Job\" && (key == \"task\" || key == \"cache\") {", "runner.phase19-plan-unit.prepare.accept"},
+		{"argv", "runner/execute.go", "|| !cicdPlanTaskValid(job[\"task\"].(map[string]any))", "|| false && !cicdPlanTaskValid(job[\"task\"].(map[string]any))", "runner.phase19-plan-unit.task-syntax.result"},
+	} {
+		t.Run(mutation.id, func(t *testing.T) {
+			root := t.TempDir()
+			for _, owner := range []string{"runner", "statefile", "security"} {
+				target := filepath.Join(root, "components", owner)
+				if os.MkdirAll(target, 0700) != nil {
+					t.Fatal("runner.phase19-plan-unit.mutation.directory")
+				}
+				for _, name := range []string{owner + ".go", "model.go", "validate.go", "execute.go", owner + "_test.go"} {
+					data, err := os.ReadFile(filepath.Join("..", owner, name))
+					if err != nil {
+						t.Fatal("runner.phase19-plan-unit.mutation.source")
+					}
+					if owner+"/"+name == mutation.path {
+						if strings.Count(string(data), mutation.old) != 1 {
+							t.Fatal("runner.phase19-plan-unit.mutation.target")
+						}
+						data = []byte(strings.Replace(string(data), mutation.old, mutation.new, 1))
+					}
+					if os.WriteFile(filepath.Join(target, name), data, 0600) != nil {
+						t.Fatal("runner.phase19-plan-unit.mutation.copy")
+					}
+				}
+			}
+			if os.WriteFile(filepath.Join(root, "go.mod"), []byte("module github.com/fqwink/build-scripts\n\ngo 1.22\n"), 0600) != nil {
+				t.Fatal("runner.phase19-plan-unit.mutation.module")
+			}
+			args := []string{"test", "-c", "-o", "mutation.test"}
+			if runtime.GOOS == "darwin" {
+				args = append(args, "-ldflags=-linkmode=external")
+			}
+			compile := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), append(args, "./components/runner")...)
+			compile.Dir = root
+			compile.Env = append(os.Environ(), "GOENV=off", "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
+			if _, err := compile.CombinedOutput(); err != nil {
+				t.Fatal("runner.phase19-plan-unit.mutation.compile-invalid")
+			}
+			command := exec.Command(filepath.Join(root, "mutation.test"), "-test.run=^TestCICDPlan(Inputs|Matrix|DAG|Selection|Prerequisites|Source|Deploy|TemplateAndSubstitution|TaskSyntax)$")
+			command.Dir = root
+			output, err := command.CombinedOutput()
+			if err == nil || !bytes.Contains(output, []byte(mutation.reason)) {
+				t.Fatal("runner.phase19-plan-unit.mutation.not-killed")
+			}
+		})
+	}
+}
 
 func TestCICDResources(t *testing.T) {
 	want := CICDResources{CPUPercent: 100, MemoryMB: 256, DiskMB: 128, Tasks: 64, TimeoutSeconds: 900, OutputMB: 16}

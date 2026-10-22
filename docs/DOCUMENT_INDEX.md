@@ -8,6 +8,7 @@
 
 | artifact / 判断対象 | 所在 | 実在区分 |
 |---|---|---|
+| Phase19型付き入力・template・matrix・DAG・selector・Planの内部実装/実行検証 | [runner詳細本文責務 計画Go境界](details/runner.md#phase-19-plan-go-boundary)、[fixture証跡責務 計画エンジン](details/fixture.md#phase-19-plan-runtime-evidence)、[components/runner/](../components/runner/) の既存5file、[components/statefile/validate.go](../components/statefile/validate.go) | 実在（source取得、HTTP/SDK/UI、queue/workerへの接続ではない） |
 | Phase19認証専用adapter・session/Bearer・内部HTTP handler | [components/api/](../components/api/)、[components/security/](../components/security/)、[components/statefile/](../components/statefile/) の既存5file、[fixture証跡責務](details/fixture.md#phase-19-authentication-evidence) | 実在（既存listener/CLI/SDK/UIへの登録ではない） |
 | Phase19操作transaction・純粋認可の内部実装/実行検証 | [statefile詳細本文責務](details/statefile.md#phase-19-operation-go-boundary)、[security詳細本文責務](details/security.md#phase-19-authorization-go-boundary)、[fixture証跡責務](details/fixture.md#phase-19-operation-runtime-evidence)、[components/statefile/](../components/statefile/)、[components/security/](../components/security/) の既存5file | 実在（HTTP route/loginと実体処理の接続ではない） |
 | Phase19保存schema・snapshot低水準実装/検証 | [statefile詳細本文責務 Go境界](details/statefile.md#phase-19-snapshot-go-boundary)、[fixture証跡責務 snapshot検証](details/fixture.md#phase-19-snapshot-evidence)、[components/statefile/model.go](../components/statefile/model.go)、[validate.go](../components/statefile/validate.go)、[execute.go](../components/statefile/execute.go)、[statefile_test.go](../components/statefile/statefile_test.go) | 実在（package非公開保存層。API adapterではない） |

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "ab28d135e0422f8bf7fb829beaef8bfa7d553a1a363a44d16bbdf485dacbdb01",
+  "source_group_sha256": "d4268fe92836a618977e647d61cbb1eeb1b5faeaf2c8fa1d049c4db1387a50d2",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -135,8 +135,8 @@
     {
       "path": "docs/ROADMAP.md",
       "source_exists": true,
-      "sha256": "7a8fde6793239579a95cd5f1ee576c46a9f4058af59b71f767fabe95de5d95a7",
-      "size_bytes": 68298,
+      "sha256": "e37e639ae99fa62ea79795d428d02c66f20d3e964ba22647fcc01212b7a544c1",
+      "size_bytes": 68808,
       "owner_component": "runner",
       "area": "roadmap",
       "detected_terms": [
@@ -155,8 +155,8 @@
     {
       "path": "docs/DETAIL_INDEX.md",
       "source_exists": true,
-      "sha256": "4f194a2404bd4532f170b1bbb4f404c035ffaa74f0a730cf88dbda879d855628",
-      "size_bytes": 185637,
+      "sha256": "f8617781519f034fefa1abcc16ca0b76d66e57a9faa3c5dd50a580626345a0ef",
+      "size_bytes": 186004,
       "owner_component": "runner",
       "area": "detail-index",
       "detected_terms": [
@@ -175,8 +175,8 @@
     {
       "path": "docs/DOCUMENT_INDEX.md",
       "source_exists": true,
-      "sha256": "f736a0f236a6819967ca8841c22f8e8d8e430f57ac1896b5eed8cd6be1c559f5",
-      "size_bytes": 72984,
+      "sha256": "eef2d0d9030c7cf2e93350bf6eb69adfc834a79b900103f2361c3f076d9d8190",
+      "size_bytes": 73481,
       "owner_component": "runner",
       "area": "document-index",
       "detected_terms": [
@@ -195,8 +195,8 @@
     {
       "path": "docs/details/fixture.md",
       "source_exists": true,
-      "sha256": "259bc9a3fe0da77e039069686cf5705382d1f48d97ee3ffb18c848a1c1545fec",
-      "size_bytes": 1362900,
+      "sha256": "9c2f3617a233fdf981ec8c1704bec8a656406361c41ce5e25f9679421687001a",
+      "size_bytes": 1365851,
       "owner_component": "runner",
       "area": "fixture-spec",
       "detected_terms": [

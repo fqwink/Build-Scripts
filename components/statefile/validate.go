@@ -64,7 +64,14 @@ func validateCICDType(expression string, value any, context string, depth int) b
 			}
 			for key, childType := range schema {
 				child, exists := object[key]
-				if !exists || !validateCICDType(childType, child, expression+"."+key, depth+1) {
+				if !exists {
+					return false
+				}
+				if expression == "Job" && (key == "task" || key == "cache") {
+					if !validateCICDDeferredTask(childType, child, "", depth+1) {
+						return false
+					}
+				} else if !validateCICDType(childType, child, expression+"."+key, depth+1) {
 					return false
 				}
 			}
@@ -249,6 +256,75 @@ func validateCICDType(expression string, value any, context string, depth int) b
 		return true
 	}
 	return false
+}
+
+// Only unplanned Job task/cache values admit references; saved Plan values stay strict.
+func validateCICDDeferredTask(expression string, value any, field string, depth int) bool {
+	if depth > 64 {
+		return false
+	}
+	if text, ok := value.(string); ok && strings.Contains(text, "${") {
+		switch field[strings.LastIndexByte(field, '.')+1:] {
+		case "source", "output", "packages", "package", "files", "artifact", "race", "paths":
+			if schema, ok := cicdStorageTypes[expression]; ok {
+				if _, object := schema.(map[string]string); object {
+					return false
+				}
+			}
+			if strings.HasPrefix(expression, "list(") {
+				return false
+			}
+			for _, prefix := range []string{"${input.", "${matrix."} {
+				if strings.HasPrefix(text, prefix) && strings.HasSuffix(text, "}") {
+					return cicdIDPattern.MatchString(text[len(prefix) : len(text)-1])
+				}
+			}
+		}
+		return false
+	}
+	if schema, exists := cicdStorageTypes[expression]; exists {
+		switch typed := schema.(type) {
+		case string:
+			return validateCICDDeferredTask(typed, value, field, depth+1)
+		case map[string]string:
+			object, ok := value.(map[string]any)
+			if !ok || len(object) != len(typed) {
+				return false
+			}
+			for key, childType := range typed {
+				child, exists := object[key]
+				if !exists || !validateCICDDeferredTask(childType, child, expression+"."+key, depth+1) {
+					return false
+				}
+			}
+			return true
+		}
+	}
+	if strings.HasPrefix(expression, "oneof(") {
+		matches := 0
+		for _, option := range splitCICDArguments(expression[6 : len(expression)-1]) {
+			if validateCICDDeferredTask(option, value, field, depth+1) {
+				matches++
+			}
+		}
+		return matches == 1
+	}
+	if strings.HasPrefix(expression, "list(") {
+		args := splitCICDArguments(expression[5 : len(expression)-1])
+		list, ok := value.([]any)
+		min, e1 := strconv.Atoi(args[1])
+		max, e2 := strconv.Atoi(args[2])
+		if !ok || e1 != nil || e2 != nil || len(list) < min || len(list) > max {
+			return false
+		}
+		for _, child := range list {
+			if !validateCICDDeferredTask(args[0], child, field, depth+1) {
+				return false
+			}
+		}
+		return true
+	}
+	return validateCICDType(expression, value, field, depth+1)
 }
 
 func splitCICDArguments(text string) []string {
