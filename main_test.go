@@ -11583,6 +11583,16 @@ func developmentActionsGoProcessInspection(path string, data []byte) ([]string, 
 	parents, owners := map[ast.Node]ast.Node{}, map[ast.Node]string{}
 	stack := []ast.Node{}
 	writes := map[*ast.Object][]ast.Expr{}
+	binding := func(expr ast.Expr) *ast.Ident {
+		for {
+			if paren, ok := expr.(*ast.ParenExpr); ok {
+				expr = paren.X
+				continue
+			}
+			id, _ := expr.(*ast.Ident)
+			return id
+		}
+	}
 	ast.Inspect(tree, func(n ast.Node) bool {
 		if n == nil {
 			stack = stack[:len(stack)-1]
@@ -11596,10 +11606,12 @@ func developmentActionsGoProcessInspection(path string, data []byte) ([]string, 
 			owners[n] = fn.Name.Name
 		}
 		stack = append(stack, n)
-		if assignment, ok := n.(*ast.AssignStmt); ok {
+		switch statement := n.(type) {
+		case *ast.AssignStmt:
+			assignment := statement
 			for i, left := range assignment.Lhs {
-				id, ok := left.(*ast.Ident)
-				if !ok || id.Obj == nil || id.Obj.Decl == assignment {
+				id := binding(left)
+				if id == nil || id.Obj == nil || id.Obj.Decl == assignment {
 					continue
 				}
 				var value ast.Expr
@@ -11607,6 +11619,21 @@ func developmentActionsGoProcessInspection(path string, data []byte) ([]string, 
 					value = assignment.Rhs[i]
 				}
 				writes[id.Obj] = append(writes[id.Obj], value)
+			}
+		case *ast.RangeStmt:
+			if statement.Tok == token.ASSIGN {
+				for _, left := range []ast.Expr{statement.Key, statement.Value} {
+					if id := binding(left); id != nil && id.Obj != nil {
+						writes[id.Obj] = append(writes[id.Obj], nil)
+					}
+				}
+			}
+		case *ast.UnaryExpr:
+			if statement.Op == token.AND {
+				if id := binding(statement.X); id != nil && id.Obj != nil {
+					// Address-taking invalidates certainty without guessing pointer effects.
+					writes[id.Obj] = append(writes[id.Obj], nil)
+				}
 			}
 		}
 		return true
@@ -12174,6 +12201,33 @@ func developmentActionsGoProvenanceControls(t *testing.T) {
 		{"unknown-cycle", `import "os/exec"; var a = b; var b = a; func f(){ exec.Command(a) }`, "unresolved"},
 		{"reassigned", `import "os/exec"; func f(){ name := "go"; name = "gofmt"; exec.Command(name) }`, "unresolved"},
 		{"compound-assignment", `import "os/exec"; func f(){ name := "go"; name += "fmt"; exec.Command(name) }`, "unresolved"},
+		{"pointer-write", `import "os/exec"; func f(){ name := "go"; p := &name; *p = "node"; exec.Command(name) }`, "unresolved"},
+		{"pointer-parenthesized", `import "os/exec"; func f(){ name := "go"; p := &(((name))); *p = "node"; exec.Command(name) }`, "unresolved"},
+		{"pointer-alias", `import "os/exec"; func f(){ name := "go"; p := &name; q := p; *q = "node"; exec.Command(name) }`, "unresolved"},
+		{"pointer-argument", `import "os/exec"; func change(p *string){ *p = "node" }; func f(){ name := "go"; change(&name); exec.Command(name) }`, "unresolved"},
+		{"pointer-read-only", `import "os/exec"; func f(){ name := "go"; _ = &name; exec.Command(name) }`, "unresolved"},
+		{"pointer-after-call", `import "os/exec"; func f(){ name := "go"; exec.Command(name); _ = &name }`, "unresolved"},
+		{"pointer-return", `import "os/exec"; var name = "go"; func address() *string { return &name }; func f(){ exec.Command(name) }`, "unresolved"},
+		{"pointer-field", `import "os/exec"; func f(){ name := "go"; cfg := struct{ Value *string }{&name}; *cfg.Value = "node"; exec.Command(name) }`, "unresolved"},
+		{"pointer-container", `import "os/exec"; func f(){ name := "go"; refs := []*string{&name}; *refs[0] = "node"; exec.Command(name) }`, "unresolved"},
+		{"pointer-closure", `import "os/exec"; func f(){ name := "go"; p := &name; change := func(){ *p = "node" }; change(); exec.Command(name) }`, "unresolved"},
+		{"pointer-shell", `import "os/exec"; func f(){ body := "true"; p := &body; *p = "node --version"; exec.Command("sh", "-c", body) }`, "unresolved"},
+		{"pointer-known-node", `import "os/exec"; func f(){ name := "node"; _ = &name; exec.Command(name) }`, "command"},
+		{"pointer-function", `import "os/exec"; func f(){ spawn := exec.Command; p := &spawn; (*p)("go") }`, "unresolved"},
+		{"pointer-shadow", `import "os/exec"; func f(){ name := "go"; { name := "node"; _ = &name }; exec.Command(name) }`, ""},
+		{"pointer-unrelated", `import "os/exec"; func f(){ name := "go"; other := "node"; _ = &other; exec.Command(name) }`, ""},
+		{"range-key", `import "os/exec"; func f(){ name := "go"; for name = range map[string]bool{"node":true} {}; exec.Command(name) }`, "unresolved"},
+		{"range-value", `import "os/exec"; func f(){ name := "go"; for _, name = range []string{"node"} {}; exec.Command(name) }`, "unresolved"},
+		{"range-parenthesized", `import "os/exec"; func f(){ name := "go"; for (name) = range map[string]bool{"node":true} {}; exec.Command(name) }`, "unresolved"},
+		{"range-pair", `import "os/exec"; func f(){ name, arg := "go", "version"; for name, arg = range map[string]string{"node":"--version"} {}; exec.Command(name, arg) }`, "unresolved"},
+		{"range-shell", `import "os/exec"; func f(){ body := "true"; for _, body = range []string{"node --version"} {}; exec.Command("sh", "-c", body) }`, "unresolved"},
+		{"range-function", `import "os/exec"; func f(spawns []func(string, ...string)*exec.Cmd){ spawn := exec.Command; for _, spawn = range spawns {}; spawn("go") }`, "unresolved"},
+		{"range-known-node", `import "os/exec"; func f(){ name := "node"; for _, name = range []string{"go"} {}; exec.Command(name) }`, "command"},
+		{"range-short-shadow", `import "os/exec"; func f(){ name := "go"; for _, name := range []string{"node"} { _ = name }; exec.Command(name) }`, ""},
+		{"parenthesized-write", `import "os/exec"; func f(){ name := "go"; (name) = "node"; exec.Command(name) }`, "command"},
+		{"nested-parenthesized-write", `import "os/exec"; func f(){ name := "go"; (((name))) = "node"; exec.Command(name) }`, "command"},
+		{"parenthesized-compound", `import "os/exec"; func f(){ name := "go"; (name) += "fmt"; exec.Command(name) }`, "unresolved"},
+		{"parenthesized-safe-write", `import "os/exec"; func f(){ name := "go"; (name) = "gofmt"; exec.Command(name) }`, "unresolved"},
 		{"dynamic-shell", `import "os/exec"; func f(body string){ exec.Command("sh","-c",body) }`, "unresolved"},
 		{"mutable-function", `import "os/exec"; func f(){ spawn := exec.Command; spawn = replacement; spawn("go") }`, "unresolved"},
 		{"return-escape", `import "os/exec"; func f() any { return exec.Command }`, "unresolved"},
