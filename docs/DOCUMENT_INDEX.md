@@ -8,6 +8,7 @@
 
 | artifact / 判断対象 | 所在 | 実在区分 |
 |---|---|---|
+| Phase19操作transaction・純粋認可の内部実装/実行検証 | [statefile詳細本文責務](details/statefile.md#phase-19-operation-go-boundary)、[security詳細本文責務](details/security.md#phase-19-authorization-go-boundary)、[fixture証跡責務](details/fixture.md#phase-19-operation-runtime-evidence)、[components/statefile/](../components/statefile/)、[components/security/](../components/security/) の既存5file | 実在（HTTP route/loginと実体処理の接続ではない） |
 | Phase19保存schema・snapshot低水準実装/検証 | [statefile詳細本文責務 Go境界](details/statefile.md#phase-19-snapshot-go-boundary)、[fixture証跡責務 snapshot検証](details/fixture.md#phase-19-snapshot-evidence)、[components/statefile/model.go](../components/statefile/model.go)、[validate.go](../components/statefile/validate.go)、[execute.go](../components/statefile/execute.go)、[statefile_test.go](../components/statefile/statefile_test.go) | 実在（package非公開保存層。API adapterではない） |
 | 明示認証移行・user token/TOTP・OIDC | [security詳細本文責務](details/security.md#multi-user-migration-contract)、[API HTTP境界](details/api.md#oidc-http-contract)、[SDK transport](details/sdk.md#oidc-sdk-transport)、[UI操作](details/ui.md#oidc-ui-flow) | 実在 |
 | 認証起動情報/本人情報・UI bootstrap | [API起動情報](details/api.md#auth-options-http-contract)、[API本人情報](details/api.md#auth-self-http-contract)、[UI bootstrap](details/ui.md#ui-auth-bootstrap) | 実在 |

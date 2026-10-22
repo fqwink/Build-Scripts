@@ -18,7 +18,450 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/fqwink/build-scripts/components/security"
 )
+
+func cicdOperationFixture(t *testing.T) (*cicdSnapshotStore, cicdOperationRequest) {
+	t.Helper()
+	s := cicdLinuxStore(t)
+	now := time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC)
+	s.clock = func() time.Time { return now }
+	request := cicdOperationRequest{id: cicdTestOperation, digest: strings.Repeat("d", 64), requestID: "o-" + strings.Repeat("b", 32), principal: security.CICDPrincipal{Kind: "user", ID: "admin", ExpiresAt: now.Add(time.Hour), MustChange: "none"}, access: security.CICDAccess{Operation: "projectPut"}, check: func() error { return nil }}
+	return s, request
+}
+
+func cicdProjectFixture() map[string]any {
+	return map[string]any{"id": "p", "name": "Project", "revision": json.Number("1"), "enabled": false, "source_owner": "owner", "source_repo": "repo", "definition_id": nil, "definition_revision": json.Number("0"), "toolchain_digest": nil, "quota": map[string]any{"parallel": json.Number("1"), "queue": json.Number("64"), "artifact_mb": json.Number("1024"), "cache_mb": json.Number("256"), "retention_days": json.Number("7")}}
+}
+
+func cicdCreateProject(root map[string]any) (cicdOperationMutation, error) {
+	root["projects"] = append(cicdList(root["projects"]), cicdProjectFixture())
+	return cicdOperationMutation{targetID: "p", result: json.RawMessage(`{"id":"p"}`)}, nil
+}
+
+func TestCICDOperationAdmission(t *testing.T) {
+	s, request := cicdOperationFixture(t)
+	calls := 0
+	first, err := s.updateCICD(request, func(root map[string]any) (cicdOperationMutation, error) { calls++; return cicdCreateProject(root) })
+	if err != nil || first.replayed || first.operation["state"] != "succeeded" || calls != 1 || string(first.result) != `{"id":"p"}` || first.generation != 2 {
+		t.Fatalf("statefile.phase19-operation.admission.first: %v", err)
+	}
+	root, head, err := s.read()
+	if err != nil || len(cicdList(root["operations"])) != 1 || len(cicdList(root["audits"])) != 2 || first.operation["expires_at"] != "2026-11-21T00:00:00Z" {
+		t.Fatal("statefile.phase19-operation.admission.atomic")
+	}
+	_, err = s.commit(head.Generation, request.id, func(root map[string]any) error {
+		project := cicdObject(cicdList(root["projects"])[0])
+		project["revision"], project["name"] = json.Number("2"), "Newer"
+		return nil
+	})
+	if err != nil {
+		t.Fatal("statefile.phase19-operation.replay.revision.fixture")
+	}
+	replayed, err := s.updateCICD(request, func(map[string]any) (cicdOperationMutation, error) {
+		calls++
+		return cicdOperationMutation{}, ErrCICDRevision
+	})
+	if err != nil || !replayed.replayed || calls != 1 || replayed.result != nil || replayed.oneTime != "" || replayed.generation != 3 {
+		t.Fatal("statefile.phase19-operation.replay.before-revision")
+	}
+	replayed.operation["state"] = "tampered"
+	root, after, err := s.read()
+	if err != nil || after.Generation != 3 || findCICDOperation(root, request.id)["state"] != "succeeded" || len(cicdList(root["audits"])) != 2 {
+		t.Fatal("statefile.phase19-operation.replay.immutable")
+	}
+	request.digest = strings.Repeat("e", 64)
+	denied, err := s.updateCICD(request, nil)
+	if err != ErrCICDIdempotency || !reflect.DeepEqual(denied, cicdOperationReply{}) {
+		t.Fatal("statefile.phase19-operation.replay.conflict")
+	}
+}
+
+func TestCICDOperationSchema(t *testing.T) {
+	for _, test := range []struct {
+		id     string
+		mutate func(map[string]any)
+	}{
+		{"unknown-kind", func(root map[string]any) { cicdObject(cicdList(root["operations"])[0])["kind"] = "arbitrary" }},
+		{"unknown-code", func(root map[string]any) { cicdObject(cicdList(root["operations"])[0])["code"] = "PRIVATE_ERROR" }},
+		{"null-target", func(root map[string]any) { cicdObject(cicdList(root["operations"])[0])["target_id"] = nil }},
+		{"orphan-target", func(root map[string]any) { root["projects"] = []any{} }},
+		{"missing-accepted", func(root map[string]any) { root["audits"] = cicdList(root["audits"])[1:] }},
+		{"missing-finished", func(root map[string]any) { root["audits"] = cicdList(root["audits"])[:1] }},
+		{"duplicate-audit", func(root map[string]any) {
+			root["audits"] = append(cicdList(root["audits"]), cicdList(root["audits"])[0])
+		}},
+		{"audit-action", func(root map[string]any) { cicdObject(cicdList(root["audits"])[0])["action"] = "userPut" }},
+		{"audit-identity", func(root map[string]any) { cicdObject(cicdList(root["audits"])[0])["subject"] = "bob" }},
+		{"audit-time", func(root map[string]any) { cicdObject(cicdList(root["audits"])[1])["at"] = "2026-10-21T00:00:00Z" }},
+		{"expiry", func(root map[string]any) {
+			cicdObject(cicdList(root["operations"])[0])["expires_at"] = "2026-11-22T00:00:00Z"
+		}},
+	} {
+		t.Run(test.id, func(t *testing.T) {
+			root := cicdRootFixture(t)
+			root["projects"] = []any{cicdProjectFixture()}
+			operation := map[string]any{"id": cicdTestOperation, "project_id": nil, "subject": "admin", "request_digest": strings.Repeat("d", 64), "kind": "projectPut", "state": "succeeded", "target_id": "p", "target_attempt": nil, "created_at": "2026-10-22T00:00:00Z", "expires_at": "2026-11-21T00:00:00Z", "code": nil}
+			root["operations"] = []any{operation}
+			root["audits"] = []any{map[string]any{"operation_id": cicdTestOperation, "subject": "admin", "project_id": nil, "environment_id": nil, "action": "projectPut", "phase": "accepted", "at": "2026-10-22T00:00:00Z", "target_id": "p", "code": nil}, map[string]any{"operation_id": cicdTestOperation, "subject": "admin", "project_id": nil, "environment_id": nil, "action": "projectPut", "phase": "finished", "at": "2026-10-22T00:00:00Z", "target_id": "p", "code": nil}}
+			if !validateCICDRoot(root) {
+				t.Fatal("statefile.phase19-operation.schema.positive")
+			}
+			test.mutate(root)
+			if validateCICDRoot(root) {
+				t.Fatal("statefile.phase19-operation.schema.reject")
+			}
+		})
+	}
+}
+
+func TestCICDOperationOneTime(t *testing.T) {
+	s, request := cicdOperationFixture(t)
+	request.access.Operation = "servicePut"
+	const secret = "MEMORY_ONLY_TEST_CREDENTIAL_7f1dbd8a"
+	calls := 0
+	first, err := s.updateCICD(request, func(root map[string]any) (cicdOperationMutation, error) {
+		calls++
+		root["services"] = append(cicdList(root["services"]), map[string]any{"id": "svc", "revision": json.Number("1"), "token_sha256": strings.Repeat("1", 64), "enabled": true, "expires_at": "2026-11-21T00:00:00Z"})
+		return cicdOperationMutation{targetID: "svc", result: json.RawMessage(`{"id":"svc"}`), oneTime: secret}, nil
+	})
+	if err != nil || first.oneTime != secret {
+		t.Fatalf("statefile.phase19-operation.one-time.first: %v", err)
+	}
+	reply, err := s.updateCICD(request, func(map[string]any) (cicdOperationMutation, error) {
+		calls++
+		return cicdOperationMutation{}, ErrCICDInternal
+	})
+	if err != nil || !reply.replayed || reply.oneTime != "" || reply.result != nil || calls != 1 {
+		t.Fatal("statefile.phase19-operation.one-time.replay")
+	}
+	root, _, err := s.read()
+	if err != nil || bytes.Contains(cicdValueBytes(root), []byte(secret)) || bytes.Contains(cicdValueBytes(root), []byte(`"result"`)) {
+		t.Fatal("statefile.phase19-operation.one-time.not-stored")
+	}
+	request.id = "o-" + strings.Repeat("c", 32)
+	if reply, err := s.updateCICD(request, func(map[string]any) (cicdOperationMutation, error) {
+		return cicdOperationMutation{targetID: "svc", oneTime: secret}, nil
+	}); err == nil || !reflect.DeepEqual(reply, cicdOperationReply{}) {
+		t.Fatal("statefile.phase19-operation.one-time.no-reissue")
+	}
+}
+
+func TestCICDOperationScope(t *testing.T) {
+	for _, mode := range []string{"other-project", "lower-role"} {
+		t.Run(mode, func(t *testing.T) {
+			s, request := cicdCacheOperationFixture(t)
+			_, head, _ := s.read()
+			if _, err := s.commit(head.Generation, request.id, func(root map[string]any) error {
+				if mode == "other-project" {
+					project := cicdProjectFixture()
+					project["id"] = "q"
+					root["projects"] = append(cicdList(root["projects"]), project)
+				} else {
+					cicdObject(cicdList(root["grants"])[1])["role"] = "operator"
+				}
+				return nil
+			}); err != nil {
+				t.Fatal("statefile.phase19-operation.scope.fixture")
+			}
+			if mode == "other-project" {
+				request.access.ProjectID = "q"
+			}
+			reply, err := s.updateCICD(request, nil)
+			if err != security.ErrCICDForbidden || !reflect.DeepEqual(reply, cicdOperationReply{}) {
+				t.Fatal("statefile.phase19-operation.scope.reject")
+			}
+		})
+	}
+}
+
+func TestCICDOperationAuthorization(t *testing.T) {
+	for _, mode := range []string{"check-missing", "check-revoked", "grant-revoked", "identity-disabled", "expired", "other-subject"} {
+		t.Run(mode, func(t *testing.T) {
+			s, request := cicdOperationFixture(t)
+			if _, err := s.updateCICD(request, cicdCreateProject); err != nil {
+				t.Fatal("statefile.phase19-operation.auth.fixture")
+			}
+			_, head, _ := s.read()
+			if _, err := s.commit(head.Generation, request.id, func(root map[string]any) error {
+				credential := map[string]any{"password_hash": strings.Repeat("a", 64), "salt": strings.Repeat("b", 64), "algorithm": "pbkdf2_hmac_sha256_v1", "iterations": json.Number("600000"), "must_change": false, "login_count": json.Number("0"), "last_login_at": nil, "updated_at": "2026-10-22T00:00:00Z"}
+				root["users"] = append(cicdList(root["users"]), map[string]any{"id": "bob", "name": "Bob", "revision": json.Number("1"), "enabled": true, "credential": credential, "totp": nil, "created_at": "2026-10-22T00:00:00Z"})
+				root["grants"] = append(cicdList(root["grants"]), map[string]any{"subject_kind": "user", "subject_id": "bob", "project_id": nil, "environment_id": nil, "role": "platform-admin", "enabled": true, "expires_at": nil})
+				if mode == "grant-revoked" {
+					cicdObject(cicdList(root["grants"])[0])["enabled"] = false
+				}
+				if mode == "identity-disabled" {
+					cicdObject(cicdList(root["users"])[0])["enabled"] = false
+				}
+				return nil
+			}); err != nil {
+				t.Fatal("statefile.phase19-operation.auth.change.fixture")
+			}
+			want := "P19_AUTH"
+			switch mode {
+			case "check-missing":
+				request.check = nil
+			case "check-revoked":
+				request.check = func() error { return errors.New("PRIVATE_SESSION_DETAIL") }
+			case "grant-revoked":
+				want = "P19_FORBIDDEN"
+			case "expired":
+				request.principal.ExpiresAt = s.clock()
+			case "other-subject":
+				request.principal.ID = "bob"
+				want = "P19_IDEMPOTENCY"
+			}
+			_, before, _ := s.read()
+			calls := 0
+			reply, err := s.updateCICD(request, func(map[string]any) (cicdOperationMutation, error) { calls++; return cicdOperationMutation{}, nil })
+			_, after, _ := s.read()
+			if err == nil || err.Error() != want || !reflect.DeepEqual(reply, cicdOperationReply{}) || calls != 0 || before != after {
+				t.Fatal("statefile.phase19-operation.auth.replay-denied")
+			}
+		})
+	}
+}
+
+func TestCICDOperationRejectedMutation(t *testing.T) {
+	for _, mode := range []string{"revision", "unknown-error", "bookkeeping", "generation", "bad-target"} {
+		t.Run(mode, func(t *testing.T) {
+			s, request := cicdOperationFixture(t)
+			reply, err := s.updateCICD(request, func(root map[string]any) (cicdOperationMutation, error) {
+				result, _ := cicdCreateProject(root)
+				switch mode {
+				case "revision":
+					return result, ErrCICDRevision
+				case "unknown-error":
+					return result, errors.New("PRIVATE_ERROR_VALUE")
+				case "bookkeeping":
+					root["audits"] = []any{}
+					root["operations"] = []any{map[string]any{"bad": true}}
+				case "generation":
+					root["generation"] = json.Number("2")
+				case "bad-target":
+					result.targetID = "not-created"
+				}
+				return result, nil
+			})
+			want := "P19_STATE_CORRUPT"
+			if mode == "revision" {
+				want = "P19_REVISION"
+			}
+			if mode == "unknown-error" {
+				want = "P19_INTERNAL"
+			}
+			root, head, readErr := s.read()
+			if err == nil || err.Error() != want || !reflect.DeepEqual(reply, cicdOperationReply{}) || readErr != nil || head.Generation != 2 || len(cicdList(root["operations"])) != 0 || len(cicdList(root["projects"])) != 0 || len(cicdList(root["audits"])) != 1 {
+				t.Fatalf("statefile.phase19-operation.reject.atomic: %v", err)
+			}
+			audit := cicdObject(cicdList(root["audits"])[0])
+			if audit["phase"] != "rejected" || audit["operation_id"] != request.requestID || audit["code"] != want || audit["target_id"] != nil {
+				t.Fatal("statefile.phase19-operation.reject.audit")
+			}
+			request.requestID = "o-" + strings.Repeat("c", 32)
+			if _, err := s.updateCICD(request, cicdCreateProject); err != nil {
+				t.Fatal("statefile.phase19-operation.reject.key-not-accepted")
+			}
+		})
+	}
+}
+
+func cicdCacheOperationFixture(t *testing.T) (*cicdSnapshotStore, cicdOperationRequest) {
+	t.Helper()
+	s, request := cicdOperationFixture(t)
+	if _, err := s.commit(1, request.id, func(root map[string]any) error {
+		root["projects"] = []any{cicdProjectFixture()}
+		root["grants"] = append(cicdList(root["grants"]), map[string]any{"subject_kind": "user", "subject_id": "admin", "project_id": "p", "environment_id": nil, "role": "project-admin", "enabled": true, "expires_at": nil})
+		root["caches"] = []any{map[string]any{"project_id": "p", "key": strings.Repeat("2", 64), "digest": strings.Repeat("1", 64), "size_bytes": json.Number("1"), "created_at": "2026-10-22T00:00:00Z", "last_used_at": "2026-10-22T00:00:00Z", "expires_at": "2026-10-23T00:00:00Z", "in_use": []any{}, "deleting": false}}
+		return nil
+	}); err != nil {
+		t.Fatal("statefile.phase19-operation.cache.fixture")
+	}
+	request.access = security.CICDAccess{Operation: "cacheDelete", ProjectID: "p"}
+	if _, err := s.updateCICD(request, func(root map[string]any) (cicdOperationMutation, error) {
+		cicdObject(cicdList(root["caches"])[0])["deleting"] = true
+		return cicdOperationMutation{targetID: strings.Repeat("2", 64)}, nil
+	}); err != nil {
+		t.Fatalf("statefile.phase19-operation.async.fixture: %v", err)
+	}
+	return s, request
+}
+
+func TestCICDOperationAdvance(t *testing.T) {
+	s, request := cicdCacheOperationFixture(t)
+	root, head, _ := s.read()
+	if findCICDOperation(root, request.id)["state"] != "accepted" || len(cicdList(root["audits"])) != 1 {
+		t.Fatal("statefile.phase19-operation.async.accepted")
+	}
+	calls := 0
+	if _, err := s.advanceCICDOperation(request.id, head.Generation-1, func(map[string]any, map[string]any) error { calls++; return nil }); err != ErrCICDRevision || calls != 0 {
+		t.Fatal("statefile.phase19-operation.advance.cas")
+	}
+	if _, err := s.advanceCICDOperation(request.id, head.Generation, func(_ map[string]any, operation map[string]any) error {
+		operation["state"] = "succeeded"
+		return nil
+	}); err != ErrCICDCorrupt {
+		t.Fatal("statefile.phase19-operation.advance.cache-not-removed")
+	}
+	_, unchanged, readErr := s.read()
+	if readErr != nil || unchanged != head {
+		t.Fatal("statefile.phase19-operation.advance.rejected-no-commit")
+	}
+	if _, err := s.advanceCICDOperation(request.id, head.Generation, func(_ map[string]any, operation map[string]any) error {
+		operation["state"], operation["code"] = "recovery_required", "P19_TRANSPORT"
+		return nil
+	}); err != nil {
+		t.Fatalf("statefile.phase19-operation.advance.recovery: %v", err)
+	}
+	root, head, _ = s.read()
+	if len(cicdList(root["audits"])) != 1 || !validCICDReservedCapacity(root, cicdSnapshotLimit-262144) || validCICDReservedCapacity(root, cicdSnapshotLimit) {
+		t.Fatal("statefile.phase19-operation.advance.reservation")
+	}
+	if _, err := s.advanceCICDOperation(request.id, head.Generation, func(_ map[string]any, operation map[string]any) error {
+		operation["state"], operation["code"] = "failed", "P19_CLEANUP"
+		return nil
+	}); err != nil {
+		t.Fatal("statefile.phase19-operation.advance.finished")
+	}
+	root, head, _ = s.read()
+	if len(cicdList(root["audits"])) != 2 || !validCICDReservedCapacity(root, cicdSnapshotLimit) {
+		t.Fatal("statefile.phase19-operation.advance.released")
+	}
+	if _, err := s.advanceCICDOperation(request.id, head.Generation, func(map[string]any, map[string]any) error { return nil }); err != nil {
+		t.Fatal("statefile.phase19-operation.advance.identical")
+	}
+	_, after, _ := s.read()
+	if head != after {
+		t.Fatal("statefile.phase19-operation.advance.identical-no-generation")
+	}
+	if _, err := s.advanceCICDOperation(request.id, head.Generation, func(_ map[string]any, operation map[string]any) error {
+		operation["state"], operation["code"] = "succeeded", nil
+		return nil
+	}); err != ErrCICDStale {
+		t.Fatal("statefile.phase19-operation.advance.terminal-sealed")
+	}
+	if _, err := s.advanceCICDOperation(request.id, head.Generation, func(root map[string]any, _ map[string]any) error {
+		cicdObject(cicdList(root["projects"])[0])["name"] = "Changed"
+		return nil
+	}); err != ErrCICDStale {
+		t.Fatal("statefile.phase19-operation.advance.result-sealed")
+	}
+}
+
+func TestCICDOperationGC(t *testing.T) {
+	for _, mode := range []string{"before", "equal", "after", "active", "recovery", "protected"} {
+		t.Run(mode, func(t *testing.T) {
+			s, request := cicdCacheOperationFixture(t)
+			_, head, _ := s.read()
+			if mode != "active" {
+				if _, err := s.advanceCICDOperation(request.id, head.Generation, func(root map[string]any, operation map[string]any) error {
+					if mode == "recovery" {
+						operation["state"], operation["code"] = "recovery_required", "P19_TRANSPORT"
+					} else {
+						operation["state"], operation["code"] = "failed", "P19_CLEANUP"
+					}
+					if mode == "protected" {
+						cicdObject(cicdList(root["caches"])[0])["in_use"] = []any{request.id}
+					}
+					return nil
+				}); err != nil {
+					t.Fatal("statefile.phase19-operation.gc.terminal.fixture")
+				}
+			}
+			at := time.Date(2026, 11, 21, 0, 0, 0, 0, time.UTC)
+			if mode == "before" {
+				at = at.Add(-time.Second)
+			}
+			if mode == "after" {
+				at = at.Add(time.Second)
+			}
+			s.clock = func() time.Time { return at }
+			count, err := s.gcCICDOperations("o-" + strings.Repeat("f", 32))
+			want := 0
+			if mode == "equal" || mode == "after" {
+				want = 1
+			}
+			root, _, readErr := s.read()
+			if err != nil || readErr != nil || count != want || len(cicdList(root["operations"])) != 1-want || want == 1 && len(cicdList(root["audits"])) != 0 {
+				t.Fatalf("statefile.phase19-operation.gc.result: %v", err)
+			}
+		})
+	}
+}
+
+func TestCICDOperationConcurrency(t *testing.T) {
+	s, request := cicdOperationFixture(t)
+	const count = 8
+	start := make(chan struct{})
+	var group sync.WaitGroup
+	var calls atomic.Int64
+	results := make(chan error, count)
+	for i := 0; i < count; i++ {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			<-start
+			_, err := s.updateCICD(request, func(root map[string]any) (cicdOperationMutation, error) { calls.Add(1); return cicdCreateProject(root) })
+			results <- err
+		}()
+	}
+	close(start)
+	group.Wait()
+	close(results)
+	for err := range results {
+		if err != nil {
+			t.Fatalf("statefile.phase19-operation.concurrent.result: %v", err)
+		}
+	}
+	root, head, err := s.read()
+	if err != nil || calls.Load() != 1 || head.Generation != 2 || len(cicdList(root["operations"])) != 1 || len(cicdList(root["audits"])) != 2 {
+		t.Fatal("statefile.phase19-operation.concurrent.once")
+	}
+}
+
+func TestCICDOperationFaults(t *testing.T) {
+	for _, stage := range []string{"snapshot.write", "snapshot.directory-sync", "head.publish", "head.directory-sync"} {
+		t.Run(stage, func(t *testing.T) {
+			s, request := cicdOperationFixture(t)
+			s.fault = func(actual string) error {
+				if actual == stage {
+					return errors.New("PRIVATE_IO_DETAIL")
+				}
+				return nil
+			}
+			reply, err := s.updateCICD(request, cicdCreateProject)
+			want := ErrCICDStorage
+			if stage == "head.directory-sync" {
+				want = ErrCICDUncertain
+			}
+			if err != want || !reflect.DeepEqual(reply, cicdOperationReply{}) {
+				t.Fatal("statefile.phase19-operation.fault.no-result")
+			}
+			fresh, reopenErr := newCICDSnapshotStore(s.path)
+			if reopenErr != nil {
+				t.Fatal("statefile.phase19-operation.fault.reopen")
+			}
+			fresh.clock = s.clock
+			root, head, readErr := fresh.read()
+			if readErr != nil {
+				t.Fatal("statefile.phase19-operation.fault.read")
+			}
+			if stage == "head.directory-sync" {
+				if head.Generation != 2 || findCICDOperation(root, request.id) == nil {
+					t.Fatal("statefile.phase19-operation.fault.uncertain-visible")
+				}
+				calls := 0
+				replay, err := fresh.updateCICD(request, func(map[string]any) (cicdOperationMutation, error) { calls++; return cicdOperationMutation{}, nil })
+				if err != nil || !replay.replayed || calls != 0 {
+					t.Fatal("statefile.phase19-operation.fault.reconcile-once")
+				}
+			} else if head.Generation != 1 || len(cicdList(root["projects"])) != 0 || len(cicdList(root["operations"])) != 0 || len(cicdList(root["audits"])) != 0 {
+				t.Fatal("statefile.phase19-operation.fault.atomic")
+			}
+		})
+	}
+}
 
 const cicdTestRoot = `{"schema_version":1,"generation":1,"projects":[],"definitions":[],"templates":[],"environments":[],"users":[{"id":"admin","name":"Administrator","revision":1,"enabled":true,"credential":null,"totp":null,"created_at":"2026-10-22T00:00:00Z"}],"services":[],"secrets":[],"grants":[{"subject_kind":"user","subject_id":"admin","project_id":null,"environment_id":null,"role":"platform-admin","enabled":true,"expires_at":null}],"workers":[],"runs":[],"deployments":[],"artifacts":[],"caches":[],"operations":[],"audits":[],"targets":[],"environment_states":[],"notifications":[],"trigger_cursors":[],"status_deliveries":[]}`
 const cicdTestOperation = "o-0123456789abcdef0123456789abcdef"
@@ -570,7 +1013,7 @@ func TestCICDSnapshotMutations(t *testing.T) {
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
 		t.Skip("P19_CAPABILITY: storage mutation execution requires Linux amd64")
 	}
-	const selection = "^TestCICD(Schema|RootIntegrity|Snapshot(Store|Faults|Corruption|Locks|NoReplace))$"
+	const selection = "^TestCICD(Schema|RootIntegrity|Operation(Schema|Admission|OneTime|Authorization|RejectedMutation|Scope|Advance|GC|Concurrency|Faults)|Snapshot(Store|Faults|Corruption|Locks|NoReplace))$"
 	for _, mutation := range []struct{ id, path, old, new, reason string }{
 		{"unknown-key", "validate.go", "!ok || len(object) != len(schema)", "!ok", "statefile.phase19-schema.head-unknown.result"},
 		{"missing-key", "validate.go", "!exists || !validateCICDType(childType, child, expression+\".\"+key, depth+1)", "exists && !validateCICDType(childType, child, expression+\".\"+key, depth+1)", "statefile.phase19-schema.head-missing-substituted.result"},
@@ -584,6 +1027,20 @@ func TestCICDSnapshotMutations(t *testing.T) {
 		{"uncertain", "execute.go", "return ErrCICDUncertain", "return ErrCICDStorage", "statefile.phase19-snapshot.head.directory-sync.failure"},
 		{"retention", "execute.go", "n < generation-2", "n < generation-1", "statefile.phase19-snapshot.retention"},
 		{"flock", "execute.go", "err = syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)", "err = nil", "statefile.phase19-snapshot.flock.deadline"},
+		{"session-check", "execute.go", "request.check == nil || request.check() != nil", "false", "statefile.phase19-operation.auth.replay-denied"},
+		{"authorization", "execute.go", "_, err = authorizeCICDRoot(root, request.principal, request.access, now)", "err = nil", "statefile.phase19-operation.auth.replay-denied"},
+		{"operation-digest", "execute.go", "operation[\"request_digest\"] != request.digest", "false", "statefile.phase19-operation.replay.conflict"},
+		{"operation-replay", "execute.go", "if operation := findCICDOperation(root, request.id); operation != nil {", "if operation := findCICDOperation(root, request.id); false && operation != nil {", "statefile.phase19-operation.replay.before-revision"},
+		{"one-time-reissue", "execute.go", "result.oneTime != \"\" && previousSubjects[result.targetID]", "false && result.oneTime != \"\" && previousSubjects[result.targetID]", "statefile.phase19-operation.one-time.no-reissue"},
+		{"operation-cas", "execute.go", "if head.Generation != expectedGeneration {", "if false && head.Generation != expectedGeneration {", "statefile.phase19-operation.advance.cas"},
+		{"operation-finished-audit", "execute.go", "if cicdTerminal(next[\"state\"]) {", "if false && cicdTerminal(next[\"state\"]) {", "statefile.phase19-operation.advance.finished"},
+		{"operation-reserve", "validate.go", "state == \"accepted\" || state == \"recovery_required\"", "state == \"accepted\"", "statefile.phase19-operation.advance.reservation"},
+		{"operation-gc-expiry", "execute.go", "now.Format(time.RFC3339) >= operation[\"expires_at\"].(string)", "true", "statefile.phase19-operation.gc.result"},
+		{"operation-gc-active", "execute.go", "cicdTerminal(operation[\"state\"]) && now.Format(time.RFC3339)", "true && now.Format(time.RFC3339)", "statefile.phase19-operation.gc.result"},
+		{"operation-gc-protection", "execute.go", "&& !protected[operation[\"id\"].(string)]", "&& true", "statefile.phase19-operation.gc.result"},
+		{"operation-error-redaction", "execute.go", "return ErrCICDInternal", "return err", "statefile.phase19-operation.reject.atomic"},
+		{"session-expiry", "security/execute.go", "!now.Before(principal.ExpiresAt)", "false", "statefile.phase19-operation.auth.replay-denied"},
+		{"project-scope", "security/execute.go", "grant.ProjectID != access.ProjectID", "false", "statefile.phase19-operation.scope.reject"},
 	} {
 		t.Run(mutation.id, func(t *testing.T) {
 			copyDir := t.TempDir()
@@ -602,7 +1059,22 @@ func TestCICDSnapshotMutations(t *testing.T) {
 					t.Fatal("statefile.phase19-mutation.copy.fixture")
 				}
 			}
-			if os.WriteFile(filepath.Join(copyDir, "go.mod"), []byte("module storage-mutation\n\ngo 1.22\n"), 0600) != nil {
+			if os.MkdirAll(filepath.Join(copyDir, "components", "security"), 0700) != nil {
+				t.Fatal("statefile.phase19-mutation.security.fixture")
+			}
+			for _, name := range []string{"security.go", "model.go", "validate.go", "execute.go", "security_test.go"} {
+				data, err := os.ReadFile(filepath.Join("..", "security", name))
+				if mutation.path == "security/"+name {
+					if strings.Count(string(data), mutation.old) != 1 {
+						t.Fatal("statefile.phase19-mutation.security.target.fixture")
+					}
+					data = []byte(strings.Replace(string(data), mutation.old, mutation.new, 1))
+				}
+				if err != nil || os.WriteFile(filepath.Join(copyDir, "components", "security", name), data, 0600) != nil {
+					t.Fatal("statefile.phase19-mutation.security.copy")
+				}
+			}
+			if os.WriteFile(filepath.Join(copyDir, "go.mod"), []byte("module github.com/fqwink/build-scripts\n\ngo 1.22\n"), 0600) != nil {
 				t.Fatal("statefile.phase19-mutation.module.fixture")
 			}
 			compile := exec.Command("go", "test", "-c", "-o", "mutation.test", ".")

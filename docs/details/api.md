@@ -121,6 +121,9 @@ Chunkは全key必須の `{offset:int(0,1073741824),data:base64,next_offset:int(0
 
 Operation.idはclient key、kindは上表のoperation ID。返却Authorization/request_idは当該HTTP requestの最新値であり初回応答の再掲ではない。replayは最新Operationだけを返し、秘密応答・result・旧Authorizationを再生しない。Operationのtarget_id/target_attempt、内部進行、保持・回収は [docs/details/statefile.md 詳細本文責務 operation lifecycle](statefile.md#phase-19-operation-lifecycle) を参照する。GET operationGetは権限行列のoperation-readerを最新状態で確認し、存在しないkeyは404、保存中ならexpires_at経過だけで隠さない。404・通信断・timeout・abortは未受付または副作用なしの証明ではない。clientは新keyでの自動再送をせず、同key照会と対象実体の再取得で確認する。一度消えたone_timeは再表示できず、結果照会のために資格情報を再発行しない。
 
+<a id="phase-19-operation-adapter-route"></a>
+内部Go実装の入口は [statefile詳細本文責務 操作transaction](statefile.md#phase-19-operation-go-boundary)、認可判定は [security詳細本文責務 Go境界](security.md#phase-19-authorization-go-boundary) を参照する。保存層のreplyはHTTP envelopeではなくOperationとcommit世代・初回memory値だけを返す。HTTP ownerは応答時に最新の認証/認可snapshotを取得し、その世代のAuthorizationを構成する。更新前のGrantへ新世代番号だけを付け直して応答しない。これらの内部実装だけでHTTP route/loginを有効化しない。
+
 <a id="phase-19-log-page-contract"></a>
 **log page固定契約：**
 

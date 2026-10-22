@@ -30,6 +30,11 @@ disabled projectは新規run/deploy開始・retry/resumeを拒否するが、初
 <a id="phase-19-automatic-subject"></a>
 **自動triggerの内部主体：** watch/scheduleのRun.requesterは予約Id systemを使用し、User/Service/Grant/credential/session/tokenを新設しない。systemはcoordinator内部の登録済project trigger専用であり、API login/Bearer/要求bodyから選択できず、platform-admin権限を持つuserの代替でもない。project.enabledと現在参照Definitionの整合を受付commitで確認する。自動配備でもEnvironmentのapproval・production・freeze・target認可境界を省略せず、内部主体だけで承認人数を満たさない。再実行を人間またはserviceが要求した場合は元system主体を継承せず、現在の要求subjectを認可・記録する。保存表現は [docs/details/statefile.md 詳細本文責務 Plan保存整合](statefile.md#phase-19-plan-state-invariants)、trigger受付は [docs/details/runner.md 詳細本文責務](runner.md#phase-19-trigger-admission) を参照する。
 
+<a id="phase-19-authorization-go-boundary"></a>
+**認可Go境界：** `AuthorizeCICD(principal,snapshot,access,now)` は、既に資格情報を検証したprincipalと、同一Root世代の現在Subject/Grant projectionだけを使用する純粋関数である。credential検証やsession発行は行わない。principalの期限/must_changeと現在Subjectのenabled/service期限を毎回確認し、非nil失効checkを呼ぶstatefileの [操作transaction境界](statefile.md#phase-19-operation-go-boundary) から使用する。checkの未接続を全許可へ変換しない。未知operation/role/subject種別、不正scope、無効/期限切れgrantは拒否する。permissionと包含関係は [権限行列](#phase-19-permission-matrix)、operation別要求roleは [API catalog](api.md#phase-19-operation-catalog) だけを正本とする。
+
+戻り値はprincipal本人の有効Grantの独立copy、元snapshotのgeneration、principal/serviceの早い方の期限であり、credential/token/他subjectのgrantを含めない。grantPutは変更先Grantのscope/roleを照合し、operationGetは照会対象Operationのrequester/scopeから判定する。入力projectionを変えない。保存済み状態の意味検査と認可を混同せず、認可関数が不正Rootを修復することもない。HTTP login/middlewareの未実装をこの純粋関数の成功で完了扱いにしない。
+
 <a id="phase-19-secret-crypto"></a>
 **secret暗号・投入・mask：**
 

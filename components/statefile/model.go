@@ -1,24 +1,59 @@
 package statefile
 
 import (
+	"encoding/json"
 	"errors"
 	"sync"
 	"time"
+
+	"github.com/fqwink/build-scripts/components/security"
 )
 
 var ErrCICDSchema = errors.New("P19_SCHEMA")
 
 var (
-	ErrCICDCorrupt    = errors.New("P19_STATE_CORRUPT")
-	ErrCICDBusy       = errors.New("P19_BUSY")
-	ErrCICDRevision   = errors.New("P19_REVISION")
-	ErrCICDStorage    = errors.New("P19_STORAGE")
-	ErrCICDUncertain  = errors.New("P19_STATE_UNCERTAIN")
-	ErrCICDCleanup    = errors.New("P19_CLEANUP")
-	ErrCICDCapability = errors.New("P19_CAPABILITY")
+	ErrCICDCorrupt     = errors.New("P19_STATE_CORRUPT")
+	ErrCICDBusy        = errors.New("P19_BUSY")
+	ErrCICDRevision    = errors.New("P19_REVISION")
+	ErrCICDStorage     = errors.New("P19_STORAGE")
+	ErrCICDUncertain   = errors.New("P19_STATE_UNCERTAIN")
+	ErrCICDCleanup     = errors.New("P19_CLEANUP")
+	ErrCICDCapability  = errors.New("P19_CAPABILITY")
+	ErrCICDIdempotency = errors.New("P19_IDEMPOTENCY")
+	ErrCICDStale       = errors.New("P19_STALE")
+	ErrCICDNotFound    = errors.New("P19_NOT_FOUND")
+	ErrCICDInternal    = errors.New("P19_INTERNAL")
 )
 
+type cicdOperationRequest struct {
+	id, digest, requestID string
+	principal             security.CICDPrincipal
+	access                security.CICDAccess
+	check                 func() error
+}
+
+type cicdOperationMutation struct {
+	targetID      string
+	targetAttempt int
+	result        json.RawMessage
+	oneTime       string
+}
+
+type cicdOperationReply struct {
+	operation  map[string]any
+	generation int64
+	replayed   bool
+	result     json.RawMessage
+	oneTime    string
+}
+
 const cicdSnapshotLimit = 33554432
+
+// API admission modes, not a registry of executable business handlers.
+var cicdOperationKinds = map[string]bool{
+	"passwordChange": true, "projectPut": true, "workerPut": true, "targetPut": true, "userPut": true, "servicePut": true, "definitionPut": true, "templatePut": true, "environmentPut": true, "grantPut": true, "secretPut": true, "workerDrain": true, "artifactPin": true,
+	"workerResume": false, "runStart": false, "runRetry": false, "runResume": false, "runCancel": false, "cacheDelete": false, "deploymentStart": false, "deploymentApprove": false, "deploymentReject": false, "deploymentCancel": false, "deploymentRollback": false, "deploymentReconcile": false,
+}
 
 type cicdHead struct {
 	SchemaVersion int    `json:"schema_version"`
@@ -34,6 +69,7 @@ type cicdSnapshotStore struct {
 	uncertain  bool
 	fault      func(string) error
 	diagnostic func(error)
+	clock      func() time.Time
 }
 
 // All stores share the process side of the filesystem lock, including aliases.

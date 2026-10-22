@@ -526,12 +526,217 @@ func validateCICDRoot(root map[string]any) bool {
 			}
 		}
 	}
-	return true
+	return validateCICDOperations(root)
 }
 
 func validCICDEntityID(value any, prefix string) bool {
 	text, ok := value.(string)
 	return ok && strings.HasPrefix(text, prefix) && cicdLowerHex(strings.TrimPrefix(text, prefix), 32)
+}
+
+func cicdOperationCode(code string) bool {
+	for _, known := range strings.Fields("P19_JSON P19_INPUT P19_AUTH P19_FORBIDDEN P19_NOT_FOUND P19_METHOD P19_REVISION P19_STALE P19_IDEMPOTENCY P19_BUSY P19_APPROVAL P19_FREEZE P19_CURSOR P19_BODY P19_MEDIA P19_SCHEMA P19_DAG P19_MATRIX P19_EMPTY P19_CAPABILITY P19_SOURCE P19_DIGEST P19_ARCHIVE P19_SIGNATURE P19_TRUST P19_QUOTA P19_RATE P19_INTERNAL P19_ENTROPY P19_SECRET P19_EXIT P19_OUTPUT P19_TIMEOUT P19_CLEANUP P19_HEALTH P19_CANCELLED P19_TRANSPORT P19_LEASE P19_STATE_CORRUPT P19_STATE_UNCERTAIN P19_SHUTDOWN P19_STORAGE") {
+		if code == known {
+			return true
+		}
+	}
+	return false
+}
+
+func validCICDMutationReply(kind string, result cicdOperationMutation) bool {
+	if kind != "artifactPin" && kind != "cacheDelete" && !cicdIDPattern.MatchString(result.targetID) {
+		return false
+	}
+	if kind == "artifactPin" || kind == "cacheDelete" {
+		if !cicdLowerHex(result.targetID, 64) {
+			return false
+		}
+	}
+	if strings.HasPrefix(kind, "run") {
+		if !validCICDEntityID(result.targetID, "r-") || result.targetAttempt < 1 || result.targetAttempt > 100 {
+			return false
+		}
+	} else if result.targetAttempt != 0 {
+		return false
+	}
+	if strings.HasPrefix(kind, "deployment") && !validCICDEntityID(result.targetID, "d-") {
+		return false
+	}
+	if len(result.result) > 921600 {
+		return false
+	}
+	if len(result.result) > 0 {
+		if _, err := decodeCICDValue(result.result); err != nil {
+			return false
+		}
+	}
+	return utf8.ValidString(result.oneTime) && len(result.oneTime) <= 4096 && !strings.ContainsAny(result.oneTime, "\x00\r\n") && (result.oneTime == "" || kind == "userPut" || kind == "servicePut")
+}
+
+func validCICDOperationTransition(before, after map[string]any) bool {
+	data, err := json.Marshal(after)
+	if err != nil || ValidateCICDValue("Operation", data) != nil {
+		return false
+	}
+	for _, field := range []string{"id", "project_id", "subject", "kind", "request_digest", "target_id", "target_attempt", "created_at", "expires_at"} {
+		if before[field] != after[field] {
+			return false
+		}
+	}
+	state, code := after["state"], after["code"]
+	if (state == "accepted" || state == "succeeded") != (code == nil) {
+		return false
+	}
+	if code != nil && !cicdOperationCode(code.(string)) {
+		return false
+	}
+	if cicdTerminal(before["state"]) {
+		return before["state"] == state && before["code"] == code
+	}
+	if before["state"] == "accepted" {
+		return state == "accepted" || state == "succeeded" || state == "failed" || state == "recovery_required"
+	}
+	return before["state"] == "recovery_required" && (state == "recovery_required" || state == "succeeded" || state == "failed")
+}
+
+func validateCICDOperations(root map[string]any) bool {
+	auditsByID := make(map[string][]map[string]any)
+	for _, value := range cicdList(root["audits"]) {
+		audit := cicdObject(value)
+		if audit["code"] != nil && !cicdOperationCode(audit["code"].(string)) {
+			return false
+		}
+		id := audit["operation_id"].(string)
+		auditsByID[id] = append(auditsByID[id], audit)
+	}
+	for _, value := range cicdList(root["operations"]) {
+		operation := cicdObject(value)
+		kind := operation["kind"].(string)
+		if _, known := cicdOperationKinds[kind]; !known {
+			return false
+		}
+		if operation["code"] != nil && !cicdOperationCode(operation["code"].(string)) {
+			return false
+		}
+		target, ok := operation["target_id"].(string)
+		if !ok {
+			return false
+		}
+		attempt := 0
+		if operation["target_attempt"] != nil {
+			attempt = int(cicdInt(operation["target_attempt"]))
+		}
+		if !validCICDMutationReply(kind, cicdOperationMutation{targetID: target, targetAttempt: attempt}) || !validCICDOperationTarget(root, operation) {
+			return false
+		}
+		accepted, finished := 0, 0
+		var environment any
+		for _, audit := range auditsByID[operation["id"].(string)] {
+			if audit["action"] != kind || audit["subject"] != operation["subject"] || audit["project_id"] != operation["project_id"] || audit["target_id"] != target || audit["at"].(string) < operation["created_at"].(string) {
+				return false
+			}
+			switch audit["phase"] {
+			case "accepted":
+				accepted++
+				environment = audit["environment_id"]
+				if audit["at"] != operation["created_at"] || audit["code"] != nil {
+					return false
+				}
+			case "finished":
+				finished++
+				if audit["code"] != operation["code"] {
+					return false
+				}
+			default:
+				return false
+			}
+		}
+		if accepted != 1 || cicdTerminal(operation["state"]) && finished != 1 || !cicdTerminal(operation["state"]) && finished != 0 {
+			return false
+		}
+		for _, audit := range auditsByID[operation["id"].(string)] {
+			if audit["environment_id"] != environment {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func validCICDOperationCompletion(root, operation map[string]any) bool {
+	if !cicdTerminal(operation["state"]) {
+		return true
+	}
+	kind := operation["kind"]
+	if kind == "cacheDelete" && operation["state"] == "succeeded" {
+		for _, value := range cicdList(root["caches"]) {
+			cache := cicdObject(value)
+			if cache["project_id"] == operation["project_id"] && cache["key"] == operation["target_id"] {
+				return false
+			}
+		}
+	}
+	if kind == "workerResume" && operation["state"] == "succeeded" {
+		for _, value := range cicdList(root["workers"]) {
+			worker := cicdObject(value)
+			if worker["id"] == operation["target_id"] {
+				return worker["enabled"] == true && worker["draining"] == false
+			}
+		}
+		return false
+	}
+	return true
+}
+
+func validCICDOperationTarget(root, operation map[string]any) bool {
+	kind, target, project := operation["kind"].(string), operation["target_id"], operation["project_id"]
+	collection := map[string]string{"passwordChange": "users", "projectPut": "projects", "workerPut": "workers", "workerDrain": "workers", "workerResume": "workers", "targetPut": "targets", "userPut": "users", "servicePut": "services", "definitionPut": "definitions", "templatePut": "templates", "environmentPut": "environments", "secretPut": "secrets", "artifactPin": "artifacts", "cacheDelete": "caches"}[kind]
+	if strings.HasPrefix(kind, "run") {
+		collection = "runs"
+	}
+	if strings.HasPrefix(kind, "deployment") {
+		collection = "deployments"
+	}
+	if kind == "grantPut" {
+		for _, name := range []string{"users", "services"} {
+			for _, value := range cicdList(root[name]) {
+				if cicdObject(value)["id"] == target {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	for _, value := range cicdList(root[collection]) {
+		object := cicdObject(value)
+		field := "id"
+		if collection == "artifacts" {
+			field = "digest"
+		}
+		if collection == "caches" {
+			field = "key"
+		}
+		if object[field] != target {
+			continue
+		}
+		if collection == "runs" && (object["project_id"] != project || object["attempt"] != operation["target_attempt"]) {
+			continue
+		}
+		if collection == "deployments" && cicdObject(object["plan"])["project_id"] != project {
+			continue
+		}
+		if collection == "definitions" || collection == "templates" || collection == "environments" || collection == "secrets" || collection == "artifacts" || collection == "caches" {
+			if object["project_id"] != project {
+				continue
+			}
+		}
+		if kind == "passwordChange" && target != operation["subject"] {
+			return false
+		}
+		return true
+	}
+	// Content/settings can outlive the retained operation as specified; runs cannot.
+	return cicdTerminal(operation["state"]) && (kind == "cacheDelete" || kind == "artifactPin" || kind == "secretPut")
 }
 
 func validCICDReservedCapacity(root map[string]any, size int) bool {

@@ -2,8 +2,42 @@ package security
 
 import (
 	"strings"
+	"time"
 	"unicode/utf8"
 )
+
+func validCICDIdentifier(id string) bool {
+	if len(id) == 0 || len(id) > 64 || id[0] < 'a' || id[0] > 'z' {
+		return false
+	}
+	for _, c := range id {
+		if !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '_' || c == '-') {
+			return false
+		}
+	}
+	return true
+}
+
+func validCICDTime(t time.Time) bool {
+	_, offset := t.Zone()
+	return t.Year() >= 1970 && t.Year() <= 9999 && t.Nanosecond() == 0 && offset == 0
+}
+
+func validCICDGrant(grant CICDGrant) bool {
+	if (grant.SubjectKind != "user" && grant.SubjectKind != "service") || !validCICDIdentifier(grant.SubjectID) || grant.ExpiresAt != nil && !validCICDTime(*grant.ExpiresAt) {
+		return false
+	}
+	if grant.Role == "platform-admin" {
+		return grant.SubjectKind == "user" && grant.ProjectID == "" && grant.EnvironmentID == ""
+	}
+	if !validCICDIdentifier(grant.ProjectID) {
+		return false
+	}
+	if grant.Role == "approver" {
+		return validCICDIdentifier(grant.EnvironmentID)
+	}
+	return (grant.Role == "viewer" || grant.Role == "operator" || grant.Role == "project-admin") && grant.EnvironmentID == ""
+}
 
 func ValidatePasswordInput(password string) error {
 	if password == "" || !utf8.ValidString(password) {

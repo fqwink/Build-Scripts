@@ -739,6 +739,17 @@ filesystem primitiveの実行対象は製品と同じLinux amd64とする。他O
 
 **operation監査のtarget結合：** Operationに対応するAuditのsubject/project_id/target_idは当該Operationの値と一致を要求する。target_idはArtifact/CacheEntryを指すDigestも保持するためtext型とし、Operation側のkind別制約を共用して arbitrary textを許可しない。拒否前に対象を検証できない監査だけtarget_id=nullを使う。認証更新などOperationを生成しない既存監査の例外はそれぞれの認証契約を維持する。Auditへattempt fieldを重複追加せず、保持中Operation.target_attemptから参照する。
 
+<a id="phase-19-operation-go-boundary"></a>
+
+拒否監査のoperation_idはclient keyではなく当該HTTP要求のserver request_idを使い、accepted Operationと同一IDにしない。失敗した未受付keyの後日受付へ、別要求の拒否監査を結合しない。server request_idはrequestの別fieldで渡し、保存中Operation/AuditのIDと衝突する場合はP19_ENTROPYで拒否する。Operation不在のrejected監査はatから30日経過かつ保護参照なしの場合だけ、明示GCまたは新規受付の同commitで回収する。
+**操作transactionの内部Go境界：** 保存層の `updateCICD(request,mutate)` は [受付契約](api.md#phase-19-operation-admission) と [本書lifecycle](#phase-19-operation-lifecycle) を同じLOCK_EX内で接続する。requestは検証済みprincipal・scope・kind・client操作ID・request digestと、memory session/service token失効を再確認する純粋な非nilcheckを持つ。HTTP bodyからprincipal/checkを生成しない。check成功後、最新RootのUser/Service/Grantをsecurityの [認可Go境界](security.md#phase-19-authorization-go-boundary) へ渡し、その後に既存keyを比較する。新規だけmutateを1回呼ぶ。callbackへ保存済Operation/Audit/generationの変更権限を与えず、これらは保存層が管理する。scopeはcatalogのproject pathまたはgrantPutの検証済grantから確定し、deployment操作のenvironmentは対象Planから取得する。
+
+mutateは業務差分とtarget identity、初回だけ返すmemory result/one_timeを返す。同期/非同期の初期stateはAPI catalogから固定し、callbackの選択にしない。result/one_timeはsnapshotへ保存せず、durable commit後だけ返し、replay/error/不確定時は返さない。secret生成をkey照合より前へ移さない。拒否監査は認可後に対象を確認できた受付失敗だけを本書Audit型で保存し、Operationは追加しない。認証/認可拒否はOperationやRoot監査を増やさず、security正本のrate-limited診断境界へ戻す。監査保存失敗は元の拒否を成功扱いせず保存errorを返す。
+
+`advanceCICDOperation(opID,expectedGeneration,mutate)` はcoordinator/api内部専用。callbackは対象Operationのcopyのstate/codeと業務差分だけを更新し、全identityと他Operation/Audit/generationを変えない。既存lifecycleの状態遷移に加え、accepted/recovery_requiredの同stateで対象進捗だけをdurable更新できる。終端の同一結果照合はRoot業務差分もbyte不変の場合だけno-op、別結果はP19_STALE。codeはAPI error catalogの閉集合。外部effectの確認はrunner ownerの責務であり、汎用callbackを実機照合の代替にしない。
+
+clockはlock取得後に1回だけUTC秒へ固定する内部注入点で、API/configから指定不可。監査時刻逆転と範囲外を拒否する。operation GCは同じlock下で本書lifecycleの適格条件だけを評価し、Run/Deploymentのactive状態、対応lease、JobResult.execution_id、Artifact.pins、CacheEntry.in_use、保存Route.operation_idを保護参照として照合する。任意textやenv値の一致を保護参照へ読み替えない。新規受付のGCはkey照合後の同commitに含め、callback失敗時にGCだけを先にcommitしない。明示GCも読取adapterから起動しない。これらの内部adapterはHTTP登録/認証session発行/各owner全意味制約の実装完了までpackage非公開とし、低水準Root書込を一般callerへ開放しない。
+
 <a id="phase-19-log-invariants"></a>
 **Logの保存整合：** 全read/writeでschemaに加え `0<=first_offset<=next_offset<=9007199254740991`、UTF-8有効、`next_offset-first_offset=len(data bytes)`、truncated=(first_offset>0)を検証する。同一identityの更新はfirst/nextを減算せず、gap=trueをfalseへ戻さない。terminal=trueは封印済みであり、以後は完全同一Logの再送を既存値として返すだけとし、byte/offset/flagを更新しない。terminal=false同士でも保存済みと重なる絶対offset区間のbyte不一致を拒否する。新規は両offset=0/data空/truncated=false/gap=false/terminal=false。空streamもEOF時にterminal=trueを保存する。破損はP19_STATE_CORRUPTで自動修復しない。容量はJSON escapeと全fieldを含むserialized byte長で検証し、既存fileを置換する前に上限超過をP19_STORAGEで拒否する。全NULのdata最大長はescapeだけで6291456 bytesを使うため、path表のenvelope込み上限を適用し、schema上有効な最大dataをheader分で欠落させない。書込失敗時のjob停止は [docs/details/runner.md 詳細本文責務 streaming log](runner.md#phase-19-streaming-log-contract) を参照する。
 

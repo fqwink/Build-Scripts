@@ -6,8 +6,155 @@ import (
 	"crypto/subtle"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"io"
+	"time"
 )
+
+// AuthorizeCICD consumes a current snapshot; it does not authenticate credentials.
+func AuthorizeCICD(principal CICDPrincipal, snapshot CICDAuthorizationSnapshot, access CICDAccess, now time.Time) (CICDAuthorization, error) {
+	deny := CICDAuthorization{}
+	subject := snapshot.Subject
+	if !validCICDTime(now) || !validCICDTime(principal.ExpiresAt) || !now.Before(principal.ExpiresAt) || !validCICDIdentifier(principal.ID) || principal.ID == "system" || principal.ID == "worker" || principal.ID == "site" || (principal.Kind != "user" && principal.Kind != "service") || subject.Kind != principal.Kind || subject.ID != principal.ID || !subject.Enabled {
+		return deny, ErrCICDAuth
+	}
+	if principal.MustChange != "none" && principal.MustChange != "prompt" && principal.MustChange != "forced" || principal.Kind == "service" && principal.MustChange != "none" {
+		return deny, ErrCICDAuth
+	}
+	expires := principal.ExpiresAt
+	if principal.Kind == "service" {
+		if subject.ExpiresAt == nil || !validCICDTime(*subject.ExpiresAt) || !now.Before(*subject.ExpiresAt) {
+			return deny, ErrCICDAuth
+		}
+		if subject.ExpiresAt.Before(expires) {
+			expires = *subject.ExpiresAt
+		}
+	}
+	if snapshot.Generation < 1 || snapshot.Generation > 9007199254740991 || access.ProjectID != "" && !validCICDIdentifier(access.ProjectID) || access.EnvironmentID != "" && (!validCICDIdentifier(access.EnvironmentID) || access.ProjectID == "") {
+		return deny, ErrCICDForbidden
+	}
+	if principal.MustChange == "forced" && access.Operation != "passwordChange" && access.Operation != "logout" {
+		return deny, ErrCICDForbidden
+	}
+	grants := make([]CICDGrant, 0)
+	for _, grant := range snapshot.Grants {
+		if !validCICDGrant(grant) {
+			return deny, ErrCICDForbidden
+		}
+		if grant.SubjectKind != principal.Kind || grant.SubjectID != principal.ID || !grant.Enabled || grant.ExpiresAt != nil && !now.Before(*grant.ExpiresAt) {
+			continue
+		}
+		if grant.ExpiresAt != nil {
+			copyTime := *grant.ExpiresAt
+			grant.ExpiresAt = &copyTime
+		}
+		grants = append(grants, grant)
+	}
+	has := func(role string) bool {
+		for _, grant := range grants {
+			if role == "platform-admin" {
+				if grant.Role == role {
+					return true
+				}
+				continue
+			}
+			if access.ProjectID == "" || grant.ProjectID != access.ProjectID {
+				continue
+			}
+			if role == "project-reader" {
+				if grant.Role != "approver" || access.EnvironmentID == "" || grant.EnvironmentID == access.EnvironmentID {
+					return true
+				}
+				continue
+			}
+			if grant.Role == role && (role != "approver" || access.EnvironmentID != "" && grant.EnvironmentID == access.EnvironmentID) {
+				return true
+			}
+			if role == "viewer" && (grant.Role == "operator" || grant.Role == "project-admin") || role == "operator" && grant.Role == "project-admin" {
+				return true
+			}
+		}
+		return false
+	}
+	allowed := false
+	scope := "project"
+	switch access.Operation {
+	case "logout":
+		scope, allowed = "global", true
+	case "passwordChange":
+		scope, allowed = "global", principal.Kind == "user" && (access.ResourceOwner == "" || access.ResourceOwner == principal.ID)
+	case "projectPut", "workerPut", "targetPut", "userPut", "servicePut", "workerDrain", "workerResume", "workersList", "targetsList", "usersList", "servicesList":
+		scope, allowed = "global", has("platform-admin")
+	case "projectsList":
+		scope = "optional"
+		allowed = has("platform-admin") || has("project-reader")
+		if access.ProjectID == "" {
+			allowed = has("platform-admin") || len(grants) > 0
+		}
+	case "grantPut", "grantsList":
+		scope = "optional"
+		allowed = has("platform-admin") || has("project-admin")
+		if access.Operation == "grantPut" {
+			grant := access.ProposedGrant
+			allowed = allowed && principal.Kind == "user" && grant != nil && validCICDGrant(*grant)
+			if allowed {
+				allowed = grant.ProjectID == access.ProjectID && grant.EnvironmentID == access.EnvironmentID && (has("platform-admin") || grant.Role == "viewer" || grant.Role == "operator" || grant.Role == "approver")
+			}
+		}
+	case "operationGet":
+		scope = "optional"
+		if access.ProjectID == "" {
+			allowed = has("platform-admin")
+		} else {
+			allowed = has("project-admin") || access.ResourceOwner == principal.ID && has("project-reader")
+		}
+	case "deploymentGet":
+		allowed = has("viewer") || has("approver")
+	case "deploymentApprove", "deploymentReject":
+		allowed = principal.Kind == "user" && has("approver")
+	case "plan", "definitionsList", "templatesList", "environmentsList", "runsList", "runGet", "logsGet", "artifactsList", "artifactGet", "artifactDownload", "artifactCompare", "cachesList", "environmentStatus", "deploymentsList", "metricsGet":
+		allowed = has("viewer")
+	case "runStart", "runRetry", "runResume", "runCancel", "artifactPin", "deploymentPlan", "deploymentStart", "deploymentCancel", "deploymentRollback":
+		allowed = has("operator")
+	case "definitionPut", "templatePut", "environmentPut", "secretPut", "secretsList", "cacheDelete", "auditsList":
+		allowed = has("project-admin")
+	case "deploymentReconcile":
+		allowed = has("platform-admin")
+	default:
+		return deny, ErrCICDForbidden
+	}
+	if principal.Kind == "service" && (access.Operation == "userPut" || access.Operation == "servicePut" || access.Operation == "grantPut") {
+		allowed = false
+	}
+	if scope == "global" && (access.ProjectID != "" || access.EnvironmentID != "") || scope == "project" && (access.ProjectID == "" || !snapshot.ProjectExists) {
+		allowed = false
+	}
+	if access.EnvironmentID != "" && !snapshot.EnvironmentExists {
+		allowed = false
+	}
+	if (access.Operation == "runStart" || access.Operation == "runRetry" || access.Operation == "runResume" || access.Operation == "deploymentStart" || access.Operation == "deploymentRollback") && !snapshot.ProjectEnabled {
+		allowed = false
+	}
+	if !allowed {
+		return deny, ErrCICDForbidden
+	}
+	wireGrants := make([]any, 0, len(grants))
+	for _, grant := range grants {
+		var project, environment any
+		if grant.ProjectID != "" {
+			project = grant.ProjectID
+		}
+		if grant.EnvironmentID != "" {
+			environment = grant.EnvironmentID
+		}
+		wireGrants = append(wireGrants, map[string]any{"subject_kind": grant.SubjectKind, "subject_id": grant.SubjectID, "project_id": project, "environment_id": environment, "role": grant.Role, "enabled": grant.Enabled, "expires_at": grant.ExpiresAt})
+	}
+	wire, err := json.Marshal(map[string]any{"subject_kind": principal.Kind, "subject_id": principal.ID, "generation": snapshot.Generation, "grants": wireGrants, "expires_at": expires})
+	if err != nil || len(wire) > 65536 {
+		return deny, ErrCICDQuota
+	}
+	return CICDAuthorization{Generation: snapshot.Generation, SubjectKind: principal.Kind, SubjectID: principal.ID, ExpiresAt: expires, Grants: grants}, nil
+}
 
 func GenerateSalt() (string, error) {
 	salt := make([]byte, CredentialSaltLength)
