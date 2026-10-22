@@ -97,7 +97,7 @@ Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない�
 `改訂予定` の行に記載する詳細入口は、仕様策定先または再評価先を示す。`改訂予定` の詳細入口は、実装着手根拠、Phase 11 実装対象、または `仕様化済み・未実装` の代替根拠として扱わない。`仕様化済み・未実装` の行であっても、実装着手可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze)、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を同時に満たす場合だけ成立する。
 
 <a id="specification-completeness-status"></a>
-**仕様全般詳細化の現在状態：** 統合機能インベントリの既存要求について、owner本文・入力/出力/状態/異常系/復旧・具体fixture入力/expected・Phase/実装PR境界を照合し、検出済み仕様不備は解消した。Phase20/21の各機能は仕様成熟度として `仕様化済み・未実装` とする。根拠は [同一仕様PRのinventory/batch/反復検査証跡](https://github.com/fqwink/Build-Scripts/pull/100)。これは製品機能テスト完了、実機受入完了、実装着手許可、active Phase設定を意味しない。既存namespaceとPhase19専用namespaceの割当は独立のまま、製品実装と実機検証は未着手である。
+**仕様全般詳細化の現在状態：** 統合機能インベントリの既存要求について、owner本文・入力/出力/状態/異常系/復旧・具体fixture入力/expected・Phase/実装PR境界を照合し、検出済み仕様不備は解消した。Phase20/21の各機能は仕様成熟度として `仕様化済み・未実装` とする。根拠は [同一仕様PRのinventory/batch/反復検査証跡](https://github.com/fqwink/Build-Scripts/pull/100)。これは製品機能テスト完了、実機受入完了、実装着手許可、active Phase設定を意味しない。既存namespaceとPhase19専用namespaceの割当は独立のまま、Phase19の製品基礎実装に着手した。共有schemaとsnapshot保存層の検証入口は [fixture証跡責務 snapshot検証](details/fixture.md#phase-19-snapshot-evidence)。Operation/各owner adapterの接続と必須実機検証は完了していない。
 
 | 仕様化済み範囲 | 現在状態 / 詳細・検証入口 |
 |---|---|
@@ -105,7 +105,7 @@ Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない�
 | multi-user / RBAC / OIDC | 仕様化済み・未実装。[認証移行・失効・TOTP](details/security.md#multi-user-migration-contract)、[再署名50vector](details/fixture.md#oidc-signed-claim-vectors)、[HTTP具体入力](details/fixture.md#oidc-http-concrete-oracles)、[移行中断入力](details/fixture.md#additional-management-migration-inputs)。 |
 | 追加管理API / SDK / UI / 配布 / cache | 仕様化済み・未実装。[API機能入口](DETAIL_INDEX.md#0i6-追加管理api機能)、[50経路入力](details/fixture.md#additional-management-authorization-inputs)、[SDK入力](details/fixture.md#additional-management-sdk-inputs)、[UI操作入力](details/fixture.md#additional-management-ui-inputs)。 |
 
-この判定は現行インベントリの要求範囲に対する仕様成熟度であり、将来の追加要求や潜在不具合不存在の保証ではない。実装着手可否と新たな未定義事項を発見した場合の扱いは [SPEC完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) / [active Phase条件](SPEC.md#policy-phase-unit) を参照する。active Phaseは引き続き未設定とする。
+この判定は現行インベントリの要求範囲に対する仕様成熟度であり、将来の追加要求や潜在不具合不存在の保証ではない。実装着手可否と新たな未定義事項を発見した場合の扱いは [SPEC完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) / [active Phase条件](SPEC.md#policy-phase-unit) を参照する。active Phaseは本書の現在状態を参照する。
 
 <a id="522-統合ロードマップ表"></a>
 **統合機能インベントリ：** 以下を全機能の現在状態に関する唯一の一覧とする。

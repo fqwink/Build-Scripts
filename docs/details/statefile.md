@@ -716,6 +716,15 @@ operation/監査の回収は [operation lifecycle](#phase-19-operation-lifecycle
 
 named user loginの認証更新は内部o-ID付きUpdateCICDAuth(userID,credentialFingerprint,mutate)でlock下に最新Credentialを再照合し、count/time/Auditだけを一つのRoot更新にする。Operationは作らず、commit後だけmemory sessionを公開する。admin aliasは既存credential adapterの保存順を使用し、失敗時sessionを発行しない。login/logoutをOperationResult対象外とするAPI例外は、認証記録の永続化省略を意味しない。
 
+<a id="phase-19-snapshot-go-boundary"></a>
+**snapshot保存層のGo境界：** `ValidateCICDValue(typeName,data)` は本書registryの保存型を検査する。未登録型、非canonical整数、無効Unicode、未知/欠落/重複keyを拒否し、失敗は内容やpathを含まないP19_SCHEMAだけを返す。registryは既存model.goへ固定し、実行時に仕様Markdownを読み込まない。Root/Headのdisk読取ではschema失敗をP19_STATE_CORRUPTへ変換する。Rootの同一性・参照・計画・容量の検査はschema検査とは別に行い、canonical化だけで保存可能と判定しない。
+
+低水準 `cicdSnapshotStore` はstatefile package内限定とする。`read` はRoot相当の独立JSON objectとHeadを返し、`initialize` は明示初期化だけ、`commit(expectedGeneration,opID,mutate)` は上記transactionの内部primitiveだけである。いずれもAPI公開adapterの代用にしない。`mutate` は現在Rootの独立copyに対し1回だけ実行し、error時と世代不一致時はHeadを変えない。generationは保存層だけが増加させ、callbackの改変を拒否する。operation受付・認可・内部進行・認証・content副作用adapterが接続されるまでは一般callerへ書込primitiveをexportしない。ownerの意味制約が未接続の段階を完全なReadCICD/UpdateCICD実装として報告しない。
+
+filesystem primitiveの実行対象は製品と同じLinux amd64とする。他OS/archはP19_CAPABILITYでI/O前拒否する。ancestorをrootからO_DIRECTORY/O_NOFOLLOWで開き、以降のchild操作は保持中のparent descriptorを指すLinux `/proc/self/fd` に固定する（untrusted pathへ戻らない）。管理directoryの0700、通常fileの0600・同UID・link数1をFstatで検査し、FIFO/device/symlink/hardlinkを拒否する。snapshotの非上書き公開はLinux renameat2(RENAME_NOREPLACE)を使用し、未対応時に上書きrenameへfallbackしない。ancestorのroot所有sticky一時directoryは許容するが、管理directory自身は専用UID/0700必須。OS flockとprocess内排他の待機は共通2秒deadlineに含める。
+
+保存層の障害注入はpackage非公開のstage hookだけとし、snapshot/head各々のcreate/write/chmod/sync/close/publish、各parent sync、commit後GCを区別する。hookはテスト専用、製品設定/API/環境変数から変更不可。Head rename後の障害は不確定、commit後GC障害は診断のみという既存契約を変えない。readはsnapshot不在時だけHeadを再取得し、同世代のdigest差替えと同一storeで観測済みの世代逆転も破損として拒否する。storeを作り直した場合のrollback検出はcoordinatorの外部operation照合を必要とし、diskだけから失われた最大世代を推測しない。
+
 <a id="phase-19-artifact-read-guard"></a>
 **成果物のread guard：** `WithCICDArtifactRead(project,digests,read)` は同一projectの重複なしdigest1〜2件をbyte昇順で受け、process内mutexの後、既存state.lockをcreate/truncateせずread-onlyで開き、LOCK_SHの非blocking flockを10ms間隔/最大2秒で取得する。guard下で最新Head/Rootを検証して指定digestのArtifactとRoot.generationだけをreadへ渡し、callbackは既存fileのopen/Fstat/有限read/closeだけを行う。callback前後でRoot/head/世代/監査を更新しない。全return経路でguard/descriptorを解放し、network/response送信へ保持を持ち越さない。書込・publish・deleting claim・実file削除は既存LOCK_EXを使用し、share lockをupgradeしない。read結果はcallbackで確定したmemory値に限る。guard取得不能はP19_BUSY、lock file不正/Root破損はP19_STATE_CORRUPT。file readの結果変換は [docs/details/archive.md 詳細本文責務 read/GC](archive.md#phase-19-artifact-read-gc) を参照する。
 

@@ -9,10 +9,559 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
+	"unsafe"
 )
+
+func cicdValueBytes(value any) []byte {
+	var out bytes.Buffer
+	writeCICDCanonical(&out, value)
+	return out.Bytes()
+}
+
+func cicdValueDigest(value any) string {
+	return fmt.Sprintf("%x", sha256.Sum256(cicdValueBytes(value)))
+}
+
+func newCICDSnapshotStore(path string) (*cicdSnapshotStore, error) {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		return nil, ErrCICDCapability
+	}
+	dir, err := openCICDStateDirectory(path)
+	if err != nil {
+		return nil, ErrCICDCorrupt
+	}
+	defer dir.Close()
+	return &cicdSnapshotStore{path: path}, nil
+}
+
+func openCICDStateDirectory(path string) (*os.File, error) {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		return nil, ErrCICDCapability
+	}
+	if !filepath.IsAbs(path) || filepath.Clean(path) != path || len(path) > 4096 || strings.Contains(path, "\\") || cicdHasControl(path) {
+		return nil, ErrCICDCorrupt
+	}
+	dir, err := os.OpenFile("/", os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, ErrCICDCorrupt
+	}
+	for _, part := range strings.Split(strings.TrimPrefix(path, "/"), "/") {
+		if part == "" {
+			dir.Close()
+			return nil, ErrCICDCorrupt
+		}
+		next, err := os.OpenFile(cicdChildPath(dir, part), os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+		dir.Close()
+		if err != nil {
+			return nil, ErrCICDCorrupt
+		}
+		info, err := next.Stat()
+		if err != nil {
+			next.Close()
+			return nil, ErrCICDCorrupt
+		}
+		stat, ok := info.Sys().(*syscall.Stat_t)
+		if !ok || (stat.Uid != uint32(os.Geteuid()) && stat.Uid != 0) || info.Mode().Perm()&0022 != 0 && !(stat.Uid == 0 && info.Mode()&os.ModeSticky != 0) {
+			next.Close()
+			return nil, ErrCICDCorrupt
+		}
+		dir = next
+	}
+	if !validCICDFile(dir, true) {
+		dir.Close()
+		return nil, ErrCICDCorrupt
+	}
+	return dir, nil
+}
+
+func cicdChildPath(dir *os.File, name string) string {
+	return "/proc/self/fd/" + strconv.FormatUint(uint64(dir.Fd()), 10) + "/" + name
+}
+
+func validCICDFile(file *os.File, directory bool) bool {
+	info, err := file.Stat()
+	if err != nil {
+		return false
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || stat.Uid != uint32(os.Geteuid()) {
+		return false
+	}
+	if directory {
+		return info.IsDir() && info.Mode().Perm() == 0700 && info.Mode()&(os.ModeSetuid|os.ModeSetgid|os.ModeSticky) == 0
+	}
+	return info.Mode().IsRegular() && info.Mode().Perm() == 0600 && info.Mode()&(os.ModeSetuid|os.ModeSetgid|os.ModeSticky) == 0 && stat.Nlink == 1
+}
+
+func openCICDChild(dir *os.File, name string, flags int, directory bool) (*os.File, error) {
+	if name == "" || strings.ContainsAny(name, "/\\\x00") || name == "." || name == ".." {
+		return nil, ErrCICDCorrupt
+	}
+	mode := os.FileMode(0600)
+	if directory {
+		flags |= syscall.O_DIRECTORY
+		mode = 0700
+	}
+	file, err := os.OpenFile(cicdChildPath(dir, name), flags|syscall.O_NOFOLLOW|syscall.O_CLOEXEC|syscall.O_NONBLOCK, mode)
+	if err != nil {
+		return nil, err
+	}
+	if !validCICDFile(file, directory) {
+		file.Close()
+		return nil, ErrCICDCorrupt
+	}
+	return file, nil
+}
+
+func (s *cicdSnapshotStore) directories(create bool) (*os.File, *os.File, error) {
+	parent, err := openCICDStateDirectory(s.path)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer parent.Close()
+	if create {
+		if err := os.Mkdir(cicdChildPath(parent, "cicd"), 0700); err != nil && !errors.Is(err, os.ErrExist) {
+			return nil, nil, ErrCICDStorage
+		}
+	}
+	dir, err := openCICDChild(parent, "cicd", os.O_RDONLY, true)
+	if err != nil {
+		return nil, nil, ErrCICDCorrupt
+	}
+	if create {
+		if err := os.Mkdir(cicdChildPath(dir, "snapshots"), 0700); err != nil && !errors.Is(err, os.ErrExist) {
+			dir.Close()
+			return nil, nil, ErrCICDStorage
+		}
+		if parent.Sync() != nil || dir.Sync() != nil {
+			dir.Close()
+			return nil, nil, ErrCICDStorage
+		}
+	}
+	snapshots, err := openCICDChild(dir, "snapshots", os.O_RDONLY, true)
+	if err != nil {
+		dir.Close()
+		return nil, nil, ErrCICDCorrupt
+	}
+	return dir, snapshots, nil
+}
+
+func (s *cicdSnapshotStore) inject(stage string) error {
+	if s.fault != nil {
+		return s.fault(stage)
+	}
+	return nil
+}
+
+func readCICDBounded(dir *os.File, name string, limit int64) ([]byte, error) {
+	file, err := openCICDChild(dir, name, os.O_RDONLY, false)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || info.Size() > limit {
+		return nil, ErrCICDCorrupt
+	}
+	data, err := io.ReadAll(io.LimitReader(file, limit+1))
+	if err != nil || int64(len(data)) > limit {
+		return nil, ErrCICDCorrupt
+	}
+	return data, nil
+}
+
+func readCICDHead(dir *os.File) (cicdHead, error) {
+	data, err := readCICDBounded(dir, "head.json", 4096)
+	if err != nil || ValidateCICDValue("Head", data) != nil {
+		return cicdHead{}, ErrCICDCorrupt
+	}
+	var head cicdHead
+	if json.Unmarshal(data, &head) != nil {
+		return cicdHead{}, ErrCICDCorrupt
+	}
+	return head, nil
+}
+
+func (s *cicdSnapshotStore) read() (map[string]any, cicdHead, error) {
+	dir, snapshots, err := s.directories(false)
+	if err != nil {
+		return nil, cicdHead{}, err
+	}
+	defer dir.Close()
+	defer snapshots.Close()
+	return s.readFrom(dir, snapshots)
+}
+
+func (s *cicdSnapshotStore) readFrom(dir, snapshots *os.File) (map[string]any, cicdHead, error) {
+	s.observed.Lock()
+	defer s.observed.Unlock()
+	if err := s.inspectFiles(dir, snapshots, 0, false); err != nil {
+		return nil, cicdHead{}, ErrCICDCorrupt
+	}
+	for retry := 0; retry < 3; retry++ {
+		head, err := readCICDHead(dir)
+		if err != nil {
+			return nil, cicdHead{}, ErrCICDCorrupt
+		}
+		if s.inject("read.snapshot") != nil {
+			return nil, cicdHead{}, ErrCICDCorrupt
+		}
+		data, err := readCICDBounded(snapshots, "g-"+strconv.FormatInt(head.Generation, 10)+".json", cicdSnapshotLimit)
+		if errors.Is(err, os.ErrNotExist) {
+			latest, headErr := readCICDHead(dir)
+			if headErr == nil && latest.Generation > head.Generation {
+				continue
+			}
+			return nil, cicdHead{}, ErrCICDCorrupt
+		}
+		if err != nil || fmt.Sprintf("%x", sha256.Sum256(data)) != head.SHA256 {
+			return nil, cicdHead{}, ErrCICDCorrupt
+		}
+		value, err := decodeCICDValue(data)
+		root, ok := value.(map[string]any)
+		if err != nil || !ok || !validateCICDRoot(root) || cicdInt(root["generation"]) != head.Generation {
+			return nil, cicdHead{}, ErrCICDCorrupt
+		}
+		if !validCICDReservedCapacity(root, len(data)) {
+			return nil, cicdHead{}, ErrCICDCorrupt
+		}
+		regressed := head.Generation < s.generation || head.Generation == s.generation && s.digest != "" && head.SHA256 != s.digest
+		if !regressed {
+			s.generation, s.digest = head.Generation, head.SHA256
+		}
+		if regressed {
+			return nil, cicdHead{}, ErrCICDCorrupt
+		}
+		return root, head, nil
+	}
+	return nil, cicdHead{}, ErrCICDBusy
+}
+
+func (s *cicdSnapshotStore) lock(create bool) (*os.File, *os.File, func(), error) {
+	deadline := time.Now().Add(2 * time.Second)
+	for !cicdSnapshotMutex.TryLock() {
+		if !time.Now().Before(deadline) {
+			return nil, nil, nil, ErrCICDBusy
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	dir, snapshots, err := s.directories(create)
+	if err != nil {
+		cicdSnapshotMutex.Unlock()
+		return nil, nil, nil, err
+	}
+	flags := os.O_RDWR
+	if create {
+		flags |= os.O_CREATE
+	}
+	lock, err := openCICDChild(dir, "state.lock", flags, false)
+	if err != nil {
+		dir.Close()
+		snapshots.Close()
+		cicdSnapshotMutex.Unlock()
+		return nil, nil, nil, ErrCICDCorrupt
+	}
+	unlock := func() {
+		_ = syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
+		_ = lock.Close()
+		_ = snapshots.Close()
+		_ = dir.Close()
+		cicdSnapshotMutex.Unlock()
+	}
+	info, err := lock.Stat()
+	if err != nil || info.Size() != 0 {
+		unlock()
+		return nil, nil, nil, ErrCICDCorrupt
+	}
+	for {
+		err = syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		if err == nil {
+			break
+		}
+		if err != syscall.EWOULDBLOCK && err != syscall.EAGAIN && err != syscall.EINTR {
+			unlock()
+			return nil, nil, nil, ErrCICDCorrupt
+		}
+		if !time.Now().Before(deadline) {
+			unlock()
+			return nil, nil, nil, ErrCICDBusy
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return dir, snapshots, unlock, nil
+}
+
+func (s *cicdSnapshotStore) initialize(data []byte, opID string) (cicdHead, error) {
+	value, err := decodeCICDValue(data)
+	root, ok := value.(map[string]any)
+	if err != nil || !ok || !validCICDEntityID(opID, "o-") || !validateCICDRoot(root) || cicdInt(root["generation"]) != 1 {
+		return cicdHead{}, ErrCICDCorrupt
+	}
+	dir, snapshots, unlock, err := s.lock(true)
+	if err != nil {
+		return cicdHead{}, err
+	}
+	defer unlock()
+	if _, err := os.Lstat(cicdChildPath(dir, "head.json")); !errors.Is(err, os.ErrNotExist) {
+		return cicdHead{}, ErrCICDCorrupt
+	}
+	if err := s.reclaim(dir, snapshots, 0); err != nil {
+		return cicdHead{}, err
+	}
+	return s.publish(dir, snapshots, root, opID)
+}
+
+func (s *cicdSnapshotStore) commit(expectedGeneration int64, opID string, mutate func(map[string]any) error) (cicdHead, error) {
+	if !validCICDEntityID(opID, "o-") || mutate == nil {
+		return cicdHead{}, ErrCICDCorrupt
+	}
+	dir, snapshots, unlock, err := s.lock(false)
+	if err != nil {
+		return cicdHead{}, err
+	}
+	defer unlock()
+	s.observed.Lock()
+	uncertain := s.uncertain
+	s.observed.Unlock()
+	if uncertain {
+		return cicdHead{}, ErrCICDUncertain
+	}
+	root, head, err := s.readFrom(dir, snapshots)
+	if err != nil {
+		return cicdHead{}, err
+	}
+	if head.Generation != expectedGeneration || head.Generation >= 9007199254740991 {
+		return cicdHead{}, ErrCICDRevision
+	}
+	if err := s.reclaim(dir, snapshots, head.Generation); err != nil {
+		return cicdHead{}, err
+	}
+	before := cicdValueBytes(root)
+	if err := mutate(root); err != nil {
+		return cicdHead{}, err
+	}
+	// Round-trip through the strict decoder before canonical writing caller values.
+	data, err := json.Marshal(root)
+	if err != nil {
+		return cicdHead{}, ErrCICDCorrupt
+	}
+	value, err := decodeCICDValue(data)
+	if err != nil {
+		return cicdHead{}, ErrCICDCorrupt
+	}
+	root = cicdObject(value)
+	if !validateCICDRoot(root) || cicdInt(root["generation"]) != head.Generation {
+		return cicdHead{}, ErrCICDCorrupt
+	}
+	if bytes.Equal(before, cicdValueBytes(root)) {
+		return head, nil
+	}
+	root["generation"] = json.Number(strconv.FormatInt(head.Generation+1, 10))
+	return s.publish(dir, snapshots, root, opID)
+}
+
+func (s *cicdSnapshotStore) publish(dir, snapshots *os.File, root map[string]any, opID string) (cicdHead, error) {
+	data := cicdValueBytes(root)
+	if !validCICDReservedCapacity(root, len(data)) {
+		return cicdHead{}, ErrCICDStorage
+	}
+	var stat syscall.Statfs_t
+	if syscall.Fstatfs(int(dir.Fd()), &stat) != nil || stat.Bsize <= 0 || stat.Bavail < uint64((256*1024*1024+int64(stat.Bsize)-1)/int64(stat.Bsize)) {
+		return cicdHead{}, ErrCICDStorage
+	}
+	if s.inject("capacity") != nil {
+		return cicdHead{}, ErrCICDStorage
+	}
+	head := cicdHead{SchemaVersion: 1, Generation: cicdInt(root["generation"]), SHA256: fmt.Sprintf("%x", sha256.Sum256(data))}
+	if err := s.writeCICDFile(snapshots, "."+opID+".tmp", "g-"+strconv.FormatInt(head.Generation, 10)+".json", data, "snapshot", false); err != nil {
+		return cicdHead{}, err
+	}
+	headData, err := json.Marshal(head)
+	if err != nil {
+		return cicdHead{}, ErrCICDStorage
+	}
+	headData, err = CanonicalCICDJSON(headData)
+	if err != nil {
+		return cicdHead{}, ErrCICDStorage
+	}
+	if err := s.writeCICDFile(dir, ".head."+opID+".tmp", "head.json", headData, "head", true); err != nil {
+		if err == ErrCICDUncertain {
+			s.observed.Lock()
+			s.uncertain = true
+			s.observed.Unlock()
+		}
+		return cicdHead{}, err
+	}
+	s.observed.Lock()
+	s.generation, s.digest = head.Generation, head.SHA256
+	s.observed.Unlock()
+	if err := s.reclaim(dir, snapshots, head.Generation); err != nil && s.diagnostic != nil {
+		s.diagnostic(ErrCICDCleanup)
+	}
+	return head, nil
+}
+
+func (s *cicdSnapshotStore) writeCICDFile(dir *os.File, tmp, name string, data []byte, stage string, replace bool) error {
+	if s.inject(stage+".create") != nil {
+		return ErrCICDStorage
+	}
+	file, err := openCICDChild(dir, tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, false)
+	if err != nil {
+		return ErrCICDStorage
+	}
+	closed := false
+	defer func() {
+		if !closed {
+			_ = file.Close()
+		}
+		_ = os.Remove(cicdChildPath(dir, tmp))
+	}()
+	if s.inject(stage+".write") != nil {
+		return ErrCICDStorage
+	}
+	for len(data) > 0 {
+		n, err := file.Write(data)
+		if err != nil || n == 0 {
+			return ErrCICDStorage
+		}
+		data = data[n:]
+	}
+	if s.inject(stage+".chmod") != nil || file.Chmod(0600) != nil {
+		return ErrCICDStorage
+	}
+	if s.inject(stage+".sync") != nil || file.Sync() != nil {
+		return ErrCICDStorage
+	}
+	if s.inject(stage+".close") != nil {
+		return ErrCICDStorage
+	}
+	if file.Close() != nil {
+		closed = true
+		return ErrCICDStorage
+	}
+	closed = true
+	if s.inject(stage+".publish") != nil {
+		return ErrCICDStorage
+	}
+	if replace {
+		err = os.Rename(cicdChildPath(dir, tmp), cicdChildPath(dir, name))
+	} else {
+		err = renameCICDNoReplace(dir, tmp, name)
+	}
+	if err != nil {
+		return ErrCICDStorage
+	}
+	if s.inject(stage+".directory-sync") != nil || dir.Sync() != nil {
+		if replace {
+			return ErrCICDUncertain
+		}
+		return ErrCICDStorage
+	}
+	return nil
+}
+
+func renameCICDNoReplace(dir *os.File, from, to string) error {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		return ErrCICDCapability
+	}
+	old, err := syscall.BytePtrFromString(from)
+	if err != nil {
+		return err
+	}
+	new, err := syscall.BytePtrFromString(to)
+	if err != nil {
+		return err
+	}
+	// Linux amd64 renameat2, RENAME_NOREPLACE. Never emulate by check-then-rename.
+	_, _, errno := syscall.Syscall6(316, dir.Fd(), uintptr(unsafe.Pointer(old)), dir.Fd(), uintptr(unsafe.Pointer(new)), 1, 0)
+	if errno != 0 {
+		return errno
+	}
+	return nil
+}
+
+func (s *cicdSnapshotStore) reclaim(dir, snapshots *os.File, generation int64) error {
+	if s.inject("cleanup") != nil {
+		return ErrCICDCleanup
+	}
+	return s.inspectFiles(dir, snapshots, generation, true)
+}
+
+func (s *cicdSnapshotStore) inspectFiles(dir, snapshots *os.File, generation int64, prune bool) error {
+	for _, parent := range []*os.File{dir, snapshots} {
+		listing, err := os.Open(cicdChildPath(parent, "."))
+		if err != nil {
+			return ErrCICDCorrupt
+		}
+		names, err := listing.Readdirnames(-1)
+		listing.Close()
+		if err != nil {
+			return ErrCICDCorrupt
+		}
+		for _, name := range names {
+			remove := false
+			if parent == dir {
+				switch name {
+				case "snapshots", "secrets", "logs", "artifacts", "cache", "work", "ssh", "site", "locks":
+					child, err := openCICDChild(parent, name, os.O_RDONLY, true)
+					if err != nil {
+						return ErrCICDCorrupt
+					}
+					child.Close()
+					continue
+				case "head.json", "state.lock", "master.json", "worker.json", "worker-jobs.json", "setup.json":
+					child, err := openCICDChild(parent, name, os.O_RDONLY, false)
+					if err != nil {
+						return ErrCICDCorrupt
+					}
+					info, err := child.Stat()
+					child.Close()
+					if err != nil || name == "state.lock" && info.Size() != 0 {
+						return ErrCICDCorrupt
+					}
+					continue
+				}
+				if strings.HasPrefix(name, ".head.") && strings.HasSuffix(name, ".tmp") && validCICDEntityID(strings.TrimSuffix(strings.TrimPrefix(name, ".head."), ".tmp"), "o-") {
+					remove = true
+				} else {
+					return ErrCICDCorrupt
+				}
+			} else if strings.HasPrefix(name, "g-") && strings.HasSuffix(name, ".json") {
+				text := strings.TrimSuffix(strings.TrimPrefix(name, "g-"), ".json")
+				n, err := strconv.ParseInt(text, 10, 64)
+				if err != nil || n < 1 || n > 9007199254740991 || strconv.FormatInt(n, 10) != text {
+					return ErrCICDCorrupt
+				}
+				remove = n > generation || n < generation-2
+			} else if strings.HasPrefix(name, ".") && strings.HasSuffix(name, ".tmp") && validCICDEntityID(strings.TrimSuffix(strings.TrimPrefix(name, "."), ".tmp"), "o-") {
+				remove = true
+			} else {
+				return ErrCICDCorrupt
+			}
+			if !prune {
+				continue
+			}
+			file, err := openCICDChild(parent, name, os.O_RDONLY, false)
+			if err != nil {
+				return ErrCICDCorrupt
+			}
+			file.Close()
+			if prune && remove && os.Remove(cicdChildPath(parent, name)) != nil {
+				return ErrCICDCleanup
+			}
+		}
+		if prune && parent.Sync() != nil {
+			return ErrCICDCleanup
+		}
+	}
+	return nil
+}
 
 func CanonicalCICDJSON(data []byte) ([]byte, error) {
 	if !validateCICDJSONBytes(data) {
