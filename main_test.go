@@ -10984,7 +10984,7 @@ func developmentActionsWorkflowText(w developmentActionsWorkflow) string {
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "name: %s\n\non:\n  pull_request:\n    types: [opened, synchronize, reopened, ready_for_review]\n", w.Name)
-	if w.Phase == 18 {
+	if w.Phase == 12 || w.Phase == 18 {
 		b.WriteString("  workflow_dispatch:\n")
 	}
 	b.WriteString("  push:\n    branches:\n      - main\n\npermissions:\n  contents: read\n\nconcurrency:\n  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}\n  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n\ndefaults:\n  run:\n    shell: bash\n\njobs:\n")
@@ -11130,7 +11130,7 @@ func developmentActionsValidateGate(w developmentActionsWorkflow, input developm
 		}
 	case "workflow_dispatch":
 		ref := env["GITHUB_REF"]
-		if w.Phase != 18 || (!strings.HasPrefix(ref, "refs/heads/") && !strings.HasPrefix(ref, "refs/tags/")) || strings.HasSuffix(ref, "/") || strings.ContainsAny(ref, "\x00\r\n ") {
+		if (w.Phase != 12 && w.Phase != 18) || (!strings.HasPrefix(ref, "refs/heads/") && !strings.HasPrefix(ref, "refs/tags/")) || strings.HasSuffix(ref, "/") || strings.ContainsAny(ref, "\x00\r\n ") {
 			return fail("dispatch-checkout")
 		}
 	default:
@@ -11431,9 +11431,51 @@ func TestDevelopmentActionsGateControls(t *testing.T) {
 				input.Env["GITHUB_WORKFLOW_REF"] = "fqwink/Build-Scripts/.github/workflows/" + w.Name + ".yml@refs/heads/main"
 				input.Event = []byte(`{"ref":"refs/heads/main","after":"` + input.TestedSHA + `"}`)
 				_, err := developmentActionsValidateGate(w, input)
-				if (event == "push" || w.Phase == 18) != (err == nil) {
+				if (event == "push" || w.Phase == 12 || w.Phase == 18) != (err == nil) {
 					t.Fatalf("actions-control: event %s applicability: %v", event, err)
 				}
+			}
+			for _, refCase := range []struct {
+				name, ref string
+				valid     bool
+			}{
+				{"branch", "refs/heads/codex/phase19-inhouse-cicd", true},
+				{"tag", "refs/tags/V.1.0", true},
+				{"empty", "", false},
+				{"empty-branch", "refs/heads/", false},
+				{"empty-tag", "refs/tags/", false},
+				{"pr", "refs/pull/99/merge", false},
+				{"space", "refs/heads/invalid ref", false},
+				{"newline", "refs/heads/invalid\nref", false},
+			} {
+				t.Run("release.development-actions."+w.Name+".dispatch-"+refCase.name+".outcome", func(t *testing.T) {
+					input := fresh()
+					input.Env["GITHUB_EVENT_NAME"] = "workflow_dispatch"
+					input.Env["GITHUB_REF"] = refCase.ref
+					input.Env["GITHUB_WORKFLOW_REF"] = "fqwink/Build-Scripts/.github/workflows/" + w.Name + ".yml@" + refCase.ref
+					input.Event = []byte(`{"inputs":{}}`)
+					record, err := developmentActionsValidateGate(w, input)
+					allowed := (w.Name == "phase12-quality-gate" || w.Name == "phase18-vps-pull-bootstrap") && refCase.valid
+					if allowed {
+						if err != nil || record["source_sha"] != input.TestedSHA || record["tested_sha"] != input.TestedSHA || record["base_sha"] != nil || record["event"] != "workflow_dispatch" {
+							t.Fatalf("actions-control: dispatch accepted identity mismatch: %v", err)
+						}
+					} else if err == nil || err.Error() != "actions-gate:dispatch-checkout" {
+						t.Fatalf("actions-control: dispatch rejected outcome mismatch: %v", err)
+					}
+				})
+			}
+			canonicalTrigger := developmentActionsWorkflowText(w)
+			triggerAllowed := w.Name == "phase12-quality-gate" || w.Name == "phase18-vps-pull-bootstrap"
+			if strings.Contains(canonicalTrigger, "  workflow_dispatch:\n") != triggerAllowed {
+				t.Fatal("actions-control: dispatch trigger applicability mismatch")
+			}
+			changedTrigger := strings.Replace(canonicalTrigger, "  workflow_dispatch:\n", "", 1)
+			if changedTrigger == canonicalTrigger {
+				changedTrigger = strings.Replace(canonicalTrigger, "  push:\n", "  workflow_dispatch:\n  push:\n", 1)
+			}
+			if err := developmentActionsCheckWorkflow(w, changedTrigger); err == nil {
+				t.Fatal("actions-control: dispatch trigger drift accepted")
 			}
 			type gateCase struct {
 				name string
