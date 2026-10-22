@@ -44,10 +44,10 @@
 | 詳細仕様入口責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | **どこから読むか** | 詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口。 |
 | owner component 別詳細本文責務 | [`docs/details/*.md`](details/)。ただし [`docs/details/fixture.md`](details/fixture.md) と [`docs/details/production-validation.md`](details/production-validation.md) を除く。 | **どのように実装するか** | owner component 別の入出力、状態、処理順序、異常系、検証条件。 |
 | fixture 証跡責務 | [`docs/details/fixture.md`](details/fixture.md) | **何で検証するか** | fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件。 |
-| 本番検証詳細本文責務 | [`docs/details/production-validation.md`](details/production-validation.md) | **本番同等で何を検証するか** | ConoHa VPS 試験本番運用、本番環境同等検証、本番検証、VPS simulation、provider target、opaque environment identity、credential / SSH 入力境界、試験本番運用窓・停止条件、destructive operation 禁止境界、運用中バグ修正順序、VPS Pull Bootstrap、bootstrap session、運用証跡、fixture 証跡への接続条件。 |
+| 本番検証詳細本文責務 | [`docs/details/production-validation.md`](details/production-validation.md) | **本番同等で何を検証するか** | ConoHa VPS 試験本番運用、本番環境同等検証、本番検証、VPS simulation、provider target、opaque environment identity、credential / SSH 入力境界、試験本番運用窓・停止条件、destructive operation 禁止境界、運用中バグ修正順序、VPS Pull Bootstrap、bootstrap session、内製 CI/CD 運用検証、運用証跡、fixture 証跡への接続条件。 |
 | デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) | **どう見せるか** | 生成静的 Web サイトと標準管理 UI のデザイン関係。 |
 | 文書・実装ファイル所在の索引責務 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | **どこにあるか** | 文書、実装ファイル、testdata、未作成 path の所在。 |
-| 利用入口責務 | [`README.md`](../README.md) | **どう始めるか** | 利用者向け入口、概要、参照先。 |
+| 利用入口責務 | [`README.md`](../README.md)、[`CONTRIBUTING.md`](../CONTRIBUTING.md)、[`SECURITY.md`](../SECURITY.md) | **どう始めるか・参加するか・報告するか** | READMEは利用者向け入口・概要、CONTRIBUTINGは開発参加の参照入口、SECURITYはセキュリティ報告の参照入口。 |
 
 新しい記載内容は「この内容はどの責務の問いに答えるか」を基準に、責務を持つ正本を決定する。
 
@@ -96,9 +96,9 @@ Adlaire CI は、Markdown からの静的 Web サイト生成、source 変更検
 | データベース | なし（ファイルベース） |
 | Git・GitHub 参照 | `runner` の source 取得は GitHub REST API の Blobs / Trees API を Go 標準ライブラリ `net/http` 経由で行う。`release` の local commit / tag / source 参照は read-only Git command、remote repository / branch / tag / Release 参照は GitHub REST API を使用する。実行時の Git 状態変更、ref 作成・更新・削除、fetch、checkout、merge、commit、push は行わない。 |
 | フロントエンド | HTML / CSS / Vanilla JavaScript |
-| JavaScript 検証ランタイム | JavaScript 系実装 artifact の構文・型検証は Deno stable runtime を標準とする。Node.js、npm、bundler、transpiler を標準検証ランタイムとして使用しない。Deno は検証ランタイムであり、Adlaire CI の production dependency、配布物同梱 dependency、外部ライブラリ許可条件として扱ってはならない。 |
+| JavaScript 検証ランタイム | JavaScript 系実装 artifact の構文・型検証は Deno stable runtime を標準とする。bundler、transpiler を標準検証ランタイムとして使用しない。Node 関連の適合性は [`docs/SPEC.md` ポリシー責務 §4a Node 全面禁止契約](SPEC.md#policy-node-runtime-ban) を正本とする。Deno は検証ランタイムであり、Adlaire CI の必須 production dependency、配布物同梱 dependency、外部ライブラリ許可条件として扱ってはならない。明示cicd-v1の任意deno-check capabilityだけは利用者が別途導入したDenoで検証jobを実行できる。許可argvと能力検査はrunner/setup詳細本文責務を参照する。 |
 | 標準運用 | systemd を使用する自己管理 Linux CI/CD サーバーと静的サイト配信サーバーの 2 台構成を標準とする。最小運用では [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](details/production-validation.md#phase-18-vps-pull-bootstrap-contract) に従い、1 台 VPS の `single-node` 構成を許可する。 |
-| データ交換形式 | 構造化 API request / response、Adlaire CI が読み書きまたは解釈する状態ファイル、設定ファイル、build 拡張設定は JSON に統一し、YAML・CSV・XML 等の代替構造化形式を使用しない。この禁止は Adlaire CI の runtime / API / state / build 定義に適用し、GitHub Actions / GitHub workflow の `.github/workflows/*.yml` / `.github/workflows/*.yaml` は対象外とする。例外は、保存済み build log の有限 SSE response、保存済み snapshot の binary response、管理ツールの静的 asset response だけとする。例外となる endpoint、media type、body、失敗時 JSON response は [`docs/details/api.md`](details/api.md) 詳細本文責務、SDK の受信・変換契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする。詳細本文責務に明示されていない非 JSON API 交換、状態設定、build 定義を実装してはならない |
+| データ交換形式 | 構造化 API request / response、Adlaire CI が読み書きまたは解釈する状態ファイル、設定ファイル、build 拡張設定は JSON に統一し、YAML・CSV・XML 等の代替構造化形式を使用しない。この禁止は Adlaire CI の runtime / API / state / build 定義に適用し、GitHub Actions / GitHub workflow の `.github/workflows/*.yml` / `.github/workflows/*.yaml` は対象外とする。例外は、保存済み build log の有限 SSE response、保存済み snapshot の binary response、管理ツールの静的 asset response、明示cicd-v1のsite専用modeの静的配信、および [`docs/details/api.md` 詳細本文責務 §27.53](details/api.md#sec-27-53) の metrics text、[§27.56](details/api.md#sec-27-56) の SVG badge、[§27.66](details/api.md#sec-27-66) の管理event SSE responseだけとする。これらの例外は応答表現に限定し、非JSON request/state/configの採用や対象機能の実装着手を許可しない。SSH framingはJSON Linesとbase64、SSH鍵入力、署名/配布checksum、archive payload、OS unitは各owner正本が固定した非JSON形式に限る。例外となる endpoint、media type、body、失敗時 JSON response は [`docs/details/api.md`](details/api.md) 詳細本文責務、SDK の受信・変換契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする。詳細本文責務に明示されていない非 JSON API 交換、状態設定、build 定義を実装してはならない |
 
 <a id="41-ゼロ依存フルインハウス原則"></a>
 
@@ -236,7 +236,7 @@ owner component は対象機能の詳細本文を持つ。collaborator component
 
 owner component と実装 artifact は別の判断対象とする。owner component は機能契約の責務境界であり、単独の実装ファイルが存在することを意味しない。実装 artifact は [`main.go`](../main.go)、`components/<owner>/` 配下の Go file、`admin/*`、実行バイナリ、配布物、または運用実行物のように、リポジトリまたはリリースで実在と実行可否を確認できる対象をいう。owner component が持つ機能の現在状態を、同名の実装 artifact が存在するという理由だけで判定してはならない。
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、実装 artifact の現在状態と owner component が持つ機能の現在状態を区別して記録する。単独の専用 Go 実装 artifact を持たない `admin`、`statefile`、`archive`、`commitstatus`、`security` の owner component は、機能インベントリの現在状態で管理する。実装 artifact の path、起動名、入力 interface のいずれかが必要であるにもかかわらず未定義の機能は、実装可能な仕様として扱ってはならない。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、実装 artifact の現在状態と owner component が持つ機能の現在状態を区別して記録する。各 owner component の機能は機能インベントリで管理し、専用 Go 実装 artifact の有無は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 実装ファイル一覧](DOCUMENT_INDEX.md#実装ファイル一覧) で別に確認する。実装 artifact の path、起動名、入力 interface のいずれかが必要であるにもかかわらず未定義の機能は、実装可能な仕様として扱ってはならない。
 
 [責務文書構成表](#document-responsibility-map) の owner component 別詳細本文責務で [`docs/details/*.md`](details/) を総称として参照する場合でも、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を含めて読んではならない。
 
@@ -416,7 +416,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 
 [`main.go`](../main.go) は 1 ファイルとし、起動入口、実行ファイル名の exact 判定、引数受け取り、binary version 注入値の受け渡し、対象 owner component 呼び出しだけを担当する。[`main.go`](../main.go) に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、setup、release、MCP 処理の実装詳細を書いてはならない。未知の実行ファイル名を既定 owner component へ fallback してはならない。
 
-`components/` の配置は owner package 配置を示す。Go 実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は `admin/` 配下の静的配布物と、CLI 管理クライアント用の `components/admin/` を所有する責務境界として扱う。`setup` と `release` の標準 Go 実装 artifact はそれぞれ `components/setup/` と `components/release/` とする。`statefile`、`archive`、`commitstatus`、`security` は Phase 12 で owner package として実在化済みの責務境界である。`mcp` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。`obsidian` は Phase 14 で owner package として実在化済みであり、Phase 15 では同じ owner package の同期機能拡張として扱う。所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+`components/` の配置は owner package 配置を示す。Go 実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は `admin/` 配下の静的配布物と、CLI 管理クライアント用の `components/admin/` を所有する責務境界として扱う。`setup` と `release` の標準 Go 実装 artifact はそれぞれ `components/setup/` と `components/release/` とする。`statefile`、`archive`、`commitstatus`、`security` は独立した owner package を標準配置とする。`mcp` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。`obsidian` は vault 連携と同期を同じ owner package に配置する。所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
 Phase 12 完了後の Go 実装標準配置は owner component package とし、`main.go` は 1 ファイル固定、各標準 Go owner package は 5 ファイル固定とする。5 ファイル固定は例外禁止であり、実装量、Go 慣習、既存巨大ファイル、共通化希望、テスト都合、将来拡張を理由に 6 ファイル目、補助 package、`helper.go`、`utils.go`、`common.go`、`misc.go`、責務外の集約ファイル、または owner 以外の逃がし先を作ってはならない。5 ファイルに収まらない場合は、ファイル数を増やさず、owner component の責務分割または仕様分割を先に行う。
 
@@ -619,11 +619,16 @@ GitHub Actions は、本リポジトリの開発全般における自動化と�
 
 GitHub Actions は、Adlaire CI production runtime の外部依存、Adlaire CI runner の代替実装、内製 CI/CD の代替、または利用者環境の必須実行基盤として扱ってはならない。内製ランナーの起動方式、pipeline 実行方式、secret 参照、変更検出、通知、転送、deploy、rollback は [`docs/details/runner.md`](details/runner.md) 詳細本文責務、[`docs/details/setup.md`](details/setup.md) 詳細本文責務、[`docs/details/release.md`](details/release.md) 詳細本文責務を正本とする。
 
-GitHub Actions workflow は YAML 禁止の対象外である。ただし、workflow から読み書きする Adlaire CI の入力、出力、fixture、expected、record、state、設定、診断出力は JSON / JSON Lines 契約に従う。
+GitHub Actions workflow と Adlaire CI のデータ形式の適用境界は [`docs/SPEC.md` 方針責務 §4 技術方針表](SPEC.md#direction-technical) を正本とする。command の stdout / stderr、検証 record、診断の具体形式は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 参照表](DETAIL_INDEX.md#0b-詳細仕様参照表) と [横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) から各責務正本を参照する。ここで形式条件を再掲して共通 CLI や開発検証の出力契約を置き換えない。
 
 Phase 19 は内製 CI 強化と内製 CD を同一 Phase として扱う。Phase 19 を CI と CD の別 Phase に分割してはならない。Phase 20 は内製 IaC を扱う後続 Phase とし、Terraform または外部 IaC tool を production 実装依存として採用する前提で仕様化してはならない。
 
 Phase 19 と Phase 20 の仕様全般策定は Phase 18 完了前でも行える。ただし、Phase 19 または Phase 20 の実装着手、実装 PR、完了判定は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で active Phase として明示され、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の active Phase 条件を満たすまで禁止する。
+
+<a id="direction-inhouse-cicd"></a>
+**内製 CI/CD 拡張方針：**
+
+内製 CI/CD は、source から配備・復旧までの追跡性を高め、project と実行対象が増えた場合の運用負荷と障害復旧時間を減らすために拡張する。採用範囲と順序は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](ROADMAP.md#phase-19-planning-scope)、責務別の入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 19 内製 CI/CD 強化参照](DETAIL_INDEX.md#phase-19-inhouse-cicd-entry)、必須安全境界は [`docs/SPEC.md` ポリシー責務 §0i](SPEC.md#policy-inhouse-cicd) を参照する。
 
 <a id="direction-management-tools"></a>
 
@@ -819,7 +824,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | `責務正本未確定` | 正本分担の判断は [`docs/SPEC.md` 責務文書構成表](SPEC.md#document-responsibility-map) を `canonical_responsibility` とする。 |
 | `状態不整合` | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を `canonical_responsibility` とする。 |
 | `索引不整合` | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を `canonical_responsibility` とする。 |
-| `詳細仕様不足` | 不足している実装契約を所有する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を `canonical_responsibility` とする。 |
+| `詳細仕様不足` | 不足している契約を所有する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、または本番検証の詳細契約については [`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務を `canonical_responsibility` とする。選択は [責務文書構成表](#document-responsibility-map) の問いに従い、fixture証跡schemaの不足と混同しない。 |
 | `fixture 証跡不足` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を `canonical_responsibility` とする。 |
 | `デザイン責務混入` | [`docs/DESIGN.md`](DESIGN.md) デザイン責務を `canonical_responsibility` とする。 |
 | `作業ルール混入` | [`AGENTS.md`](../AGENTS.md) 最上位ルールブックを `canonical_responsibility` とする。 |
@@ -888,7 +893,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | 詳細仕様 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務から対象機能の owner component 詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達でき、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に入力、出力、状態、処理順序、異常系、検証条件が明記されている。 |
 | 必須項目 | [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) を満たしている。 |
 | 完全仕様詳細化 | [`docs/SPEC.md` ポリシー責務 §0 完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) を満たしている。 |
-| 対応表 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)〜[§0i.5](DETAIL_INDEX.md#0i5-setup--release) の詳細節対応表に対象機能が記載され、参照先の owner component 詳細本文と fixture 証跡の対象が一致している。 |
+| 対応表 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i 全詳細節対応表](DETAIL_INDEX.md#0i-詳細節対応表)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 19 owner 対応表](DETAIL_INDEX.md#phase-19-owner-route)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 20 入口](DETAIL_INDEX.md#phase-20-inhouse-iac-entry) のうち対象機能の profile / Phase に対応する入口に記載され、参照先の owner component 詳細本文と fixture 証跡の対象が一致している。 |
 | 横断整合 | API、SDK、UI、状態ファイル、セットアップ、受け入れ条件が矛盾していない。 |
 | 未確定事項 | 実装者が設計判断、仕様補完、例外判断、検証条件の推測、既存実装への後追い合わせを行う余地が残っていない。 |
 | 変更境界 | 実装 PR で変更してよい範囲と変更してはならない範囲が明確である。 |
@@ -1057,7 +1062,7 @@ coverage は参考指標に限る。line coverage、branch coverage、function c
 
 | 判断対象 | 必須条件 |
 |----------|----------|
-| Action 依存 | 外部 Action と外部 reusable workflow は、提供元、利用理由、処理内容、必要権限、保守・更新・削除方針を確認して承認し、完全な commit SHA に固定する。参照先の依存も確認し、tag / branch / `latest` へ置換しない。許可は開発基盤の用途に限定し、外部解析サービス、実装ライブラリ、production 依存の追加許可へ拡張しない。 |
+| Action 依存 | 依存 runtime の採否は [`docs/SPEC.md` ポリシー責務 §4a Node 全面禁止契約](SPEC.md#policy-node-runtime-ban) を先に適用する。その適合を満たす外部 Action と外部 reusable workflow だけを、提供元、利用理由、処理内容、必要権限、保守・更新・削除方針を確認して承認し、完全な commit SHA に固定する。参照先の依存も確認し、tag / branch / `latest` へ置換しない。許可は開発基盤の用途に限定し、外部解析サービス、実装ライブラリ、production 依存の追加許可へ拡張しない。 |
 | 最小権限 | workflow の `GITHUB_TOKEN` は原則 `contents: read` とし、不要な権限を与えない。書込み、公開、配備、認証連携の追加権限は必要な job だけに限定する。環境別に credential を分離し、秘密値を workflow 本文、入力例、log、cache、artifact、fixture、PR 本文へ保存しない。mask だけで漏えい防止済みとは判定せず、漏えい時は停止、失効・再発行、影響確認を行う。 |
 | 未信頼コード | fork、外部 Pull Request、その他未信頼 ref は、secret・書込み権限・機密ネットワーク接続を持たない GitHub-hosted runner で検証する。self-hosted runner では実行しない。`pull_request_target` / `workflow_run` 等の権限付き文脈で未信頼コードを checkout・実行しない。event の文字列を shell / script へ直接展開せず、入力検証と data としての受渡しを行う。 |
 | self-hosted 隔離 | runner group または同等の対象 repository / job 制限で信頼済みコード専用の割当を設定し、label だけを信頼判定に使わない。日常作業端末、production credential、機密ネットワークから分離し、job ごとに使い捨ての実行環境または同等の清浄化を保証する。共用 workspace、credential、process、cache、network 接続を次 job へ残さない。environment 承認だけを隔離保証にしない。 |
@@ -1071,6 +1076,31 @@ coverage は参考指標に限る。line coverage、branch coverage、function c
 GitHub Actions 障害、runner 不足、ネットワーク障害をローカル成功で正式合格へ置換してはならない。例外は、対象必須項目、理由、同じ要求を満たす代替証跡、責任者、期限、復旧・再実行条件、完了可否への影響について事前に `承認` を得た場合に限る。代替が要求を満たさない場合、承認の有無にかかわらず対象完了判定は未完了とする。secret 境界、未信頼コードの隔離、SHA 一致、変更履歴 artifact 禁止を例外で解除してはならない。
 
 本節の文書策定完了と運用適用完了は別判定とする。運用適用では、実在 workflow、required check / 保護設定、使用する runner、権限、artifact、実行証跡を照合し、適用差分を既存 Pull Request に記録して閉じる。未設定・未検証項目が残る段階を本節準拠、運用適用済み、または新基準による正式合格として報告してはならない。workflow / runner / GitHub 設定の適用変更は、文書改訂の承認だけで実行しない。
+
+<a id="policy-inhouse-cicd"></a>
+
+## 0i. 内製 CI/CD 安全境界契約
+
+本節は内製 CI/CD 拡張の設計判断に適用する。詳細化対象は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](ROADMAP.md#phase-19-planning-scope)、実装可否は [`docs/SPEC.md` ポリシー責務 §0a](#policy-spec-maturity)、[§0d](#policy-spec-freeze)、[§0f](#policy-phase-unit) を正本とする。本節および各 owner の Phase 19 策定本文は、現行の builder 専用経路、oneshot 起動、既存 API、既存状態 schema、Release asset 一覧を暗黙に置換するものではない。新しい経路は明示profile `cicd-v1` だけに適用し、以下のprofile境界と各owner正本を合わせて使用する。
+
+| profile | 適用と互換境界 |
+|---|---|
+| legacy-v1（既存・default） | 本節のPhase19 anchor外の既存runner oneshot、builder専用pipeline、単一管理者、Release固定集合を維持する。既存入力からcicd-v1を推測起動しない。追加管理の明示認証拡張だけは [security詳細本文責務のmulti-user-v1移行](details/security.md#multi-user-migration-contract) を使用し、実行profile/Release集合を変更しない。 |
+| cicd-v1（明示選択） | 各ownerのPhase19 anchorで定義したdaemon coordinator、SSH worker/site-agent、登録executor、複数identity、専用API/site mode、署名付きReleaseを適用する。共通禁止事項を解除しない。移行・復旧はsetup/statefile正本、endpointとstatic modeの分離はapi正本。 |
+
+既存節のoneshot/固定asset数/単一userという条件はlegacy-v1に適用する。cicd-v1が既存節を参照する時は明示された共通algorithm/既定値だけを利用し、異なるprofileの処理を混在させない。機能実装の着手承認・active Phase設定は仕様成熟度と別に判定する。
+
+| 判断対象 | 必須境界 |
+|----------|----------|
+| 計画と実行 | 入力検証と実行計画の確定前に、ジョブ起動、配備、承認消費を行ってはならない。プレビューは実行予約ではなく、実行時に対象 revision と権限を再確認する。 |
+| 実行方式 | 汎用ジョブ化は追加 executor の採用判断として扱う。未登録の実行方式、任意 shell、外部 plugin を既存経路へ混入させてはならない。登録条件と正規化済み argv を runner 正本で固定する。 |
+| 隔離 | 利用者コードの実行に必要な OS 隔離、資源制限、秘密情報・通信の境界を確認できない環境では実行を拒否する。Go の使用、専用 directory、runner label だけを sandbox の証拠にしない。 |
+| 成功確定 | API 受付、queue 登録、command 終了、転送終了だけで配備・復旧成功を確定してはならない。実体の整合、切替、health、必須状態保存の結果を判断へ含める。 |
+| 不確定結果 | 通信断・process crash により外部副作用の成否が不明な場合、無条件再送で解消してはならない。照合可能な操作 ID と世代を用い、照合不能なら後続配備を停止する。外部操作全体の exactly-once を保証したと表記しない。 |
+| 配備方式 | 無停止、旧新版併存、一部利用者への先行配備は、通信切替の管理主体、必要容量、health、切戻しを固定できる構成だけで扱う。構成条件を満たさない環境へ自動で代替方式を選ばない。 |
+| 証明の範囲 | digest 一致、署名、SBOM、再現性はそれぞれ別の検証対象とする。一つの成功で他の成功、脆弱性不存在、第三者基準への適合を推定してはならない。 |
+
+開発自動化との分離は [`docs/SPEC.md` 方針責務 §5.3](#sec-5-3)、依存採否は [方針責務 §4.1](#sec-4-1) と [ポリシー責務 §4](#policy-dependencies)、Node 適合は [ポリシー責務 §4a](#policy-node-runtime-ban)、変更記録は [変更履歴 artifact 禁止契約](#policy-change-history-artifact-ban) を参照する。本節をこれらの例外許可として使用してはならない。
 
 <a id="policy-versioning"></a>
 
@@ -1126,9 +1156,9 @@ GitHub Actions 障害、runner 不足、ネットワーク障害をローカル�
 | リリース形式 | バイナリ配布を標準とする。利用者は GitHub Release から OS/arch 別の実行バイナリを取得し、ソースからのビルドを標準導入手順に含めない |
 | バイナリバージョン | Release 用実行バイナリ asset の `--version` が、バイナリ名に続く第 2 token として tag と同一のリリースバージョンを返す。`V.0.0-dev`、tag と不一致の値、未注入値を含む実行バイナリ asset は公開禁止とする |
 | 標準 OS/arch | 初期標準は Linux x86_64（`linux-amd64`）とする。追加 OS/arch は将来のリリース対象として個別に仕様化する |
-| 添付ファイル | builder、runner、管理API、setup、管理 CLI、MCP、Obsidian CLI の各`linux-amd64`実行バイナリ、管理UI archive、checksum manifestの9件だけを添付する。exact asset名と生成条件は[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)と[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](details/release.md#phase-15-obsidian-release-extension-contract)を正本とする。`adlaire-ci-release`、生成静的Webサイト、debug binaryをRelease assetとして添付しない |
+| 添付ファイル | builder、runner、管理API、setup、管理 CLI、MCP、Obsidian CLI の各`linux-amd64`実行バイナリ、管理UI archive、checksum manifestの9件をlegacy-v1で添付する。明示cicd-v1の集合は[`docs/details/release.md` 詳細本文責務 Phase19](details/release.md#phase-19-release-contract)を正本とする。exact asset名と生成条件は[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)と[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](details/release.md#phase-15-obsidian-release-extension-contract)を正本とする。`adlaire-ci-release`、生成静的Webサイト、debug binaryをRelease assetとして添付しない |
 | 管理 UI 配布物 | 管理UIは実行バイナリと分離した単独のarchive assetとして全安定版Releaseへ添付する。exact asset名と生成条件は[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)、archive内容は[`docs/details/admin.md` 詳細本文責務 §A1](details/admin.md#a1-管理-ui-静的ファイル境界)、setup側の安全検証は[`docs/details/admin.md` 詳細本文責務 §A2](details/admin.md#a2-管理-ui-archive-検証)を正本とする |
-| checksum | checksum manifest 自身を除く全 Release asset の SHA-256 checksum を checksum manifest で提供する。checksum manifest 自身を再帰的な checksum 対象にしてはならない。exact asset 名、生成形式、公開前検証は [`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract) を正本とし、受け入れ・配置前検証は [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a) を正本とする |
+| checksum | legacy-v1ではchecksum manifest 自身を除く全 Release asset の SHA-256 checksum を checksum manifest で提供する。cicd-v1の署名による自己参照回避と対象集合は[`docs/details/release.md` 詳細本文責務 Phase19](details/release.md#phase-19-release-contract)を正本とする。checksum manifest 自身を再帰的な checksum 対象にしてはならない。exact asset 名、生成形式、公開前検証は [`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract) を正本とし、受け入れ・配置前検証は [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a) を正本とする |
 | プレリリースフラグ | 安定版リリースでは `Pre-release` にチェックを入れない |
 | ドラフト公開禁止 | Draft Release のまま公開しない |
 
@@ -1225,6 +1255,20 @@ GitHub Actions 障害、runner 不足、ネットワーク障害をローカル�
 
 ---
 
+<a id="policy-node-runtime-ban"></a>
+
+## 4a. Node 全面禁止契約
+
+本リポジトリに関する作業と管理対象の実行経路では、Node.js / Node runtime の使用、起動、導入、ダウンロード、同梱、配布、直接依存、間接依存を、バージョンと用途を問わず、いかなる条件下でも禁止する。例外はない。production、開発、調査、debug、検証、テスト、fixture harness、build、setup、release、配備、運用、一時利用、障害時代替、エージェントの作業用 command に同じ禁止を適用する。
+
+`node` / `nodejs`、Node を必要とする `npm` / `npx` / `pnpm` / `yarn` / `corepack`、Node 専用 API / CommonJS、Deno の `node:` / `npm:` import と Node 互換機能への依存、Node を起動する installer / script / container / 開発用 tool、JavaScript Action、composite Action または reusable workflow の内部・再帰依存も禁止対象とする。公式提供、一般的な利用、SHA 固定、推移的利用、利用者から見えない内部処理、承認済み、利便性、速度、検証用、短期間、緊急対応を禁止の解除理由にしてはならない。作業承認と開発基盤の障害時例外は、この禁止を解除しない。
+
+利用可能な runtime と標準 command は [`docs/SPEC.md` 方針責務 §4 技術方針表](SPEC.md#direction-technical) と該当責務正本による。JavaScript という言語、browser 標準 API、DOM の node、禁止説明、検出用文字列、実行しない負例データを Node runtime の利用と混同して削除してはならない。一方、名称変更、PATH からの隠蔽、警告の抑制、別 tool の内部への移動を排除の証拠にしてはならない。
+
+導入前と正式検証前に、hidden path、実行 command、配布物、runtime 準備、workflow / Action / reusable workflow とその依存を確認する。未確認・判定不能の依存経路は使用しない。違反または未確認項目が残る経路を起動、再実行、正式合格または本契約準拠として報告してはならない。証跡、正例・負例、再混入検査と準備処理の固定入力は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) の Node 非依存開発検証契約を参照する。
+
+GitHub Actions を開発基盤として使用する方針は継続する。管理対象 job が Node を起動・導入・依存しないことを検証し、GitHub 管理ホスト全体の未使用ソフトウェアの不存在を、その検証結果から推定してはならない。
+
 <a id="policy-runner-secrets"></a>
 
 ## 5. CI ランナー秘密情報・公開境界ポリシー
@@ -1234,12 +1278,21 @@ GitHub Actions 障害、runner 不足、ネットワーク障害をローカル�
 - PAT の GitHub repository permission と API 呼び出し条件は [`docs/details/runner.md` 詳細本文責務 §17](details/runner.md#17-github-連携前提) と [`docs/details/commitstatus.md` 詳細本文責務 §27.1](details/commitstatus.md#sec-27-1)、保存 path と file 境界は [`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、読み取り、mask、漏えい禁止は [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/security.md`](details/security.md) 詳細本文責務を正本とする
 - ランナーは外部公開エンドポイントを持たない。サーバーから GitHub API への送信のみで動作する
 
+<a id="policy-security-reporting"></a>
+**セキュリティ報告・保守対象：**
+
+本契約は本リポジトリへの脆弱性報告とsecret漏えい対応に適用する。正式リリース前のsecurity修正対象は現在のmainおよび明示されたactive release-candidate作業とし、release branchへの対応は [docs/ROADMAP.md 状態・計画責務](ROADMAP.md#roadmap-phase-plan) で当該branchが明示された場合に限る。入口は [SECURITY.md 利用入口責務](../SECURITY.md) を参照する。
+
+脆弱性の詳細、exploit payload、private infrastructureの情報、secretをpublic issueへ公開してはならない。GitHub private vulnerability reportingが本repositoryで利用可能なら同channelを使用する。利用できない場合は機密を含まない概要だけのpublic issueでownerへprivate handoff channelを依頼し、非公開経路の確定前に再現用の秘密情報を送らない。
+
+漏えい報告は影響artifactと必要な失効・rotation境界を特定し、credential/token/private key/session値/機密配備pathを再掲しない。修正の対象は該当責務正本から判断し、仕様・実装・検証・証跡・公開入力の整合を必要とする。完了判定は [docs/SPEC.md ポリシー責務 §0g](#policy-meaningful-test)、検証入口は [docs/DETAIL_INDEX.md 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) を適用する。公開時の告知入力と変更記録の所在は [docs/SPEC.md ポリシー責務 変更履歴artifact禁止契約](#policy-change-history-artifact-ban) を参照する。
+
 <a id="policy-runner-execution"></a>
 
 ## 6. CI ランナー実行境界ポリシー
 
 - 変更がない場合はビルドをスキップしなければならない
-- `adlaire-ci-runner` は oneshot 実行とし、多重実行を防止しなければならない
+- legacy-v1の`adlaire-ci-runner` は oneshot 実行とし、多重実行を防止しなければならない。明示cicd-v1の起動は[ポリシー責務 §0i](#policy-inhouse-cicd)を適用する
 - 成功、失敗、再試行、状態更新、ログ記録の具体条件は [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする
 
 ## 7. CI ランナー branch target ポリシー
@@ -1285,6 +1338,7 @@ SDK の実装言語と技術は [`docs/SPEC.md` 方針責務 §4 技術方針表
 [`docs/SPEC.md` ポリシー責務 §11](SPEC.md#policy-single-user-auth) は、管理 API サーバーおよび標準管理ツールに適用する。
 
 - 初期構成の既定はシングルユーザーとする。マルチユーザー対応の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様は [`docs/details/security.md`](details/security.md) を正本とする
+- 追加管理のmulti-user-v1は既存実行profileに対する明示認証拡張であり、cicd-v1のidentity/grantとの共用・自動変換を禁止する。移行・token/TOTP・OIDCの処理本文は [security詳細本文責務](details/security.md#multi-user-migration-contract)、保存型は [statefile詳細本文責務](details/statefile.md#multi-user-profile-state) を正本とする。
 - 初期認証、初回変更、強制変更、session、保存形式の具体条件は [`docs/details/api.md`](details/api.md) 詳細本文責務と [`docs/details/security.md`](details/security.md) 詳細本文責務を正本とする
 - パスワードは平文保存禁止とし、保存が必要な認証情報はハッシュ化または secret として扱う
 

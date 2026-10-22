@@ -3,19 +3,46 @@
 [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は、Build-Scripts リポジトリ内の文書、実装ファイル、テスト、fixture、未作成 path の所在だけを示す索引である。方針、状態定義、現在状態、実装詳細、デザイン、検証契約は本文として定義しない。
 
 <a id="索引責務の使い方"></a>
+<a id="future-management-artifact-location"></a>
+**追加管理・IaC仕様所在：**
+
+| artifact / 判断対象 | 所在 | 実在区分 |
+|---|---|---|
+| 明示認証移行・user token/TOTP・OIDC | [security詳細本文責務](details/security.md#multi-user-migration-contract)、[API HTTP境界](details/api.md#oidc-http-contract)、[SDK transport](details/sdk.md#oidc-sdk-transport)、[UI操作](details/ui.md#oidc-ui-flow) | 実在 |
+| 認証起動情報/本人情報・UI bootstrap | [API起動情報](details/api.md#auth-options-http-contract)、[API本人情報](details/api.md#auth-self-http-contract)、[UI bootstrap](details/ui.md#ui-auth-bootstrap) | 実在 |
+| 認証profile/失効復旧状態・project対応 | [statefile詳細本文責務](details/statefile.md#multi-user-profile-state)、[project binding](details/statefile.md#additional-project-binding) | 実在 |
+| 再送ledger・consumer・復旧 | [statefile詳細本文責務](details/statefile.md#manual-webhook-resend-state)、[runner詳細本文責務](details/runner.md#manual-webhook-resend-contract) | 実在 |
+| 内製IaC manifest/CLI/復旧・状態 | [docs/details/setup.md 詳細本文責務](details/setup.md#inhouse-iac-contract)、[plan意味整合・受付時刻](details/setup.md#inhouse-iac-admission)、[rollback状態別受付](details/setup.md#inhouse-iac-rollback-admission)、[docs/details/statefile.md 詳細本文責務](details/statefile.md#inhouse-iac-state) | 実在 |
+| IaC固定具体入力 / checker | [docs/details/fixture.md fixture証跡責務](details/fixture.md#inhouse-iac-concrete-oracles)、[適用受付境界入力](details/fixture.md#inhouse-iac-admission-vectors)、[main_test.go](../main_test.go) の `TestAdditionalIaCSpecificationVectors` / `TestIaCSpecificationAdmissionVectors` | 実在 |
+| IaC検証root | `testdata/setup/inhouse-iac/` | 未作成 |
+| OIDC固定暗号vector / checker | [基準vector](details/fixture.md#oidc-fixed-vector)、[再署名50case](details/fixture.md#oidc-signed-claim-vectors)、[HTTP具体oracle](details/fixture.md#oidc-http-concrete-oracles)、[main_test.go](../main_test.go) の `TestAdditionalSpecificationVectors` / `TestAdditionalOIDCSignedClaimVectors` | 実在 |
+| streaming log / Log保存 / page / 文書checker | [docs/details/runner.md 詳細本文責務](details/runner.md#phase-19-streaming-log-contract)、[docs/details/statefile.md 詳細本文責務](details/statefile.md#phase-19-log-invariants)、[docs/details/api.md 詳細本文責務](details/api.md#phase-19-log-page-contract)、[docs/details/fixture.md fixture証跡責務](details/fixture.md#phase-19-log-boundary-vectors)、[main_test.go](../main_test.go) の `TestPhase19LogSpecificationVectors` | 実在 |
+| 固定文書vectorのcase閉包checker | [docs/details/fixture.md fixture証跡責務 case閉包検査](details/fixture.md#specification-vector-case-integrity)、[main_test.go](../main_test.go) の `TestSpecificationVectorCaseIntegrity` と6decoder | 実在（文書検証のみ） |
+| vector registry・実行対象の独立照合checker | [docs/details/fixture.md fixture証跡責務 registry・実行対象照合](details/fixture.md#specification-vector-registry-integrity)、[main_test.go](../main_test.go) の `TestSpecificationVectorRegistryIntegrity` / `TestSpecificationVectorExecutionIntegrity` | 実在（文書検証のみ） |
+| operation受付・内部進行・GCの文書入力とchecker | [docs/details/api.md 詳細本文責務](details/api.md#phase-19-operation-admission)、[docs/details/statefile.md 詳細本文責務](details/statefile.md#phase-19-operation-lifecycle)、[docs/details/fixture.md fixture証跡責務](details/fixture.md#phase-19-operation-vectors)、[main_test.go](../main_test.go) の `TestPhase19OperationSpecificationVectors` | 実在（文書oracleのみ。製品処理は未実装） |
+| 型付き入力・固定Plan・matrix・DAG・triggerの文書入力とchecker | [docs/details/runner.md 詳細本文責務](details/runner.md#phase-19-plan-selection)、[docs/details/statefile.md 詳細本文責務](details/statefile.md#phase-19-plan-state-invariants)、[docs/details/fixture.md fixture証跡責務](details/fixture.md#phase-19-plan-vectors)、[main_test.go](../main_test.go) の `TestPhase19PlanSpecificationVectors` | 実在（文書oracleのみ。製品処理は未実装） |
+| worker ACK・chunk・leaseの文書入力とchecker | [docs/details/runner.md 詳細本文責務](details/runner.md#phase-19-worker-protocol)、[docs/details/statefile.md 詳細本文責務](details/statefile.md#phase-19-worker-state-identity)、[docs/details/fixture.md fixture証跡責務](details/fixture.md#phase-19-worker-vectors)、[main_test.go](../main_test.go) の `TestPhase19WorkerSpecificationVectors` | 実在（文書oracleのみ。製品通信・brokerは未実装） |
+| artifact/cache envelope・downloadの文書入力とchecker | [docs/details/archive.md 詳細本文責務](details/archive.md#phase-19-archive-envelope)、[docs/details/api.md 詳細本文責務](details/api.md#phase-19-artifact-download)、[docs/details/fixture.md fixture証跡責務](details/fixture.md#phase-19-content-vectors)、[main_test.go](../main_test.go) の `TestPhase19ContentSpecificationVectors` | 実在（文書oracleのみ。製品処理は未実装） |
+| badge視覚 | [DESIGNデザイン責務](DESIGN.md#status-badge-visual-contract) | 実在 |
+
+<a id="document-index-common-reference"></a>
 **所在確認対象と参照先：**
 
 | 確認対象 | 参照先 |
 |----------|--------|
 | 作業ルール | [`AGENTS.md`](../AGENTS.md) |
+| 開発参加の参照入口 / セキュリティ報告の参照入口 | [`CONTRIBUTING.md`](../CONTRIBUTING.md)、[`SECURITY.md`](../SECURITY.md)。報告ポリシーの正本は [docs/SPEC.md ポリシー責務 §5](SPEC.md#policy-security-reporting) |
 | 開発 GitHub Actions 方針・ポリシーの所在 | [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3)、[`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](SPEC.md#policy-development-actions) |
 | 開発 GitHub Actions 作業手順の所在 | [`AGENTS.md` 開発 GitHub Actions 作業手順](../AGENTS.md#agents-development-actions) |
+| Node 禁止契約 / 非依存開発準備の所在 | [`docs/SPEC.md` ポリシー責務 §4a](SPEC.md#policy-node-runtime-ban)、[`docs/details/fixture.md` fixture 証跡責務 Node 非依存開発検証契約](details/fixture.md#development-actions-node-free-contract)、[`.github/scripts/development-ci.sh`](../.github/scripts/development-ci.sh) |
 | 開発 Actions 定義・実行・適用証跡の所在 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route)、[`docs/details/fixture.md` fixture 証跡責務 開発 Actions 証跡固定契約](details/fixture.md#development-actions-evidence-contract) |
-| 開発 Actions required gate 定義 fixture / 検証 artifact | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions required gate 固定契約](details/fixture.md#development-actions-required-gate-contract)、[`main_test.go`](../main_test.go) |
+| 開発 Actions required gate / runtime取得・checkout control 所在 | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions required gate 固定契約](details/fixture.md#development-actions-required-gate-contract)、[`main_test.go`](../main_test.go) |
 | 方針、ポリシー、状態語彙、状態遷移条件 | [`docs/SPEC.md`](SPEC.md) |
 | 実装 artifact と各機能の現在状態、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
 | 詳細仕様入口、共通固定値、owner 対応表、collaborator 境界参照入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) |
 | 詳細仕様本文・証跡ディレクトリ | [`docs/details/`](details/) |
+| 追加管理APIの具体oracle所在 | [`docs/details/fixture.md` fixture証跡責務](details/fixture.md#additional-management-concrete-oracles)。[queue/集計/差分](details/fixture.md#additional-management-fixed-inputs)、[設定/再送](details/fixture.md#additional-management-state-inputs)、[公開read](details/fixture.md#additional-management-public-inputs)、[archive差分](details/fixture.md#additional-management-site-diff-inputs)、[認可](details/fixture.md#additional-management-authorization-inputs)、[SDK](details/fixture.md#additional-management-sdk-inputs)、[移行](details/fixture.md#additional-management-migration-inputs)、[起動/本人情報](details/fixture.md#additional-management-bootstrap-inputs)、[外部設定/token/TOTP](details/fixture.md#additional-management-identity-inputs)、[UI](details/fixture.md#additional-management-ui-inputs) の固定入力と [main_test.go](../main_test.go) の `TestAdditionalManagementInputVectors` も同じ正本に所在する。fixture群の実在/未作成は本索引のfixture所在表を参照する。 |
+| 追加queue制御 / builder cache詳細所在 | [`docs/details/runner.md` 詳細本文責務](details/runner.md#additional-queue-control)、[`docs/details/builder.md` 詳細本文責務](details/builder.md#builder-cache-determinism-contract) |
 | Phase 11 バグ修正ゼロ化の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
 | Phase 12 実装品質ゲート再構築の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](DETAIL_INDEX.md#phase-12-quality-gate-entry) |
 | Phase 12 正式 fixture root | [`testdata/phase12/quality-gate-reconstruction/`](../testdata/phase12/quality-gate-reconstruction/) |
@@ -94,6 +121,24 @@
 | 生成静的 Web サイトと標準管理 UI のデザイン | [`docs/DESIGN.md`](DESIGN.md) |
 | 利用入口 | [`README.md`](../README.md) |
 
+<a id="phase-19-artifact-location"></a>
+**Phase 19 策定本文の所在：**
+
+| 対象 | 所在 |
+|------|------|
+| 方針・安全境界 | [`docs/SPEC.md` 方針責務 内製 CI/CD 拡張方針](SPEC.md#direction-inhouse-cicd)、[`docs/SPEC.md` ポリシー責務 §0i](SPEC.md#policy-inhouse-cicd) |
+| 状態・割当 | [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](ROADMAP.md#phase-19-planning-scope) |
+| owner 詳細本文・接続先 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 19 owner 対応](DETAIL_INDEX.md#phase-19-owner-route) |
+| 視覚仕様 | [`docs/DESIGN.md` デザイン責務 Phase 19 管理画面](DESIGN.md#phase-19-admin-visual-contract) |
+| 本番同等検証本文 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 19 検証](details/production-validation.md#phase-19-production-validation-contract) |
+| fixture 設計本文 | [`docs/details/fixture.md` fixture 証跡責務 Phase 19 検証策定契約](details/fixture.md#phase-19-cicd-evidence-contract) |
+| Phase 19 正式 fixture root / manifest / expected / fake | `testdata/phase19/inhouse-cicd/manifest.json` とcase配下5種JSON（未作成）。[fixture証跡責務 layout](details/fixture.md#phase-19-fixture-layout)で将来配置を固定。 |
+| Phase 19 profile起動interface | [`docs/details/runner.md` 詳細本文責務 runner mode](details/runner.md#phase-19-runner-cli)、[`docs/details/api.md` 詳細本文責務 API mode](details/api.md#phase-19-api-cli)。実装は既存owner package内（未実装）。 |
+| Phase 19 sandbox broker / local状態の将来配置 | 専用追加実装fileは作らず既存runner/setup/statefile package内（未実装）。[setup詳細本文責務 broker](details/setup.md#phase-19-sandbox-broker)、[statefile詳細本文責務 保存path](details/statefile.md#phase-19-state-paths)を参照。 |
+| 全仕様文書の参照checker | [`main_test.go`](../main_test.go) の `TestSpecificationReferenceIntegrity` は参照・Phase登録・既知の責務境界regression guardとして実在。[fixture証跡責務 参照検査](details/fixture.md#specification-reference-checker)を参照。 |
+| Commit Status送信順と中断の文書oracle | [`main_test.go`](../main_test.go) の `TestPhase19StatusSpecificationVectors`。[fixture証跡責務 Status固定入力](details/fixture.md#phase-19-status-vectors)。HTTP/製品runtime checkerの実在を意味しない。 |
+| Phase 19 専用 checker / required workflow / required check | `main_test.go` の文書契約検査は実在。製品checker関数と `.github/workflows/phase19-inhouse-cicd.yml` は未作成。[fixture証跡責務 checker](details/fixture.md#phase-19-checker-entry)を参照。 |
+
 <a id="文書一覧"></a>
 **文書所在：**
 
@@ -143,6 +188,7 @@
 |------|-----------|----------|
 | [`main.go`](../main.go) | 起動入口 | 実在 |
 | [`main_test.go`](../main_test.go) | 起動入口 test / Phase 16 / Phase 18 checker implementation artifact 配置先 | 実在 |
+| [`.github/scripts/development-ci.sh`](../.github/scripts/development-ci.sh) | 開発 Actions runtime 準備・cleanup script | 実在 |
 | [`go.mod`](../go.mod) | Go module | 実在 |
 | [`sdk_contract_test.go`](../sdk_contract_test.go) | `sdk` contract test | 実在 |
 | [`ui_contract_test.go`](../ui_contract_test.go) | `ui` contract test | 実在 |

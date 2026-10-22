@@ -1,8 +1,88 @@
 # Adlaire CI — SDK 詳細仕様
 
+<a id="phase-19-sdk-contract"></a>
+
+**Phase 19 SDK公開契約：**
+
+ownerは `sdk`、実装artifactは [admin/adlaire-ci-sdk.js](../../admin/adlaire-ci-sdk.js)。新しい公開class `AdlaireCICDClient` を同fileへ追加し、既存 `AdlaireCI` / `AdlaireCIError` export を変更せず、新classと `CICDError` / `CICDProtocolError` をnamed exportへ追加する。endpoint / wire型は [`docs/details/api.md` 詳細本文責務 API operation catalog正本](api.md#phase-19-operation-catalog) だけを参照する。
+
+constructorは `new AdlaireCICDClient({baseUrl,token,onUnauthorized,timeoutMs=10000,fetchImpl=globalThis.fetch})`。baseUrlは既存管理API origin制約、tokenはsession 64 lowercase hexまたはservice 43 base64url unpaddedのどちらか（nullも可）を受付け、形式不正はnetwork前TypeError。tokenはmemory-only、storage/cookie/URLへ保存しない。method共通形は `method(params={},body=null,{signal,idempotencyKey}={})`。paramsはcatalog path placeholderとGET queryの名前だけ、bodyはcatalog request型、不要bodyはnull。mutation分類とkey条件は [docs/details/api.md 詳細本文責務 operation受付](api.md#phase-19-operation-admission) に一致させ、非mutationへのidempotencyKey指定もnetwork前TypeErrorとする。SDKが失敗時に新しいIDを作ってretryしない。AbortSignal/timeoutはAbortControllerへ合成し、cleanupでtimer/listenerを解除する。
+
+methodはoperation IDと完全同名、一覧は以下の閉集合。path組立はplaceholderごとencodeURIComponentを一回適用し、HTTP verb/bodyをcatalogと一致させる。未知params、null必須body、path欠落はnetwork前TypeError。成功Promiseは `{data,requestId,status,authorization}`、response不正/非JSON/未知codeは `CICDProtocolError`。非2xxは `CICDError{code,status,requestId,message,authorization}`、networkはcode=P19_TRANSPORT/status=0、abortはDOMException AbortError。authorizationはAPI wireのまま返し、欠落/型不正はCICDProtocolErrorにする。権限をtoken形式やoperation成功から推測しない。401だけtokenをclearしonUnauthorizedを1回呼ぶ。403/409/410/429/503を成功へ変換しない。全request credentials=omit、redirect=error、cache=no-store、Accept application/json、Bearerはtokenがある場合だけ。
+
+| method | API結合key |
+|---|---|
+| `login(params,body,options)` | login |
+| `logout(params,body,options)` | logout |
+| `passwordChange(params,body,options)` | passwordChange |
+| `projectsList(params,body,options)` | projectsList |
+| `projectPut(params,body,options)` | projectPut |
+| `workersList(params,body,options)` | workersList |
+| `workerPut(params,body,options)` | workerPut |
+| `targetsList(params,body,options)` | targetsList |
+| `targetPut(params,body,options)` | targetPut |
+| `usersList(params,body,options)` | usersList |
+| `userPut(params,body,options)` | userPut |
+| `servicesList(params,body,options)` | servicesList |
+| `servicePut(params,body,options)` | servicePut |
+| `definitionsList(params,body,options)` | definitionsList |
+| `definitionPut(params,body,options)` | definitionPut |
+| `templatesList(params,body,options)` | templatesList |
+| `templatePut(params,body,options)` | templatePut |
+| `environmentsList(params,body,options)` | environmentsList |
+| `environmentPut(params,body,options)` | environmentPut |
+| `grantsList(params,body,options)` | grantsList |
+| `grantPut(params,body,options)` | grantPut |
+| `secretPut(params,body,options)` | secretPut |
+| `secretsList(params,body,options)` | secretsList |
+| `workerDrain(params,body,options)` | workerDrain |
+| `workerResume(params,body,options)` | workerResume |
+| `plan(params,body,options)` | plan |
+| `runStart(params,body,options)` | runStart |
+| `runsList(params,body,options)` | runsList |
+| `runGet(params,body,options)` | runGet |
+| `runRetry(params,body,options)` | runRetry |
+| `runResume(params,body,options)` | runResume |
+| `runCancel(params,body,options)` | runCancel |
+| `logsGet(params,body,options)` | logsGet |
+| `artifactsList(params,body,options)` | artifactsList |
+| `artifactGet(params,body,options)` | artifactGet |
+| `artifactDownload(params,body,options)` | artifactDownload |
+| `artifactCompare(params,body,options)` | artifactCompare |
+| `artifactPin(params,body,options)` | artifactPin |
+| `cachesList(params,body,options)` | cachesList |
+| `cacheDelete(params,body,options)` | cacheDelete |
+| `environmentStatus(params,body,options)` | environmentStatus |
+| `deploymentPlan(params,body,options)` | deploymentPlan |
+| `deploymentStart(params,body,options)` | deploymentStart |
+| `deploymentsList(params,body,options)` | deploymentsList |
+| `deploymentGet(params,body,options)` | deploymentGet |
+| `deploymentApprove(params,body,options)` | deploymentApprove |
+| `deploymentReject(params,body,options)` | deploymentReject |
+| `deploymentCancel(params,body,options)` | deploymentCancel |
+| `deploymentRollback(params,body,options)` | deploymentRollback |
+| `deploymentReconcile(params,body,options)` | deploymentReconcile |
+| `operationGet(params,body,options)` | operationGet |
+| `metricsGet(params,body,options)` | metricsGet |
+| `auditsList(params,body,options)` | auditsList |
+
+mutationはOperationResultをそのままdataに保ち、one_timeをcacheしない。UI/CLIはoperation.stateとresult=nullを明示判定する。login成功時だけ返却tokenをmemoryへ設定し、logoutは失敗時もローカルtokenを破棄する。secret/service token/user初期passwordは呼出元へ1回だけ返し、consoleやevent payloadへ転載しない。SDKはpolling/状態変更の自動再送を内蔵しない。logsGetは [docs/details/api.md 詳細本文責務 log page](api.md#phase-19-log-page-contract) の全key/型と、TextEncoderで数えたdata byte長=next_offset-first_offsetを検査し、不一致をCICDProtocolErrorとする。cursorの自己生成、byte offsetの文字数換算、410後の自動先頭取得をしない。UIがoperationGetで完了確認する。downloadのbyte連結とdigest検証はcaller責務でありbase64文字列連結を行わない。Deno標準runtimeでcheckとnative fetch fakeによる全method wire比較を行う。検証接続は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)。
+
 SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を参照する。[`docs/details/sdk.md`](sdk.md) 詳細本文責務は SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
 
 ---
+
+<a id="phase-19-sdk-plan-boundary"></a>
+**計画の受信と再実行：** plan/runGetのPlannedJobは [docs/details/statefile.md 詳細本文責務 registry](statefile.md#phase-19-schema-registry) のselected必須booleanと展開済Id/PlannedTaskを保持し、falseを欠落値に変換せず、除外jobをfilterしない。型欠落・ID重複・needsの未知ID・展開済deploy参照の不整合はCICDProtocolError、原definitionをSDK内で展開し直して補完しない。runStartはcallerのplan_digestをそのまま渡し、409後のplan呼出/新digest再送は行わない。runRetry/runResumeは明示path attempt/expected_revisionを使い、latestへの置換・plan呼出・source更新をしない。HTTP受付境界は [docs/details/api.md 詳細本文責務](api.md#phase-19-plan-request-boundary) を参照する。
+
+<a id="phase-19-sdk-artifact-chunk"></a>
+**artifactDownloadのprotocol検証：** [docs/details/api.md 詳細本文責務 download wire](api.md#phase-19-artifact-download) の全key/型を検査し、offsetが要求params.offset、digestが要求params.digestに一致することを要求する。dataはstrict standard padded base64をdecode・再encodeして完全一致、decoded長とnext_offset/total_bytes/finalの関係もAPI契約へ一致させる。任意に短いchunk、nonfinal空chunk、次offsetの飛び/後退、最終flagの早期確定をCICDProtocolErrorにする。offset=total_bytesの空finalは正規の範囲応答であり、SDK単体が全file受信/検証済みと主張しない。戻り値は既存wire型を維持し、内部でbase64文字列を連結、poll、GC対策pin作成、別digestへの切替を行わない。複数request間のtotal_bytes固定と最終全bytes SHA256はcallerが検証する。
+
+<a id="phase-19-sdk-operation-result"></a>
+**operation受信境界：** mutation応答のoperation.idが送信key、kindが呼出method、target_attemptがrun系の対象attempt制約に一致することを検証する。runRetry/runResumeは要求attempt+1、runCancelは要求attempt、runStartは1、それ以外はnull。HTTP statusはAPI正本のkind分類と比較し、不一致はCICDProtocolError。202かどうかで完了を判定しない。result=nullを空entityとして補完せず、one_time=nullも再発行要求へ変換しない。operationGetの404や通信断は「未実行」と解釈せず、そのerrorをそのままcallerへ渡す。timeout/abort時も操作がserverで止まったとは保証しない。SDKはoperation照会のためにbodyや秘密値を保存せず、callerが持つkeyだけでoperationGetを呼べる境界を維持する。
+
+<a id="phase-19-sdk-implementation-classification"></a>
+**実装分類：** catalog引数変換・protocol検証・cancel/timeout合成は `INHOUSE`、使用primitiveはbrowser fetch、AbortController、JSON（`STD`）。入力/状態/異常系は[`docs/details/sdk.md` 詳細本文責務](#phase-19-sdk-contract)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `sdk`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="0-責務境界"></a>
 
@@ -182,7 +262,7 @@ export { AdlaireCI, AdlaireCIError };
 | `baseUrl` | API origin だけを表す absolute `http` / `https` URL とする。path は `/`、userinfo、query、fragment はなしとし、保持時は末尾 `/` を除去する。空文字、relative URL、`null`、`undefined`、その他の形式違反は HTTP 送信前に `TypeError("Invalid argument: baseUrl")` とする。`baseUrl` に `/api` を含めない。 |
 | URL 組み立て | パスは `/api/...` をそのまま連結する。query key は各 method の固定名をそのまま使用し、query value は `encodeURIComponent(String(value))` の結果を使用する。空白は `%20` とし、`+` への変換を禁止する。 |
 | 認証ヘッダー | `this._token` が存在する場合のみ `Authorization: Bearer ${token}` を付与する。 |
-| JSON 送信 | `POST` / `DELETE` で body を送る場合は `Content-Type: application/json` を付与し、`JSON.stringify` した body を送信する。 |
+| JSON 送信 | POST/PATCH/DELETE等のJSON body生成とheaderは [request helper固定契約](#sdk-transport-error-contract) のbody/header手順を適用する。 |
 | JSON 受信 | body 読取、media type 判定、空 body 判定、parse、error 変換は [SDK transport / error 固定契約](#sdk-transport-error-contract) を唯一の本文とする。`response.json()` を使用してはならない。 |
 | `AdlaireCIError` | `name="AdlaireCIError"`、`status`、`message`、`details`、`responseBody` を持つ `Error` 派生クラスとする。constructor は `new AdlaireCIError({status, message, details = null, responseBody = null})` とし、network error、timeout、protocol error は `status=0` とする。`message` は API error response の `error`、network error は `"Network error"`、timeout は `"Request timeout"`、protocol error は固定文言を使用する。 |
 | `logout()` | API 呼び出しが失敗しても `finally` で `this._token` をクリアする。 |
@@ -444,6 +524,7 @@ SDK は成功 response を補完、削除、rename、既定値 merge、再集計
 | マルチユーザー対応 / ユーザー管理 API | `getUsers(query)`, `createUser(input)`, `updateUser(id,input)`, `disableUser(id)` |
 | ロールベースアクセス制御 | `getRoles()`, `createRole(input)`, `updateRole(id,input)`, `deleteRole(id)` |
 | 外部認証連携 | `getExternalAuthConfig()`, `setExternalAuthConfig(input)`, `testExternalAuth(input)` |
+| 外部login | `getAuthOptions()`, `getCurrentUser()`, `startOidcLogin(providerId)`, `finishOidcLogin(state,code)`。契約は [OIDC transport](#oidc-sdk-transport)。 |
 | データストア切り替え | `getDatastore()`, `switchDatastore(input)` |
 | 統計データの JSON エクスポート | `exportStats(query)` |
 | キュー内個別エントリのキャンセル | `cancelQueueEntry(queueId)` |
@@ -465,9 +546,14 @@ SDK は成功 response を補完、削除、rename、既定値 merge、再集計
 
 **追加管理 API SDK transport 固定表：**
 
+<a id="oidc-sdk-transport"></a>
+**OIDC transport：** getCurrentUserは [本人HTTP契約](api.md#auth-self-http-contract) へ通常session付き/body-queryなしGET1回、API objectをそのまま返す。user/capabilitiesをSDK内へ保存・合成しない。getAuthOptionsは [認証起動情報HTTP契約](api.md#auth-options-http-contract) へbody/query/auth headerなしGET1回、credentials=omit/redirect=error/cache=no-storeでAPI objectをそのまま返す。profileやproviderをSDK内へ保持/推測せず、失敗でlegacyを合成しない。startOidcLoginはproviderId string、finishOidcLoginはstate/code stringを検証し、[API詳細本文責務](api.md#oidc-http-contract) へJSON POST1回だけ送る。auth headerを付けずcredentials=`same-origin`、redirect=`error`、通常timeoutを適用する。JSからHttpOnly cookieを読書きしない。成功値はAPIの型をそのまま返し、session/TOTP ticketは既存memory保持だけ。自動retry・URL遷移・sessionStorage/localStorage・code/state/tokenのtraceを禁止。multi-user password loginは既存loginへoptions.username stringを渡す明示overloadとし、旧profileのrequestへusernameを追加しない。profile選択は呼出側設定から行い、401で別profileへ再送しない。
+
+multi-user-v1でのTOTP操作は `setupTotp(options)`、`confirmTotp(code,options)`、`disableTotp(code,options)` のoptions.password stringを必須とし、APIの本人操作bodyへ渡す。options省略を別profileへfallbackする条件にしない。旧profileは従来bodyを維持する。passwordは送信完了時に参照を解放し、trace/errorへ含めない。
+
 | SDK method | HTTP | path / query / body |
 |------------|------|---------------------|
-| `getUsers(query)` | `GET` | `/api/users`。`limit`、`offset`、`status`、`role_id` だけを query に入れる。 |
+| `getUsers(query)` | `GET` | `/api/users`。queryは [追加query変換](#additional-sdk-query-transformation) を適用する。 |
 | `createUser(input)` | `POST` | `/api/users`。body は input object。 |
 | `updateUser(id,input)` | `PATCH` | `/api/users/{id}`。`id` は 1 回だけ percent encode。 |
 | `disableUser(id)` | `DELETE` | `/api/users/{id}`。body なし。 |
@@ -475,14 +561,16 @@ SDK は成功 response を補完、削除、rename、既定値 merge、再集計
 | `createRole(input)` | `POST` | `/api/roles`。body は input object。 |
 | `updateRole(id,input)` | `PATCH` | `/api/roles/{id}`。 |
 | `deleteRole(id)` | `DELETE` | `/api/roles/{id}`。body なし。 |
+| `getCurrentUser()` | `GET` | `/api/auth/me`。通常session、body/queryなし。 |
+| `getAuthOptions()` | `GET` | `/api/auth/options`。body/query/auth headerなし。 |
 | `getExternalAuthConfig()` / `setExternalAuthConfig(input)` / `testExternalAuth(input)` | `GET` / `POST` / `POST` | `/api/external-auth-config`、`/api/external-auth/test`。 |
 | `getDatastore()` / `switchDatastore(input)` | `GET` / `POST` | `/api/datastore`、`/api/datastore/switch`。 |
-| `exportStats(query)` | `GET` | `/api/stats/export`。`from`、`to`、`granularity`、`target` だけを query に入れる。 |
+| `exportStats(query)` | `GET` | `/api/stats/export`。queryは [追加query変換](#additional-sdk-query-transformation) を適用する。 |
 | `cancelQueueEntry(queueId)` | `DELETE` | `/api/queue/{queueId}`。body なし。 |
 | `getPrometheusMetrics()` | `GET` | `/api/metrics`。text response。 |
 | `getConfigSnapshots(query)` / `createConfigSnapshot(input)` | `GET` / `POST` | `/api/config-snapshots`。 |
 | `getConfigSnapshot(id)` / `restoreConfigSnapshot(id,input)` / `deleteConfigSnapshot(id)` | `GET` / `POST` / `DELETE` | `/api/config-snapshots/{id}`、`/api/config-snapshots/{id}/restore`。 |
-| `getStatusBadge(query)` | `GET` | `/api/badge/status.svg`。`target`、`branch` だけを query に入れる。Blob response。 |
+| `getStatusBadge(query)` | `GET` | `/api/badge/status.svg`。queryは [追加query変換](#additional-sdk-query-transformation)、戻り値はBlob。 |
 | `getHistoryRetention()` / `setHistoryRetention(input)` / `runHistoryRetention()` | `GET` / `POST` / `POST` | `/api/history/retention`、`/api/history/retention/run`。 |
 | `diffConfigSnapshots(leftId,rightId)` | `GET` | `/api/config-snapshots/{leftId}/diff/{rightId}`。 |
 | `getProjects(query)` / `createProject(input)` / `updateProject(id,input)` / `archiveProject(id)` | `GET` / `POST` / `PATCH` / `DELETE` | `/api/projects`、`/api/projects/{id}`。 |
@@ -497,17 +585,33 @@ SDK は成功 response を補完、削除、rename、既定値 merge、再集計
 
 SDK は上表にない追加管理 API public method を作成してはならない。query object は `undefined` / `null` の値を送信せず、空文字は API へそのまま送る。path parameter は空文字、`/`、NUL byte を SDK 側で `TypeError` とする。body 禁止 endpoint は `fetch` に `body` property を渡してはならない。
 
+追加管理methodのfetch optionはcredentials=omit/redirect=error/cache=no-storeとする。OIDC2methodだけは [OIDC transport](#oidc-sdk-transport) のcredentials=same-origin/auth headerなしを適用する。legacy methodやAdlaireCICDの設定をprofile推測で書き換えない。
+
 追加管理 API SDK の引数検証は以下に固定する。SDK が `TypeError` を投げる場合、HTTP request を開始してはならない。
 
 | 対象 | `TypeError` 条件 | HTTP へ渡す条件 |
 |------|------------------|----------------|
-| `id` / `queueId` / `deliveryId` / `leftId` / `rightId` | string 以外、空文字、`/`、NUL、CR、LF、`.`、`..` | `encodeURIComponent` を 1 回だけ適用する。 |
+| `id` / `queueId` / `deliveryId` / `leftId` / `rightId` | [共通ID検証](#sdk-method-implementation-contract) のregex不一致（space/percent/control等も不可） | 検証成功後encodeURIComponentを1回だけ適用。 |
 | `token` | string 以外、空文字、`/`、NUL、CR、LF | path parameter として 1 回だけ encode する。 |
-| `query` object | object 以外、array、未知 key | `undefined` / `null` の値は送信しない。 |
-| `queueIds` | array 以外、空配列、string 以外の要素、重複 | `{queue_ids: queueIds}` を body にする。 |
+| `query` object | undefined/null以外の非object、array、未知key | object自体のundefined/nullは{}。各値のundefined/nullは省略。許可keyは下のquery変換表。 |
+| `queueIds` | array 以外、string 以外の要素、重複 | 空配列も `{queue_ids: queueIds}` として送る。実在queued集合との一致はAPIが判定する。 |
 | `input` object | object 以外、array、`null` | API schema の unknown key 判定は API に委譲する。 |
 | confirmation input | confirmation key が string 以外 | 値の一致判定は API に委譲する。 |
 | `onEvent` | function 以外 | `streamAdminEvents()` の callback として保持し、request body または query に含めない。 |
+
+
+<a id="additional-sdk-query-transformation"></a>
+**追加query変換の具体集合：** query値は既存URL組立契約のencodeURIComponent(String(value))で1回だけ符号化し、空白は%20とする。URLSearchParamsによる+への変換は使わない。空文字はそのまま送信し、値域の判断はAPIへ委譲する。以下の既知key以外はTypeErrorとし、HTTPを開始しない。
+
+| method | 受理するquery key / 送信 |
+|---|---|
+| getUsers | limit/offset/status/role_idを送信 |
+| exportStats | from/to/granularity/targetを送信 |
+| getConfigSnapshots | limit/offsetを送信 |
+| getStatusBadge | target/branchを送信 |
+| getProjects | statusを送信 |
+| getAdminEvents | limit/offset/type/afterを送信 |
+| streamAdminEvents | typeだけを送信。limit/offset/afterは既知の一覧専用keyとして受理するが値検証/送信せず破棄する。 |
 
 path parameter は [SDK メソッド実装固定契約](#sdk-method-implementation-contract) の `path parameter` 行に従い、1 回だけ percent encode する。
 
@@ -519,9 +623,9 @@ binary response は `Blob`、text response は `string`、SSE response は `Stre
 
 `getStatusBadge()` は SVG response を `Blob` として返す。
 
-`streamAdminEvents(query,onEvent)` は `onEvent` が function の場合だけ HTTP request を開始する。token がない場合は接続前に `AdlaireCIError(status=401, message="Unauthorized")` を投げる。SDK は `fetch()`、`AbortController`、`ReadableStream` reader を使用し、`Accept: text/event-stream` と `Authorization` header を付与する。接続確立 timeout は 30 秒、接続確立後 timeout はなしとする。成功時は `StreamHandle` を返し、UI が `close()` できるようにする。
+`streamAdminEvents(query,onEvent)` は `onEvent` が function の場合だけ HTTP request を開始する。token がない場合は接続前に `AdlaireCIError(status=401, message="Unauthorized")` を投げる。SDK は `fetch()`、`AbortController`、`ReadableStream` reader を使用し、`Accept: text/event-stream` と `Authorization` header を付与する。接続確立 timeout は 30 秒、接続確立後 timeout はなしとする。接続確立の2xx/media/readable判定とInvalid SSE responseは [共通stream確立規則](#sdk-common-contract) のstreamBuild行と同じとし、成功時だけStreamHandleを返す。UIはclose()で停止できる。
 
-`streamAdminEvents(query,onEvent)` の query は `type` だけを送信できる。`limit`、`offset`、`after` は `GET /api/events` 専用 query とし、stream request へ送信してはならない。`type` が `undefined` または `null` の場合は省略し、空文字は API へ送信して `422` 判定を委譲する。
+streamAdminEventsのquery受理/破棄/省略は [追加query変換](#additional-sdk-query-transformation) を適用する。
 
 `streamAdminEvents(query,onEvent)` の parser は [`docs/details/api.md` 詳細本文責務 §27.66](api.md#sec-27-66) の admin event stream frame だけを受け付ける。`: keepalive` comment frame は状態変更なしで破棄する。`event: admin-event` frame は `id:` 1 行、`event:` 1 行、`data:` 1 行だけを許可し、`data` を compact JSON object として parse する。parse 後の object は `id` が frame id と一致し、[`docs/details/statefile.md` 詳細本文責務 AdminEventRecord](statefile.md#sec-22-0d) の key、型、enum に一致する場合だけ `onEvent(record)` を 1 回呼ぶ。`event: error` frame は `data` の JSON object から `error` string を読み、`AdlaireCIError(status=0,message=error)` で `done` を reject して stream を close する。
 
@@ -529,12 +633,14 @@ binary response は `Blob`、text response は `string`、SSE response は `Stre
 
 追加管理 API SDK は response media type を以下のように検証する。media type 不一致、body parse 失敗、空 body 不許可は `AdlaireCIError` とし、`status` は HTTP status、`message` は `Invalid response` とする。
 
-| method | 期待 media type | 戻り値 |
+| method | 期待media type / Accept | 戻り値 |
 |--------|-----------------|--------|
 | `getPrometheusMetrics()` | `text/plain` | response text。 |
 | `getStatusBadge()` | `image/svg+xml` | `Blob`。 |
 | `streamAdminEvents(query,onEvent)` | `text/event-stream` | `StreamHandle`。 |
 | その他の追加管理 API method | `application/json` | API JSON object をそのまま返す。 |
+
+追加管理methodのHTTP error detailsは [API追加validation形式](api.md#additional-management-validation-order) のplain object<string,string>をそのままAdlaireCIError.detailsへ渡す。error string不在/型不正、detailsの配列/null/非string値はInvalid response（status=HTTP status/details=null/responseBody=null）とする。details省略はnull。legacy methodの配列details契約を変更せず、追加methodだけのhelper modeで選択する。
 
 追加管理 API の SDK 完全性検証では、上表の public method が `AdlaireCI.prototype` に存在し、未定義 public method が存在しないことを確認する。
 

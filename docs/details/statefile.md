@@ -1,6 +1,746 @@
 # Adlaire CI — Statefile 詳細仕様
 
+<a id="phase-19-state-contract"></a>
+
+**Phase 19 状態・schema 固定契約：**
+
+owner は `statefile`、実装主体は [`components/statefile/`](../../components/statefile/)。適用 profile は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)。以下は `cicd-v1` の正本であり、legacy の [`docs/details/statefile.md` 詳細本文責務 状態ファイル共通仕様](#sec-22-0a) を上書きしない。
+
+<a id="phase-19-schema-registry"></a>
+**型記法と共有保存型の schema registry：**
+
+本registryはRootとその参照型、IPC/local stateの共有型を扱う。API専用request/responseのwire型は [docs/details/api.md 詳細本文責務 operation catalog](api.md#phase-19-operation-catalog)、payload内manifestは [docs/details/archive.md 詳細本文責務 artifact](archive.md#phase-19-artifact-contract) と [cache envelope](archive.md#phase-19-archive-envelope) を参照する。同じ型を本registryへ複製しない。
+
+全 object は列挙 key がすべて必須、未知 key / duplicate key は拒否する。欠落値の補完は行わない。`nullable(T)` は明示 null、`list(T,min,max)` は順序付き配列、`map(T,min,max)` は key が Id の object、`envmap(T,min,max)` はkeyがrunnerの環境変数名規則のobject、`oneof` は一致する型が1件だけの union、`enum` は列挙値、`int(min,max)` は指数・小数・負のゼロを許さない10進安全整数、`text(min,max)` はUTF-8 byte長である。空白・並び順を除く JSON 文法は encoding/json に従い、NUL / CR はlog.dataを除く全stringで拒否する。log.dataは任意のUnicode scalar（JSON escape必須controlを含む）を許す。LF は text と log.data だけ許可し、identifier・path・環境値では拒否する。const(v)はJSON literal vとの一致、boolはJSON booleanを表す。schema 文法自体の未知関数・不明な型参照も不正とする。型名はASCII英字始まり英数字、enum値は英字始まり英数字/underscore/hyphen/dot。式の空白は禁止。atomはprimitiveまたは登録型名、nullableは型引数1、oneofは異なる型2以上、list/map/envmapは型1と整数min/max、int/textは整数min/max、enumは一意値1以上、constは本registryで使用する1/falseだけ、legacyはAdminCredentials/TOTPSecretだけ。整数引数は符号付き安全整数、先頭0/負の0拒否、min<=max、list/map/envmap/textはmin>=0。登録型の参照graphは非再帰（cycle拒否）で、objectはfield名一意・1field以上。JSON tokenの重複を先に検査してから型式を解析し、json.Unmarshalによる重複keyの上書きを許可しない。
+
+| primitive | 閉じた定義 |
+|---|---|
+| id / jobid | `^[a-z][a-z0-9_-]{0,63}$` / 同48文字以内。run / deployment / operation は `r-` / `d-` / `o-` + crypto/rand 16 bytes の32 lowercase hex。要求識別子は同じ o-形式。衝突は3回まで採番し、なお衝突なら P19_ENTROPY。 |
+| digest / sha | lowercase hex 64 / 40文字。 |
+| utc | exact UTC秒精度 `YYYY-MM-DDTHH:MM:SSZ`、年1970〜9999、実在時刻のみ。 |
+| relpath | UTF-8 1〜240 bytes、相対、segment 1〜64 bytes、空 / dot / dotdot / backslash / colon / 制御文字を拒否。`.` は task の source / package だけの固定例外。package の末尾 `/...` と単独 `./...` はGo package fieldだけ許可。 |
+| abspath | clean absolute UTF-8 1〜4096 bytes、dot / dotdot / backslash / 制御文字なし、各既存ancestorをLstatしsymlinkを拒否。新規childは検証済みparent descriptorから作成する。 |
+| ref / glob | ref はUTF-8 1〜255 bytes、ASCII control/space/DELと `~ ^ : ? * [ backslash`、`..`、`@{`、単独`@`、先頭末尾slash、連続slash、先頭dotのsegment、末尾dot、各segmentの`.lock` suffixを拒否する。branch/tag prefixは別fieldでありrefに`refs/`を要求しない。glob 文法は runner 正本へ接続する。 |
+| url | scheme http / https、userinfo / fragmentなし、hostあり、2048 bytes以内。対象host・portの可否は使用先ownerが判定する。 |
+| scalar | UTF-8 0〜4096 bytesの一行string、int(-2147483648,2147483647)、booleanのいずれか。 |
+| base64 | RFC4648 standard padded encodingをstrict decode後に再encodeして一致、decoded長0〜262144 bytes。秘密情報の個別長はsecurity正本が追加制限する。 |
+| legacy(AdminCredentials) / legacy(TOTPSecret) | 本書 [`docs/details/statefile.md` 詳細本文責務 主要状態schema](#sec-22-0c) の `.admin_credentials` / `.totp_secret` と同じ型。別のKDF・TOTP形式を作らない。 |
+
+```json
+{
+  "schema_version": 1,
+  "profile": "cicd-v1",
+  "types": {
+    "Id": "id",
+    "JobId": "jobid",
+    "Digest": "digest",
+    "SHA": "sha",
+    "Time": "utc",
+    "RelPath": "relpath",
+    "AbsPath": "abspath",
+    "Glob": "glob",
+    "Ref": "ref",
+    "URL": "url",
+    "Scalar": "scalar",
+    "Bytes": "base64",
+    "Credential": "legacy(AdminCredentials)",
+    "TOTP": "legacy(TOTPSecret)",
+    "Quota": {
+      "parallel": "int(1,16)",
+      "queue": "int(1,512)",
+      "artifact_mb": "int(128,102400)",
+      "cache_mb": "int(0,10240)",
+      "retention_days": "int(1,30)"
+    },
+    "Resources": {
+      "cpu_percent": "int(10,400)",
+      "memory_mb": "int(512,8192)",
+      "disk_mb": "int(128,2048)",
+      "tasks": "int(8,256)",
+      "timeout_seconds": "int(1,3600)",
+      "output_mb": "int(1,16)"
+    },
+    "Input": {
+      "kind": "enum(string,integer,boolean)",
+      "required": "bool",
+      "default": "nullable(Scalar)",
+      "choices": "list(Scalar,0,32)",
+      "min": "int(-2147483648,2147483647)",
+      "max": "int(-2147483648,2147483647)"
+    },
+    "Condition": {
+      "branches": "list(Glob,0,32)",
+      "tags": "list(Glob,0,32)",
+      "paths": "list(Glob,0,32)",
+      "input_equals": "map(Scalar,0,32)"
+    },
+    "Matrix": {
+      "axes": "map(ScalarList,0,4)",
+      "exclude": "list(ScalarMap,0,64)",
+      "include": "list(ScalarMap,0,64)"
+    },
+    "ScalarList": "list(Scalar,1,32)",
+    "ScalarMap": "map(Scalar,0,32)",
+    "Retry": {
+      "max_attempts": "int(1,3)",
+      "backoff_seconds": "int(1,30)"
+    },
+    "CachePolicy": {
+      "enabled": "bool",
+      "paths": "list(RelPath,0,16)",
+      "ttl_seconds": "int(60,2592000)"
+    },
+    "SecretRef": {
+      "id": "Id",
+      "version": "int(1,2147483647)"
+    },
+    "BuilderTask": {
+      "kind": "enum(builder)",
+      "source": "RelPath",
+      "output": "RelPath"
+    },
+    "GoTestTask": {
+      "kind": "enum(go-test)",
+      "packages": "list(RelPath,1,64)",
+      "race": "const(false)"
+    },
+    "GoVetTask": {
+      "kind": "enum(go-vet)",
+      "packages": "list(RelPath,1,64)"
+    },
+    "GoBuildTask": {
+      "kind": "enum(go-build)",
+      "package": "RelPath",
+      "output": "RelPath"
+    },
+    "DenoTask": {
+      "kind": "enum(deno-check)",
+      "files": "list(RelPath,1,64)"
+    },
+    "VerifyTask": {
+      "kind": "enum(artifact-verify)",
+      "artifact": "Digest"
+    },
+    "DeployTask": {
+      "kind": "enum(deploy)",
+      "environment_id": "Id",
+      "artifact_from": "JobId"
+    },
+    "Task": "oneof(BuilderTask,GoTestTask,GoVetTask,GoBuildTask,DenoTask,VerifyTask,DeployTask)",
+    "Job": {
+      "id": "JobId",
+      "needs": "list(JobId,0,32)",
+      "condition": "Condition",
+      "task": "Task",
+      "matrix": "Matrix",
+      "resources": "Resources",
+      "retry": "Retry",
+      "cache": "CachePolicy",
+      "env": "envmap(EnvValue,0,64)",
+      "secrets": "envmap(SecretRef,0,16)",
+      "optional": "bool"
+    },
+    "EnvValue": "text(0,4096)",
+    "Watch": {
+      "id": "Id",
+      "ref_kind": "enum(branch,tag)",
+      "ref": "Ref",
+      "interval_seconds": "int(60,3600)"
+    },
+    "Schedule": {
+      "id": "Id",
+      "ref_kind": "enum(branch,tag)",
+      "ref": "Ref",
+      "anchor": "Time",
+      "every_seconds": "int(60,604800)",
+      "catch_up": "enum(skip,latest)",
+      "enabled": "bool"
+    },
+    "TemplateUse": {
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "prefix": "JobId",
+      "values": "ScalarMap"
+    },
+    "Definition": {
+      "project_id": "Id",
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "inputs": "map(Input,0,32)",
+      "manual": "bool",
+      "watches": "list(Watch,0,32)",
+      "schedules": "list(Schedule,0,32)",
+      "templates": "list(TemplateUse,0,16)",
+      "jobs": "list(Job,1,128)",
+      "fail_fast": "bool"
+    },
+    "Template": {
+      "project_id": "Id",
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "inputs": "map(Input,0,32)",
+      "jobs": "list(Job,1,128)"
+    },
+    "Source": {
+      "owner": "text(1,100)",
+      "repo": "text(1,100)",
+      "ref_kind": "enum(branch,tag)",
+      "ref": "Ref",
+      "sha": "SHA",
+      "tree_digest": "Digest",
+      "files": "list(SourceFile,0,10000)"
+    },
+    "PlannedDeployTask": {
+      "kind": "enum(deploy)",
+      "environment_id": "Id",
+      "artifact_from": "Id"
+    },
+    "PlannedTask": "oneof(BuilderTask,GoTestTask,GoVetTask,GoBuildTask,DenoTask,VerifyTask,PlannedDeployTask)",
+    "PlannedJob": {
+      "id": "Id",
+      "base_job_id": "JobId",
+      "selected": "bool",
+      "matrix_values": "ScalarMap",
+      "needs": "list(Id,0,256)",
+      "task": "PlannedTask",
+      "resources": "Resources",
+      "retry": "Retry",
+      "cache": "CachePolicy",
+      "env": "envmap(EnvValue,0,64)",
+      "secrets": "envmap(SecretRef,0,16)",
+      "optional": "bool"
+    },
+    "PlanData": {
+      "project_id": "Id",
+      "definition_id": "Id",
+      "definition_revision": "int(1,2147483647)",
+      "source": "Source",
+      "values": "ScalarMap",
+      "jobs": "list(PlannedJob,1,256)",
+      "fail_fast": "bool",
+      "toolchain_digest": "Digest"
+    },
+    "Plan": {
+      "digest": "Digest",
+      "data": "PlanData"
+    },
+    "Project": {
+      "id": "Id",
+      "name": "text(1,128)",
+      "revision": "int(1,2147483647)",
+      "enabled": "bool",
+      "source_owner": "text(1,100)",
+      "source_repo": "text(1,100)",
+      "definition_id": "nullable(Id)",
+      "definition_revision": "int(0,2147483647)",
+      "quota": "Quota",
+      "toolchain_digest": "nullable(Digest)"
+    },
+    "Stage": {
+      "target_ids": "list(Id,1,32)",
+      "percent": "int(1,100)",
+      "observe_seconds": "int(10,3600)",
+      "max_error_percent": "int(0,100)",
+      "min_requests": "int(0,10000)"
+    },
+    "Freeze": {
+      "from": "Time",
+      "until": "Time"
+    },
+    "Environment": {
+      "project_id": "Id",
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "production": "bool",
+      "approvals": "int(0,2)",
+      "allow_self_approval": "bool",
+      "targets": "list(Id,1,32)",
+      "strategy": "enum(rolling,blue-green,canary)",
+      "stages": "list(Stage,1,16)",
+      "freeze": "list(Freeze,0,32)",
+      "health_timeout_seconds": "int(1,60)",
+      "retained_successes": "int(2,30)",
+      "health_path": "enum(index.html)"
+    },
+    "Grant": {
+      "subject_kind": "enum(user,service)",
+      "subject_id": "Id",
+      "project_id": "nullable(Id)",
+      "environment_id": "nullable(Id)",
+      "role": "enum(viewer,operator,approver,project-admin,platform-admin)",
+      "enabled": "bool",
+      "expires_at": "nullable(Time)"
+    },
+    "User": {
+      "id": "Id",
+      "name": "text(1,128)",
+      "revision": "int(1,2147483647)",
+      "enabled": "bool",
+      "credential": "nullable(Credential)",
+      "totp": "nullable(TOTP)",
+      "created_at": "Time"
+    },
+    "Service": {
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "token_sha256": "Digest",
+      "enabled": "bool",
+      "expires_at": "Time"
+    },
+    "Lease": {
+      "project_id": "Id",
+      "run_id": "Id",
+      "attempt": "int(1,100)",
+      "job_id": "Id",
+      "generation": "int(1,9007199254740991)",
+      "until": "Time"
+    },
+    "Worker": {
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "enabled": "bool",
+      "draining": "bool",
+      "host": "text(1,253)",
+      "port": "int(1,65535)",
+      "user": "Id",
+      "allowed_projects": "list(Id,1,64)",
+      "capabilities": "list(text(1,64),1,16)",
+      "slots": "int(1,4)",
+      "last_seen": "nullable(Time)",
+      "leases": "list(Lease,0,4)",
+      "toolchain_digest": "Digest",
+      "total_memory_mb": "int(2048,1048576)"
+    },
+    "JobResult": {
+      "id": "Id",
+      "execution_id": "nullable(Id)",
+      "state": "enum(queued,assigned,running,cancel_requested,succeeded,failed,cancelled,skipped,recovery_required)",
+      "try_number": "int(0,3)",
+      "worker_id": "nullable(Id)",
+      "lease_generation": "int(0,9007199254740991)",
+      "started_at": "nullable(Time)",
+      "finished_at": "nullable(Time)",
+      "duration_ms": "nullable(int(0,9007199254740991))",
+      "code": "nullable(text(1,64))",
+      "artifact": "nullable(Digest)",
+      "reused_from_attempt": "nullable(int(1,100))",
+      "log_gap": "bool"
+    },
+    "Run": {
+      "project_id": "Id",
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "attempt": "int(1,100)",
+      "event_key": "Digest",
+      "requester": "Id",
+      "plan": "Plan",
+      "state": "enum(queued,running,cancel_requested,succeeded,failed,cancelled,recovery_required)",
+      "created_at": "Time",
+      "started_at": "nullable(Time)",
+      "finished_at": "nullable(Time)",
+      "jobs": "list(JobResult,1,256)",
+      "cancel_requested": "bool",
+      "trigger": "enum(manual,watch,schedule,retry,resume)"
+    },
+    "Approval": {
+      "subject": "Id",
+      "at": "Time",
+      "plan_digest": "Digest",
+      "expires_at": "Time"
+    },
+    "DeployPlan": {
+      "project_id": "Id",
+      "environment_id": "Id",
+      "environment_revision": "int(1,2147483647)",
+      "expected_generation": "int(0,9007199254740991)",
+      "artifact": "Digest",
+      "config_digest": "Digest",
+      "strategy": "enum(rolling,blue-green,canary)",
+      "stages": "list(Stage,1,16)",
+      "rollback_of": "nullable(Id)"
+    },
+    "Deployment": {
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "plan": "DeployPlan",
+      "plan_digest": "Digest",
+      "requester": "Id",
+      "state": "enum(waiting_approval,queued,staging,switching,observing,succeeded,failed,rolling_back,rolled_back,cancel_requested,cancelled,recovery_required)",
+      "generation": "int(1,9007199254740991)",
+      "created_at": "Time",
+      "finished_at": "nullable(Time)",
+      "approvals": "list(Approval,0,2)",
+      "stage_index": "int(0,16)",
+      "previous_artifact": "nullable(Digest)",
+      "code": "nullable(text(1,64))",
+      "recovery_code": "nullable(text(1,64))",
+      "targets": "list(TargetResult,1,32)",
+      "observations": "list(StageObservation,0,512)"
+    },
+    "Artifact": {
+      "project_id": "Id",
+      "digest": "Digest",
+      "manifest_digest": "Digest",
+      "size_bytes": "int(1,1073741824)",
+      "created_at": "Time",
+      "source_sha": "SHA",
+      "run_id": "Id",
+      "attempt": "int(1,100)",
+      "job_id": "Id",
+      "pins": "list(Id,0,1024)",
+      "deleting": "bool"
+    },
+    "CacheEntry": {
+      "project_id": "Id",
+      "key": "Digest",
+      "digest": "Digest",
+      "size_bytes": "int(1,1073741824)",
+      "created_at": "Time",
+      "last_used_at": "Time",
+      "expires_at": "Time",
+      "in_use": "list(Id,0,256)",
+      "deleting": "bool"
+    },
+    "Operation": {
+      "id": "Id",
+      "project_id": "nullable(Id)",
+      "subject": "Id",
+      "request_digest": "Digest",
+      "kind": "text(1,64)",
+      "state": "enum(accepted,succeeded,failed,recovery_required)",
+      "target_id": "nullable(text(1,64))",
+      "target_attempt": "nullable(int(1,100))",
+      "created_at": "Time",
+      "expires_at": "Time",
+      "code": "nullable(text(1,64))"
+    },
+    "StageObservation": {
+      "target_id": "Id",
+      "stage_index": "int(1,16)",
+      "generation": "int(1,9007199254740991)",
+      "step": "int(1,128)",
+      "from": "Time",
+      "until": "Time",
+      "observed_until": "Time",
+      "requests": "int(0,9007199254740991)",
+      "errors": "int(0,9007199254740991)",
+      "state": "enum(observing,passed,failed,unknown)",
+      "code": "nullable(text(1,64))"
+    },
+    "Audit": {
+      "operation_id": "Id",
+      "subject": "Id",
+      "project_id": "nullable(Id)",
+      "environment_id": "nullable(Id)",
+      "action": "text(1,64)",
+      "phase": "enum(accepted,finished,rejected)",
+      "at": "Time",
+      "target_id": "nullable(text(1,64))",
+      "code": "nullable(text(1,64))"
+    },
+    "Route": {
+      "project_id": "Id",
+      "environment_id": "Id",
+      "generation": "int(0,9007199254740991)",
+      "operation_id": "Id",
+      "stable": "nullable(Digest)",
+      "candidate": "nullable(Digest)",
+      "percent": "int(0,100)",
+      "config_digest": "Digest"
+    },
+    "Log": {
+      "schema_version": "const(1)",
+      "project_id": "Id",
+      "run_id": "Id",
+      "attempt": "int(1,100)",
+      "job_id": "Id",
+      "stream": "enum(stdout,stderr)",
+      "first_offset": "int(0,9007199254740991)",
+      "next_offset": "int(0,9007199254740991)",
+      "data": "text(0,1048576)",
+      "truncated": "bool",
+      "gap": "bool",
+      "terminal": "bool"
+    },
+    "SecretMeta": {
+      "project_id": "Id",
+      "id": "Id",
+      "version": "int(1,2147483647)",
+      "created_at": "Time"
+    },
+    "Root": {
+      "schema_version": "const(1)",
+      "generation": "int(1,9007199254740991)",
+      "projects": "list(Project,0,64)",
+      "definitions": "list(Definition,0,1024)",
+      "templates": "list(Template,0,1024)",
+      "environments": "list(Environment,0,1024)",
+      "users": "list(User,1,256)",
+      "services": "list(Service,0,256)",
+      "secrets": "list(SecretMeta,0,10000)",
+      "grants": "list(Grant,1,4096)",
+      "workers": "list(Worker,0,32)",
+      "runs": "list(Run,0,512)",
+      "deployments": "list(Deployment,0,1024)",
+      "artifacts": "list(Artifact,0,10000)",
+      "caches": "list(CacheEntry,0,10000)",
+      "operations": "list(Operation,0,10000)",
+      "audits": "list(Audit,0,20000)",
+      "targets": "list(Target,0,1024)",
+      "environment_states": "list(EnvironmentState,0,1024)",
+      "notifications": "list(Notification,0,10000)",
+      "trigger_cursors": "list(TriggerCursor,0,4096)",
+      "status_deliveries": "list(StatusDelivery,0,1024)"
+    },
+    "Head": {
+      "schema_version": "const(1)",
+      "generation": "int(1,9007199254740991)",
+      "sha256": "Digest"
+    },
+    "Master": {
+      "schema_version": "const(1)",
+      "encryption_key": "Bytes",
+      "cursor_key": "Bytes"
+    },
+    "SecretCipher": {
+      "schema_version": "const(1)",
+      "project_id": "Id",
+      "id": "Id",
+      "version": "int(1,2147483647)",
+      "nonce": "Bytes",
+      "ciphertext": "Bytes",
+      "created_at": "Time"
+    },
+    "Target": {
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "project_id": "Id",
+      "host": "text(1,253)",
+      "port": "int(1,65535)",
+      "user": "Id",
+      "base_url": "URL",
+      "enabled": "bool"
+    },
+    "EnvironmentState": {
+      "project_id": "Id",
+      "environment_id": "Id",
+      "generation": "int(0,9007199254740991)",
+      "artifact": "nullable(Digest)",
+      "active_deployment": "nullable(Id)",
+      "blocked": "bool"
+    },
+    "TargetResult": {
+      "target_id": "Id",
+      "generation": "int(0,9007199254740991)",
+      "artifact": "nullable(Digest)",
+      "phase": "enum(pending,staged,switched,healthy,restored,failed,unknown)",
+      "next_step": "int(1,128)",
+      "previous_route": "nullable(Route)",
+      "code": "nullable(text(1,64))"
+    },
+    "Notification": {
+      "id": "Id",
+      "project_id": "Id",
+      "event": "enum(queued,started,finished,cancelled,waiting_approval,stopped)",
+      "target_id": "Id",
+      "target_attempt": "int(1,100)",
+      "source_revision": "int(1,2147483647)",
+      "attempt": "int(1,3)",
+      "state": "enum(queued,sent,failed)",
+      "next_at": "Time",
+      "code": "nullable(text(1,64))",
+      "at": "Time"
+    },
+    "SourceFile": {
+      "path": "RelPath",
+      "blob_sha": "SHA",
+      "sha256": "Digest",
+      "size": "int(0,10485760)",
+      "executable": "bool"
+    },
+    "TriggerCursor": {
+      "project_id": "Id",
+      "definition_id": "Id",
+      "definition_revision": "int(1,2147483647)",
+      "trigger_id": "Id",
+      "kind": "enum(watch,schedule)",
+      "last_sha": "nullable(SHA)",
+      "last_due": "nullable(Time)"
+    },
+    "StatusDelivery": {
+      "project_id": "Id",
+      "run_id": "Id",
+      "attempt": "int(1,100)",
+      "state": "enum(pending,success,failure,error)",
+      "sent": "bool",
+      "code": "nullable(text(1,64))",
+      "at": "Time"
+    },
+    "SiteResult": {
+      "route": "Route",
+      "verified": "bool",
+      "requests": "int(0,9007199254740991)",
+      "errors": "int(0,9007199254740991)",
+      "code": "nullable(text(1,64))"
+    },
+    "SiteOperation": {
+      "operation_id": "Id",
+      "step": "int(1,128)",
+      "type": "enum(stage,switch,finalize,restore,delete)",
+      "request_digest": "Digest",
+      "committed_at": "Time",
+      "result": "SiteResult"
+    },
+    "SiteWindow": {
+      "from": "Time",
+      "until": "Time",
+      "requests": "int(0,9007199254740991)",
+      "errors": "int(0,9007199254740991)"
+    },
+    "SiteCounters": {
+      "step": "int(0,128)",
+      "generation": "int(0,9007199254740991)",
+      "windows": "list(SiteWindow,0,8640)"
+    },
+    "WorkerExecution": {
+      "operation_id": "Id",
+      "assignment_bytes": "int(1,2097152)",
+      "assignment_digest": "Digest",
+      "toolchain_digest": "Digest",
+      "project_id": "Id",
+      "run_id": "Id",
+      "attempt": "int(1,100)",
+      "job_id": "Id",
+      "lease_generation": "int(1,9007199254740991)",
+      "lease_until": "Time",
+      "unit_names": "list(text(1,128),0,65)",
+      "resources": "Resources",
+      "job": "JobResult",
+      "updated_at": "Time",
+      "cleanup_ok": "bool"
+    },
+    "SiteState": {
+      "schema_version": "const(1)",
+      "route": "Route",
+      "active_operation": "nullable(Id)",
+      "previous_route": "nullable(Route)",
+      "operations": "list(SiteOperation,0,1024)",
+      "counters": "SiteCounters"
+    },
+    "SetupState": {
+      "schema_version": "const(1)",
+      "trust_revision": "int(1,2147483647)",
+      "trust_digest": "Digest",
+      "revoked_key_ids": "list(Digest,0,32)",
+      "current_release": "text(1,128)",
+      "previous_releases": "list(text(1,128),0,2)"
+    }
+  }
+}
+```
+
+**複合制約と既定値：** record 配列は owner の複合キーで一意とする。definition / template は project,id,revision、environment は project,id、run は project,id,attempt、artifact は project,digest、cache は project,key、grant は subject_kind,subject_id,project_id,environment_id,role。SecretMetaはproject_id,id,version一意。idを持つその他のRoot entityはid一意。Credentialのcicd-v1 login_countだけは安全整数上限9007199254740991以下に追加制限する（legacy fileの型は変更しない）。全entity参照は同一project内で解決し（user/worker/serviceはglobal、digestを識別子へ代用しない）、不在・無効・deleting参照を拒否する。ただし成果物digestの保持記録は [履歴参照境界](#phase-19-retained-content-references) を適用し、live foreign keyと区別する。rev / generationの上限では wrap せず P19_REVISION。Timeの順序逆転・不正なstate / timestamp組合せは P19_STATE_CORRUPT。Task、Grant、Environmentの意味上の制約は各owner正本を参照する。
+
+保存時のschema既定値はない。作成UIの初期値だけを `Quota={parallel:1,queue:64,artifact_mb:1024,cache_mb:256,retention_days:7}`、`Resources={cpu_percent:100,memory_mb:1024,disk_mb:512,tasks:128,timeout_seconds:900,output_mb:16}`、`Retry={max_attempts:1,backoff_seconds:1}`、cache無効・paths空・TTL604800秒、empty selector / matrix / template / env / secret、optional=false、fail_fast=false とする。memory_mb >= disk_mb+256、env全値合計32768 bytes以下、secret投入後の合計16384 bytes以下を要求する。Templateは他Templateを参照しない。EnvironmentStateはproject,environmentで一意。TriggerCursorはproject,definition,definition_revision,kind,trigger_idで一意であり、immutable Definitionとは別に更新する。StatusDeliveryの保存・一意性は [StatusDelivery保存契約](#phase-19-status-delivery-state) を参照する。Notification.idはcanonical `{project_id,target_id,target_attempt,source_revision,event}` のSHA256先頭63文字にnを付ける。target_attemptはRun.attempt（Deploymentは1）、source_revisionは通知を生成する遷移後のRun/Deployment.revision。同一遷移再処理では同じidとし、配信retry用attemptと混同しない。Source.filesはpath昇順、UTF-8合計100 MiB以下、tree_digestはcanonical files配列のSHA256。snapshot全体は32 MiB、active run16、全実行job64、projectごとの上限はQuotaでさらに制限する。
+
+<a id="phase-19-status-delivery-state"></a>
+**StatusDelivery保存・保持境界：** 一意keyはproject_id/run_id/attempt/stateであり、対応する同projectのRun/attemptの存在を要求する。atはclaimを最初にcommitしたUTC時刻で不変。sent=false/code=nullは送信権を確保済みで結果未確定、sent=true/code=nullは201確認済み、sent=false/code非nullは送信停止または失敗確定とする。sent=true/code非nullはP19_STATE_CORRUPT。結果更新は同keyの結果未確定から1回だけ許可し、確定後の再処理はbyte不変。新規claimはRoot lock下で最新候補とkey不在を照合して1recordを追加する。Root commit不確定時は送信せず、Head照合による復旧まで止める。選択・固定code・HTTP再発行禁止は [docs/details/commitstatus.md 詳細本文責務 最新結果の送信契約](commitstatus.md#phase-19-status-delivery) を参照する。
+
+status_deliveriesの上限はregistryの1024件。claim前の同じtransactionで、結果確定済みかつnow>=at+当該Project.quota.retention_days*86400秒、送信中/待機queueから参照されず、対応Runもsucceeded/failed/cancelled・retention経過・StatusDelivery以外の参照0で同commitで回収できる記録だけをat/project_id/run_id/attempt/state昇順で回収できる。clock逆行や未確定記録を容量理由で回収しない。回収後も満杯ならP19_QUOTA、claim/HTTP0件、run/deployment状態不変。対応Runの全deliveryがこの適格条件を満たす場合だけ、同commitで全deliveryを先に除去してRunも回収する。Runを残したdelivery単独GCを禁止し、古いeventから同keyを再claimできる窓を作らない。deliveryだけを残して参照先を消さず、旧keyの再作成を目的とした期限前削除もしない。
+
+<a id="phase-19-plan-state-invariants"></a>
+**保存済み計画の整合：** Plan.digestはPlan.dataのcanonical SHA256と一致を要求する。Run.project_idとPlanData.project_id、Run.jobsとPlanData.jobsのID集合・配列順を一致させ、欠落/追加/重複をP19_STATE_CORRUPTで拒否する。PlannedJob.needsは保存Plan内の先行IDだけ、PlannedDeployTask.artifact_fromはneeds内の一つのbuilder IDだけを許す。原定義のDeployTaskと展開済みPlannedDeployTaskを混同せず、展開後IDをJobId長へ切り詰めない。selected=falseのJobResultはskipped/try_number=0/worker_id=null/lease_generation=0/started_at=null/duration_ms=0/code=null/artifact=null/reused_from_attempt=null/log_gap=falseでfinished_at=当該Run.created_atとし、実行状態への遷移を拒否する。selected=trueの初期JobResultはqueued/try_number=0/worker_id=null/lease_generation=0/started_at=finished_at=duration_ms=code=artifact=reused_from_attempt=null/log_gap=false。依存終端によるskippedは同じ非実行fieldを使いduration_ms=0/finished_at=当該遷移時刻とする。選択計算の本文は [docs/details/runner.md 詳細本文責務 条件選択](runner.md#phase-19-plan-selection)、新attempt生成は [再実行](runner.md#phase-19-attempt-plan) を参照する。
+
+一度受け付けたRun.planは変更不可。同project/runのattemptは1始まり欠番なし、新attemptでrevision=1、旧attemptの保存bytesは変更しない。Run.requester/created_at/event_key/triggerは新受付に対応する値であり旧attemptから無条件copyしない。requester=systemは [docs/details/security.md 詳細本文責務 自動trigger主体](security.md#phase-19-automatic-subject) の非User参照例外だけである。activeまたはrecovery_requiredのattemptがある間は次attemptを作らない。Root読取でもこれらの関係を検証し、現在のDefinitionやbranchからPlanを再構築して破損を隠さない。TriggerCursorのrevisionは同project/definitionの存在revisionへ接続し、watchはlast_due=null、scheduleはlast_sha=null。新revisionのcursor初期値は両方null、異なるrevisionのcursorを上書き/流用しない。旧cursorは当該revisionを参照する未終端処理がなく、そのrevisionがProjectの現在参照でない場合だけRoot GCで回収可能とする。
+
+<a id="phase-19-retained-content-references"></a>
+**成果物digestの履歴参照境界：** terminalのRun.JobResult.artifact、終端Deploymentのplan.artifact/previous_artifact、非選択jobのPlan内VerifyTask.artifactはcontent identityの記録であり、Artifact metadataへの常時live foreign keyではない。対応Artifactが正規GC済みでも保存digestを消去/書換えせず、Root読取と履歴APIを破損にしない。metadata不在をfile scanによる再登録や成果物download成功へ変換もしない。
+
+一方、selected jobの実行待ち/稼働中/recovery_requiredの必須artifact参照、active Deployment、EnvironmentStateのcurrent/保持対象、承認待ち、明示pinの参照は保護対象であり、同projectに存在する非deleting Artifactと対応pinを要求する。不在ならP19_STATE_CORRUPTとして通常処理を停止し、GCによるものと推測して緩和しない。保護の解除・GC候補は [docs/details/archive.md 詳細本文責務](archive.md#phase-19-artifact-read-gc) を参照する。保持記録を新しい実行へ利用する際はrunnerの [固定Plan再実行](runner.md#phase-19-attempt-plan) が最新metadata/実file/新pinを再検証し、過去の成功表示だけで再利用を許可しない。操作対象identityや未終端OperationによるRun/Deployment自体の保持は [operation lifecycle](#phase-19-operation-lifecycle) を変更しない。
+
+<a id="phase-19-state-paths"></a>
+**保存 path と権限：**
+
+S は起動時に検証した state-dir。以下の S 相対pathだけを新規管理対象とする。directoryは0700、JSONは0600、所有者はsetupで割り当てた専用user。API viewにRootを丸ごと返さない。
+
+| path | 形式 / 最大byte / writer |
+|---|---|
+| `cicd/head.json` | Head / 4096 / statefile |
+| `cicd/snapshots/g-{generation}.json` | Root / 33554432 / statefile、immutable |
+| `cicd/state.lock` | OS flock用空regular file / 0 / statefile。取得中のunlink禁止。 |
+| `cicd/master.json` | Master / 4096 / setup初期化、security読取 |
+| `cicd/secrets/{project}/{id}/{version}.json` | SecretCipher / 16384 / securityがstatefile adapter経由で書込 |
+| `cicd/logs/{project}/{run}/{attempt}/{job}/{stream}.json` | Log / 7340032（JSON escape・envelope込み）/ statefile |
+| `cicd/artifacts/{project}/{digest}/` | archive正本の固定file集合 / archive |
+| `cicd/cache/{project}/{key}/` | runner正本の固定file集合 / runnerからstatefile adapter |
+| `cicd/work/{operation}/` | staging directory、終端後回収 / runner・archive |
+| `cicd/ssh/{worker}/identity`, `known_hosts` | SSH用UTF-8 text / 各65536 / setup入力、runner読取だけ |
+| `cicd/site/{project}/{environment}/state.json` | SiteState / 1048576 / site-agentからstatefile adapter、Routeと操作結果の唯一のcommit単位 |
+| `cicd/worker.json` | Worker（leases含む）/ 262144 / worker adapter |
+| `cicd/worker-jobs.json` | list(WorkerExecution,0,256) / 4194304 / worker adapter |
+| `cicd/site/{project}/{environment}/releases/{digest}/` | archive正本のcontent/manifest/verified集合 / site-agent |
+| `cicd/site/{project}/{environment}/state.json` の `counters` | SiteCounters / SiteStateの共通上限内 / site APIが同adapterで更新、別fileへ分離しない |
+| `cicd/setup.json` | SetupState / 65536 / setup |
+| `cicd/locks/{role}.lock` | lifetime flock用空regular file / 0 / coordinator/setup（roleはcoordinator/setupのみ）。siteは下記local state更新排他。 |
+| `cicd/locks/worker.lock` | worker複数stdio間のlocal state排他用flock、接続寿命ではなく更新中だけ保持 |
+| `cicd/locks/site.lock` | site API/stdio間のlocal state排他用flock、file更新中だけ保持、network中保持禁止 |
+
+WorkerExecutionはoperation_id一意、job/lease identity一致を要求し、terminal/cleanup_ok=trueの記録だけupdated_atから30日後に回収する。満杯時はactiveを削除せず新assignをP19_STORAGEで拒否する。worker/local brokerの再起動照合で使う実行記録であり、worker.jsonへJobResultを混入しない。
+
+<a id="phase-19-worker-state-identity"></a>
+**coordinatorの再照会identity：** worker割当時はjob/tryのoperation_idをJobResult.execution_idへLeaseと同一Root commitで保存してから接続する。worker側のJobResult.execution_idもWorkerExecution.operation_idと一致を要求する。同tryでは不変、確認済み停止後の次tryだけ新ID/世代へ更新し、coordinator再起動時はこの保存IDでqueryする。queued/非選択skipped/依存skipped/reused jobとcoordinator専用deploy/artifact-verifyはnull。worker実行に入った終端jobは最後の実行IDを保持し、API要求Operation.idと同一にしない。不在をjob ID/現在clock/新乱数で補完しない。型に加えこのnullable条件を全read/writeで検証する。
+
+**worker保存identity：** Leaseの複合identityはproject_id/run_id/attempt/job_id/generationであり、別projectで同名run/jobを同一leaseとしない。WorkerExecutionはoperation_idに加えこのidentity、job.id=job_id、job.worker_id=当該Worker.id、job.lease_generation=lease_generationを照合する。assignment_bytes/digestはassign headerが宣言するcanonical metadataの長さ/SHA256とし、final chunkで実bytesとの一致を確認してからstartを許可する値であり、初回claim後はidentity・resources・toolchain_digestとともに不変。claim時のJobResultはassigned/try_number=header値/worker_id=当該Worker.id/lease_generation=header値、started_at/finished_at/duration_ms/code/artifact/reused_from_attemptはnull、log_gap=false、unit_namesは空とする。job.try_numberは当該tryの1〜3で固定する。同operationの異なるmetadataを新しい実行として受理しない。worker.jsonの同世代leaseとWorkerExecutionのlease_untilをlocal lock下で照合し、食違い・片側だけのcrash残存は通常assignを止めbroker照会へ接続する。どちらかを推測上書きしてslotを空けない。
+
+coordinatorの割当commitは1件ずつ行い、そのcommitの新Root.generationをlease_generationとする。既存JobResult/Leaseへ同値を保存してから送信し、終了leaseを削除した後も世代を1へ戻さない。generation上限では割当不可/P19_REVISION。local worker/brokerの世代はcoordinatorが指定した値を保持し、自前counterで代用しない。lease延長時はworkerの両fileを同時atomicに更新できると主張せず、WorkerExecution→worker.jsonの順に各atomic保存し、両方成功後だけ新期限を利用する。途中crashは前段の不一致照合へ進む。broker.jsonは同じWorkerExecutionを自身のadapterで保存するが、別host/別fileとの分散atomic commitは保証しない。通信と停止境界は [docs/details/runner.md 詳細本文責務 lease](runner.md#phase-19-worker-lease-deadlines) を参照する。
+
+SiteStateはRoute・SiteOperation・SiteCountersを単一fileのatomic rename/fsyncでcommitする。Routeなし初期値はgeneration=0/operation_id=初回要求ID/stable=candidate=null/percent=0/config_digest=要求値、active_operationとprevious_routeはnull、operations空、countersはstep=0/generation=0/windows空。mutating RPCの外部可視route変更と再送結果を別fileへ分離しない。keyはoperation_id,step、type/digest一致を検査する。SiteOperation.committed_atはそのstepを最初にcommitしたsite UTC時刻で再送時不変。now>=committed_at+30日を満たす場合だけ期限経過とする。SiteOperationは30日保持、active/previous_route/current route参照分は回収不可、期限経過分だけcommit前に古い順で回収する。query/observeは記録を増やさない。初回claimでprevious_routeを固定し、同operation内の保存済step最大+1だけを受け付け、finalize/restore成功時だけactive_operationをnullにする。activeの結果を消さず、容量不足は変更前に拒否する。
+
+secret / SSH / master はsnapshot export、成果物、cache、通常backup、API一覧から除外する。job rootへのmount対象にも含めない。cicd配下のfilesystem上のfile集合がこれを超える場合は自動採用せず P19_STATE_CORRUPT とする。ただし以下のtransaction一時fileとarchive / runner正本のchildだけを許可する。
+
+<a id="phase-19-state-transaction"></a>
+**commit / crash / lock 固定順：**
+
+process内mutex → `state.lock` の非blocking flock(LOCK_EX)を10ms間隔、最大2秒で取得する。保持中にnetwork / child / response送信を待たない。read-onlyはHeadから一つのimmutable snapshotを読み、hash / schema / generationを検証し、書込・修復・migrationをしない。snapshot不在でHeadが既に進んだ場合だけ新Headで最大3回読み直す（GC競合）。同Headで不在/不正hashなら即corrupt、3回すべて世代更新ならP19_BUSY。
+
+1. lock下でHeadと現在snapshotを再読込し、要求識別子を先に照合してから新規受付のentity revisionを検査する。受付再送と内部進行は [operation lifecycle](#phase-19-operation-lifecycle) の別interfaceとする。
+2. 全制約と容量を検証する。新しい進行中operationにつき終端用262144 bytesとOperation/Audit終端1行ずつを予約し、snapshot byte数 + 予約総量 <= 33554432 を満たさなければ P19_STORAGE。active対象、監査、保護参照を容量対策で消さない。
+3. generation+1のsnapshotを `snapshots/.{o-id}.tmp` にO_EXCLで作成、write-all、chmod、fsync、close、未存在のg-nameへrename、snapshots directory fsync。
+4. 新Headを `cicd/.head.{o-id}.tmp` に同順で書き、head.jsonへatomic renameし、cicd directory fsync。この完了だけをdurable commitとする。
+5. commit後は現snapshotと直前2世代を保持して古いsnapshotを削除する。削除失敗はP19_CLEANUPの診断とし、commit済み結果を反転しない。空き256 MiB未満では新規受付を止める。
+6. lockを解放する。応答前crashに備え、操作IDで結果を再照会できる状態を保持する。
+
+手順3以前の失敗はHead不変。3成功・4rename前のcrashは未参照snapshotだけを次回lock下で回収する。4rename後のfsync失敗は P19_STATE_UNCERTAIN とし、commit不成立・副作用なしを断言しない。runnerは外部副作用前に別のdurable claimを必ずcommitする。Head破損、参照先不在、hash不一致、世代逆転は P19_STATE_CORRUPT とし通常処理を停止、旧世代への推測fallbackを禁止する。明示 `cicd-recover` だけが、対象generationとdigest、外部operation照合を受け、検証したsnapshotを新世代へ復元する。
+
+operation/監査の回収は [operation lifecycle](#phase-19-operation-lifecycle) に従う。run / deploymentは各project retention経過かつ非active・非参照だけをcreated_at,id昇順で回収する。過去Runのattemptは上書きしない。schema_version=1以外は拒否し自動upgradeしない。legacy状態の自動importは行わない。新規projectと環境を明示作成し、既存Release/成果物はarchive検証を通した明示登録だけを許可する。legacy fileを変更しない。cicd-v1開始後のlegacyへの逆migrationは非対応であり、進行中処理を終端化・exportしたうえでprofile無効化する。
+
+named user loginの認証更新は内部o-ID付きUpdateCICDAuth(userID,credentialFingerprint,mutate)でlock下に最新Credentialを再照合し、count/time/Auditだけを一つのRoot更新にする。Operationは作らず、commit後だけmemory sessionを公開する。admin aliasは既存credential adapterの保存順を使用し、失敗時sessionを発行しない。login/logoutをOperationResult対象外とするAPI例外は、認証記録の永続化省略を意味しない。
+
+<a id="phase-19-artifact-read-guard"></a>
+**成果物のread guard：** `WithCICDArtifactRead(project,digests,read)` は同一projectの重複なしdigest1〜2件をbyte昇順で受け、process内mutexの後、既存state.lockをcreate/truncateせずread-onlyで開き、LOCK_SHの非blocking flockを10ms間隔/最大2秒で取得する。guard下で最新Head/Rootを検証して指定digestのArtifactとRoot.generationだけをreadへ渡し、callbackは既存fileのopen/Fstat/有限read/closeだけを行う。callback前後でRoot/head/世代/監査を更新しない。全return経路でguard/descriptorを解放し、network/response送信へ保持を持ち越さない。書込・publish・deleting claim・実file削除は既存LOCK_EXを使用し、share lockをupgradeしない。read結果はcallbackで確定したmemory値に限る。guard取得不能はP19_BUSY、lock file不正/Root破損はP19_STATE_CORRUPT。file readの結果変換は [docs/details/archive.md 詳細本文責務 read/GC](archive.md#phase-19-artifact-read-gc) を参照する。
+
+**artifact/cache write adapter：** `CommitCICDContent(expectedGeneration,effect,mutate)` は登録済archive/runnerだけが使う専用内部境界。LOCK_EX取得後に最新Root・expectedGeneration・対象project/digest/key・pin/in_use/容量を検査し、effectによる検証済みstagingのpublishまたは既存deleting対象の削除と親fsyncを実行後、純粋mutateによるRoot更新を既存snapshot/Head順でcommitする。effectは上記検査で固定したartifact/cache pathのfilesystem I/Oだけで、network/child/response/Root直接書込を呼ばない。一般UpdateCICDのmutateにI/Oを持ち込まず、guard内で同じadapterを再入取得しない。世代不一致はeffect未実行でP19_REVISION。effect後のRoot失敗は未参照公開directoryまたはdeleting metadataとして保持し、原状不変を断言しない。head rename後fsync失敗は既存P19_STATE_UNCERTAINで停止する。
+
+<a id="phase-19-operation-lifecycle"></a>
+**受付と内部進行の分離：** `UpdateCICD(opID,requestDigest,mutate)` は新規受付専用。最新認可の再評価・既存key照合後、新規だけmutateを1回適用し、Operationと業務差分とaccepted/finished監査を一つのRoot commitにする。既存同digestはmutateを呼ばず現Operationを返す。API側の照合順とkind集合は [docs/details/api.md 詳細本文責務 operation受付](api.md#phase-19-operation-admission) を参照する。IDはRoot全体で一意、subject/kind/request_digest/created_at/expires_at/target_id/target_attemptは初回commit後不変。target_idはartifactPin/cacheDeleteではDigest、grantPutでは変更対象subjectのId、passwordChangeでは本人Id、他のAPI mutationでは作成・変更するentityのIdを要求し、API mutationでnullは禁止する。内部eventで対象なしの場合だけnullを許す。text型を任意文字列targetの許可と解釈しない。runStart/runRetry/runResume/runCancelではtarget_attemptを対象Run.attemptで固定し、それ以外はnull。runRetry/runResumeは新attempt、runCancelはpathで指定したattemptであり、latestへ読み替えない。target_id/attemptが参照する保存値はoperation保持中に回収しない。保持中のrun/deploymentのGCを防止する参照であり、対象設定のrevision更新、grant変更、cacheDeleteによる実体削除、security正本の旧secret版回収を禁止する参照ではない。対象identifierを別entityへ再利用しない。
+
+内部進行は `AdvanceCICDOperation(opID,expectedGeneration,mutate) (Operation,error)` を使用する。呼出元はrunnerのdurable claimを所有するcoordinator、または受付済operationを完了するapi ownerに限定し、HTTP入力から直接呼ばない。lock下のRoot.generation不一致はP19_REVISIONでmutate未実行、callerは再読取・lease/target状態再照合後だけ再構成する。新key作成や受付digestの再判定へ流さない。Operationの状態変更・対象進捗・必要監査・予約容量解放を同一commitにする。accepted監査は受付時に1行、finished監査はsucceeded/failedへの終端時に1行だけとし、recovery_requiredへの進行や結果一致の再照合でfinishedを追加しない。acceptedはcode=null、accepted→succeeded/failed/recovery_required、recovery_required→succeeded/failedを許可する。recovery_requiredは未終端で参照と容量予約を維持する。succeededはcode=null、failed/recovery_requiredはcatalogの非null code必須。終端後は完全同一結果の照合だけを許し、別状態/codeへの上書きをP19_STALEで拒否する。結果一致の内部再送は監査・世代を増やさない。対象state machineの追加制約は [docs/details/runner.md 詳細本文責務 operation完了接続](runner.md#phase-19-operation-completion) を参照する。
+
+**期限とGC：** expires_atはcreated_at+2592000秒、期限加算がTime範囲を超える入力時刻はP19_STATE_CORRUPT。最終更新時刻や再送で延長しない。GCはlock下でnowを1回固定し、succeeded/failedかつnow>=expires_atかつactive claim/lease/復旧/他entityからの保護参照なし、の全条件を満たすOperationだけをexpires_at,id順で回収する。accepted/recovery_requiredは期限超過でも回収・自動失敗化しない。対応するAudit全行を同commitで回収し、operationだけ先に消さない。容量不足でも保護中operation/監査/対象を捨てずP19_STORAGEで新規受付を止める。GC前なら期限後でも元keyは再送照合され、GC後に同keyが来れば新規受付になる。clientは一度使用したkeyを別操作や新しい受付へ再利用しない。読取APIはGCを起動しない。
+
+**operation監査のtarget結合：** Operationに対応するAuditのsubject/project_id/target_idは当該Operationの値と一致を要求する。target_idはArtifact/CacheEntryを指すDigestも保持するためtext型とし、Operation側のkind別制約を共用して arbitrary textを許可しない。拒否前に対象を検証できない監査だけtarget_id=nullを使う。認証更新などOperationを生成しない既存監査の例外はそれぞれの認証契約を維持する。Auditへattempt fieldを重複追加せず、保持中Operation.target_attemptから参照する。
+
+<a id="phase-19-log-invariants"></a>
+**Logの保存整合：** 全read/writeでschemaに加え `0<=first_offset<=next_offset<=9007199254740991`、UTF-8有効、`next_offset-first_offset=len(data bytes)`、truncated=(first_offset>0)を検証する。同一identityの更新はfirst/nextを減算せず、gap=trueをfalseへ戻さない。terminal=trueは封印済みであり、以後は完全同一Logの再送を既存値として返すだけとし、byte/offset/flagを更新しない。terminal=false同士でも保存済みと重なる絶対offset区間のbyte不一致を拒否する。新規は両offset=0/data空/truncated=false/gap=false/terminal=false。空streamもEOF時にterminal=trueを保存する。破損はP19_STATE_CORRUPTで自動修復しない。容量はJSON escapeと全fieldを含むserialized byte長で検証し、既存fileを置換する前に上限超過をP19_STORAGEで拒否する。全NULのdata最大長はescapeだけで6291456 bytesを使うため、path表のenvelope込み上限を適用し、schema上有効な最大dataをheader分で欠落させない。書込失敗時のjob停止は [docs/details/runner.md 詳細本文責務 streaming log](runner.md#phase-19-streaming-log-contract) を参照する。
+
+**adapter interface：** `ReadCICD() (Root,Head,error)`、[operation lifecycleの受付/内部進行interface](#phase-19-operation-lifecycle)、`WriteCICDLog(Log) error`、`ReadCICDLog(identity) (Log,error)`。mutateは既に検証した入力を用いる純粋なRoot更新だけで、I/Oを呼ばない。ログ単体は同directoryのO_EXCL temporary → write / fsync / close → rename / directory fsyncで更新する。caller固有の直接書込は許可しない。全error codeの公開対応は [`docs/details/api.md` 詳細本文責務 Phase 19 error](api.md#phase-19-error-catalog)、検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
+
+**canonical bytes：** digest対象JSONはobject keyをUTF-8 byte昇順、配列順維持、空白なし、整数10進、stringはquotation/backslashをそれぞれbackslashでescapeし、U+0008/U+0009/U+000A/U+000C/U+000Dは順に `\b` / `\t` / `\n` / `\f` / `\r`、その他U+0000〜001Fはlowercase hex4桁の `\u00xx` とする（入力で禁止されたcodepointの許可にはならない）。それ以外は元のUTF-8 byteを維持し、HTML escapeなし、slash非escape、Unicode正規化なし、末尾LFなし、UTF-8でencodeする。浮動小数は全schemaで不使用。HTTP送受信bytesとcanonical bytesを混同しない。\u2028/\u2029はUTF-8のままとする。
+
 ---
+
+<a id="phase-19-statefile-implementation-classification"></a>
+**実装分類：** 型式parser・canonical JSON・世代lock/atomic snapshotとsite/local state adapterは `INHOUSE`、使用primitiveはencoding/json、crypto/sha256、os、syscall flock（`STD`）。入力/状態/異常系は[`docs/details/statefile.md` 詳細本文責務](#phase-19-state-transaction)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `statefile`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="0-責務境界"></a>
 
@@ -79,11 +819,11 @@
 | `.smtp_secret` | UTF-8 text | 不在 | `api` | 読み込み不能時は SMTP caller へ secret read failure を返す。 |
 | `.dashboard_layout` | JSON object | `{"widgets":["status","stats","schedule","alerts","disk","rate_limit","snapshots","maintenance","queue"]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.users` | JSON object | `{"users":[]}` | `api` | 破損時は自動再生成せず、user caller へ破損失敗を返す。意図しない再許可を防ぐため上書きしない。 |
-| `.roles` | JSON object | `{"roles":[{"id":"admin","name":"Admin","permissions":["*"],"system":true}]}` | `api` | 破損時は自動再生成せず、role caller へ破損失敗を返す。 |
+| `.roles` | JSON object | [追加管理初期状態](#additional-management-initial-state) | `api` | 破損時は自動再生成せず、role caller へ破損失敗を返す。 |
 | `.external_auth_config` | JSON object | `{"enabled":false,"providers":[]}` | `api` | secret を含む破損 payload は response に出さず、破損失敗を返す。 |
-| `.datastore_config` | JSON object | `{"active_store":"statefile","stores":[{"id":"statefile","type":"statefile","enabled":true}],"pending_switch":null}` | `api` | 破損時は切り替えを禁止し、現在 store を不明として caller へ破損失敗を返す。 |
+| `.datastore_config` | JSON object | `{"active_store":"statefile","stores":[{"id":"statefile","type":"statefile","enabled":true,"path":null}],"pending_switch":null}` | `api` | 破損時は切り替えを禁止し、現在 store を不明として caller へ破損失敗を返す。 |
 | `.config_snapshots/{id}.json` | JSON object | snapshot 作成時に新規作成 | `api` | 個別破損 snapshot は list から除外せず `corrupted:true` で返し、restore を禁止する。 |
-| `.projects` | JSON object | `{"projects":[{"id":"default","name":"default","status":"active","default":true}]}` | `api` / `runner` | 破損時は project caller へ破損失敗を返し、default project を自動再生成しない。 |
+| `.projects` | JSON object | [追加管理初期状態](#additional-management-initial-state) | `api` / `runner` | 破損時は project caller へ破損失敗を返し、default project を自動再生成しない。 |
 | `.config_templates` | JSON object | `{"templates":[]}` | `api` | 破損時は template caller へ破損失敗を返し、自動再生成しない。 |
 | `.admin_events` | JSON Lines | 空ファイル | `api` / `runner` | 読み込み可能な行のみ返し、壊れた行は ERROR ログへ記録して無視する。 |
 | `.share_links` | JSON object | `{"links":[]}` | `api` | 破損時は share link caller へ破損失敗を返し、自動再生成しない。 |
@@ -211,6 +951,8 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 | `log_max_lines` | integer | `500` | 1〜10000 | `GET/POST /api/config` | `GET /api/logs` が返す最大行数。 |
 | `history_max_count` | integer | `100` | 1〜10000 | `GET/POST /api/config` | `.build_history` の通常表示上限。削除処理の上限ではない。 |
 | `history_retention` | object | `{"enabled":false,"max_count":1000,"max_age_days":null,"updated_at":null}` | [HistoryRetentionPolicy object](#history-retention-policy-object) | `GET/POST /api/history/retention`, `POST /api/history/retention/run` | `.build_history` と対応 log の自動削除 policy。 |
+| `response_cache_policy` | object | `{"enabled":false,"ttl_seconds":30,"endpoints":[]}` | [追加管理cache policy](#additional-response-cache-policy) | `GET/POST /api/cache-policy` | 追加管理API用。 |
+| `config_snapshot_policy` | object | `{"enabled":false,"max_count":100}` | [自動設定snapshot](#automatic-config-snapshot-contract) | `GET/POST /api/config` | 追加管理API用。 |
 | `build_timeout_seconds` | integer | `300` | 1〜86400 | `GET/POST /api/config` | 手動/自動ビルドのタイムアウト秒数。 |
 | `log_retention_days` | integer | `30` | 0〜3650 | `GET/POST /api/config`, `POST /api/logs/cleanup` | `0` は自動削除なし。 |
 | `log_level` | string | `"INFO"` | `"INFO"` / `"DEBUG"` / `"WARNING"` / `"ERROR"` | `GET/POST /api/config`, `POST /api/log-level` | `api` のランタイムログレベル。 |
@@ -465,7 +1207,7 @@ NotificationPayload object は canonical JSON 生成時に key を ASCII 昇順�
 
 `trigger="deploy"` は `source_kind="output"`、`out`非 `null`、`rollback_from=null`、`snapshot_id=null` とする。`trigger="rollback"` は `source_kind="snapshot"`、`out=null`、`rollback_from`と `snapshot_id` を非 `null` の同一 snapshot id とする。それ以外の組合せは schema 不正とする。`output_sha256` は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の固定アルゴリズムで算出した値とする。
 
-array は投入順を保持する。転送先識別子は `branch`、`target_id`、`host`、`user`、`dest_dir` の完全一致とする。同一転送先の新しい build が pending になった場合は、既存 entry の array 位置を保ったまま `build_id`、`trigger`、`source_kind`、`rollback_from`、`snapshot_id`、`out`、`output_sha256`、`failed_at`、`last_error` を新しい値へ置換し、`retry_count=0` とする。同一転送先への新しい build が転送成功した場合は、対応する既存 pending entry を削除する。再送元の検証、snapshot 再展開、転送、cleanup は [`docs/details/runner.md` 詳細本文責務 §14a](runner.md#14a-ssh-サイト転送) と [`docs/details/archive.md` 詳細本文責務 §27.15](archive.md#sec-27-15) を参照する。
+array は投入順を保持する。転送先識別子は `branch`、`target_id`、`host`、`user`、`dest_dir` の完全一致とする。同一転送先の新しい build が pending になった場合は、既存 entry の array 位置を保ったまま `build_id`、`trigger`、`source_kind`、`rollback_from`、`snapshot_id`、`out`、`output_sha256`、`failed_at` を新しい値へ置換し、`retry_count=0` とする。同一転送先への新しい build が転送成功した場合は、対応する既存 pending entry を削除する。再送元の検証、snapshot 再展開、転送、cleanup は [`docs/details/runner.md` 詳細本文責務 §14a](runner.md#14a-ssh-サイト転送) と [`docs/details/archive.md` 詳細本文責務 §27.15](archive.md#sec-27-15) を参照する。
 
 <a id="branch-config-schema"></a>
 **`.branch_config` schema：**
@@ -579,12 +1321,14 @@ file 内容は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / dig
 |------|----|------|--------|------|
 | `cache_key` | string | 必須 | file 名と同じ 64 文字 lowercase hex | cache entry 識別子。 |
 | `input_path` | string | 必須 | index の input relative path | cache index key と一致させる。 |
+| `input_sha256` | string | 必須 | 64 文字 lowercase hex | 変換入力 byte 列の SHA-256。 |
 | `builder_version` | string | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) のバイナリバージョン | cache を作成した builder の注入済みバージョン。 |
 | `theme` | string | 必須 | builder の theme 列挙値 | 変換時 theme。 |
 | `build_config_hash` | string | 必須 | 64 文字 lowercase hex | 正規化済み build config SHA-256。 |
 | `deps` | object | 必須 | string:string | key は dependency 相対 path、value は 64 文字 lowercase hex。 |
 | `html_fragment` | string | 必須 | UTF-8 string | page body の変換済み HTML fragment。 |
 | `metadata` | object | 必須 | CachePageMetadata object | site assembly と search index 再生成に必要な page metadata。 |
+| `content_sha256` | string | 必須 | 64 文字 lowercase hex | `{html_fragment,metadata}` を [追加管理状態共通のcanonical JSON](#additional-management-statefile-common-contract) で符号化した SHA-256。認証署名ではなく破損検出用。 |
 | `created_at` | string | 必須 | UTC ISO 8601 秒精度 | cache entry 作成時刻。 |
 
 CachePageMetadata object は `title` string、`slug` string、`output_path` string、`headings` object[]、`warnings` string[]、`reading_time` integer を必須 key とする。`headings[]` は `level` integer 1〜6、`id` string、`text` string の 3 key だけを持つ。`output_path` と `deps` の key は input base または output root からの `/` 区切り相対 path とし、絶対 path、user home path、temporary path を保存しない。
@@ -696,7 +1440,7 @@ repo config write caller は request の `owner` または `repo` のうち指�
 | `timestamp` | string | 必須 | ISO 8601 | 発生日時。 |
 | `request_id` | string/null | 必須 | [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) の生成値、または `null` | API request は生成済み request ID、API request に紐づかない `runner` 内部 event は `null`。 |
 | `actor_type` | string | 必須 | `"admin"` / `"api_token"` / `"webhook"` / `"system"` / `"anonymous"` | 操作者種別。 |
-| `actor_id` | string/null | 必須 | `"admin"`、token id、`"webhook"`、`"system"`、または `null` | 操作者。secret 本体は保存しない。 |
+| `actor_id` | string/null | 必須 | `admin`、UserRecord.id、token id、`webhook`、`system`、またはnull | 操作者。secret 本体は保存しない。 |
 | `action` | string | 必須 | [`docs/details/security.md` 詳細本文責務 §27.44](security.md#sec-27-44) | 操作種別。 |
 | `target_type` | string | 必須 | [`docs/details/security.md` 詳細本文責務 §27.44](security.md#sec-27-44) | 対象種別。 |
 | `target_id` | string/null | 必須 | 対象 id または `null` | 対象識別子。 |
@@ -873,6 +1617,7 @@ repo config write caller は request の `owner` または `repo` のうち指�
 | `current_build_id` | string/null | 必須 | build id または `null` | 実行中 build id。 |
 | `active_queue_entry` | object/null | 必須 | Queue entry schema または `null` | runner が待機列から取得し、結果未確定の queue entry。 |
 | `queued` | object[] | 必須 | running 中は 0〜`queue_max_size` 件、idle 中は 0〜`max(1, queue_max_size)` 件 | durable build dispatch queue。 |
+| `queue_order` | string[] | 追加queue制御で必須、既存形式では省略可 | queued idの重複なし部分列 | [runner詳細本文責務の追加queue制御](runner.md#additional-queue-control) で保存する手動順。既存形式の省略はmemory上の[]として読む。 |
 | `last_started_at` | string/null | 必須 | ISO 8601 または `null` | 最終開始日時。 |
 | `last_finished_at` | string/null | 必須 | ISO 8601 または `null` | 最終完了日時。 |
 | `weekly_summary_last_sent_at` | string/null | 必須 | ISO 8601 または `null` | 週次サマリー最終送信日時。 |
@@ -904,6 +1649,8 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 
 `.build_state` の key ごとの書込責務は次に固定する。`api` は `queued` の append / clear だけを書き込み、`runner` は `active_queue_entry`、`running`、`current_build_id`、`last_started_at`、`last_finished_at`、`weekly_summary_last_sent_at`、`weekly_summary_sent_date` を書き込む。`api` は runner 起動要求だけで runner 所有 field を変更せず、`runner` は API 要求の waiting clear を実行しない。書込条件と遷移順は [`docs/details/api.md`](api.md) 詳細本文責務の queue / build API 契約と [`docs/details/runner.md` 詳細本文責務 §27.19](runner.md#sec-27-19) / [`docs/details/runner.md` 詳細本文責務 §27.35](runner.md#sec-27-35) を参照する。
 
+追加queue制御を実装する変更では、apiの書込許可へqueuedの個別remove/reorderとqueue_orderを加える。runnerはactive移動と同じatomic更新で選択idをqueue_orderから除く。queue_orderにqueued不在id、重複、active idがある保存値は破損であり、自動補正しない。既存legacy経路のpriority契約を実装済みとする証跡は、この追加field/処理の実装完了証拠にはならない。
+
 queue 保存上限は、valid running `.build_lock`、`.build_state.running=true`、または `active_queue_entry != null` のいずれかが成立する場合に `queue_max_size`、すべて成立しない場合に `max(1, queue_max_size)` とする。上限判定、重複判定、append、clear、runner の active 移動は `.build_state` lock 内で行う。`queue_max_size=0` かつ active のない idle 状態の最初の entry は runner 起動要求を durable に渡す dispatch slot であり、2 件目を許可しない。
 
 **`.build_circuit_state` schema：**
@@ -925,7 +1672,7 @@ queue 保存上限は、valid running `.build_lock`、`.build_state.running=true
 | `at` | string | 必須 | ISO 8601 | 変更日時。 |
 | `type` | string | 必須 | `^[a-z][a-z0-9_]{0,63}$` | [`docs/details/api.md` 詳細本文責務 §27.20](api.md#sec-27-20) の endpoint 固定名。 |
 | `action` | string | 必須 | `"create"`, `"update"`, `"delete"` | 変更種別。 |
-| `actor` | string | 必須 | `"admin"` または API token id | 操作者。token 本体は保存しない。 |
+| `actor` | string | 必須 | `admin`、UserRecord.id、またはAPI token id | 操作者。token 本体は保存しない。 |
 | `request_id` | string | 必須 | [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) の生成値 | 同一 request の識別子。 |
 | `endpoint` | string | 必須 | `{METHOD} {path_template}` | path parameter の実値と query を含めない。 |
 | `result` | string | 必須 | `"success"`, `"partial_failure"` | 主状態変更と必須後続処理の結果。主状態変更後の後続処理失敗だけ `"partial_failure"` とする。 |
@@ -963,7 +1710,7 @@ queue 保存上限は、valid running `.build_lock`、`.build_state.running=true
 | `status` | integer | 必須 | HTTP status code | response status。 |
 | `duration_ms` | integer | 必須 | 0 以上 | handler 開始から response 確定までのミリ秒。 |
 | `auth_type` | string | 必須 | `"session"`, `"api_token"`, `"webhook"`, `"none"` | 認証種別。 |
-| `actor` | string/null | 必須 | `"admin"`、token id、`"webhook"`、または `null` | 操作者。token 本体は保存しない。 |
+| `actor` | string/null | 必須 | `admin`、UserRecord.id、token id、`webhook`、またはnull | 操作者。token 本体は保存しない。 |
 | `remote_addr` | string/null | 必須 | access log は共通 field `request remote_addr` | 接続元。取得不能時は `null`。 |
 | `user_agent` | string/null | 必須 | 文字列または `null` | 取得不能時は `null`。 |
 | `error` | string/null | 必須 | エラーコードまたは `null` | 成功時は `null`。 |
@@ -1504,6 +2251,11 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | path / mode | statefile owner が作成する runtime 状態 directory は `0700`、runtime 状態 file、tmp、lock は `0600` に固定する。path 解決は state dir 内だけを許可し、symlink 経由、absolute user input、`..`、secret path 逸脱を拒否する。 | state dir 外への書込、symlink 追従、runtime directory `0755`、file / lock `0644`、mode 不一致の成功扱い、path 原文や secret path の公開 log が残る。 |
 | caller 境界 | statefile owner は path、schema、lock、atomic write、JSON Lines、破損時処理だけを担当し、API / runner / security / archive の業務判断を代行しない。複数 file 更新では caller が定義した Write 列順を 1 file ずつ実行し、成功済み file の自動 rollback をしない。 | statefile adapter が endpoint、UI、SDK、build 成否、auth 成否、通知成否、archive 可否を判断する処理、または caller 固有 log を statefile owner が代行追記する処理が残る。 |
 
+<a id="inhouse-iac-state"></a>
+**内製IaC状態：** `.iac/identity.json` は `{schema_version:1,target_id:string}`、setup導入時の明示入力でcreate-only。`.iac/operations/{id}.json` は `{schema_version:1,id:string,target_id:string,plan:object,status:string,direction:"apply"|"rollback",step_index:integer,steps:object[],created_at:Time,updated_at:Time}`、idは `iac_` + Crockford26文字。planは [setup詳細本文責務](setup.md#inhouse-iac-manifest) の同型、statusはprepared/applying/succeeded/rolling_back/rolled_back/failed/recovery_required、step_indexとstatus/step状態の組合せは [setup詳細本文責務の復旧遷移](setup.md#inhouse-iac-recovery-transition) と照合する。stepsはchange順に `{resource_id:string,state:"pending"|"intent"|"applied"|"reverted",before:object,after:object,snapshot_sha256:Digest|null}`。before/afterはplanの同型、configだけsnapshot_sha256非null（元fileのraw byte digestでありplan.before.sha256のcanonical digestとは別）。config snapshotは `.iac/snapshots/{operation_id}/{resource_id}.json` に元configのJSON byteを0600保存し、digest不一致は復旧停止。snapshotの存在を必要とする遷移は [setup詳細本文責務](setup.md#inhouse-iac-recovery-transition) で判定し、未作成snapshotを成功済みに記録しない。
+
+全directory0700/file0600、既存adapterのatomic/fsync/no-follow適用。lockは `.iac/lock` のOS flock、process間排他、10秒超busy、lock fileをunlinkしない。journal最大4MiB、operation最大1000件/全snapshot64MiB。満杯は新apply前にbusy、既存復旧は容量予約分を使う（1operationにつき4MiB journal+64MiB snapshotを事前確保確認）。失敗/破損/不明operationは自動削除しない。stateは稼働・復旧の正本であり変更履歴fileとして生成・配布しない。runtime保持/明示export以外にrepoへcommitしない。
+
 <a id="sec-22-0d"></a>
 **22.0d 追加管理 API / MCP 状態 schema：**
 
@@ -1516,6 +2268,9 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | `.users` | `{ "users": UserRecord[] }` |
 | `.roles` | `{ "roles": RoleRecord[] }` |
 | `.external_auth_config` | `{ "enabled": boolean, "providers": ExternalAuthProvider[] }` |
+| `.external_auth_secrets/{provider_id}/{secret_id}` | UTF-8 secret、1..4096byte、NUL/CR/LF禁止、0600。secret_idはCSPRNG16byteのlowercase hex。create-only immutable、任意ref入力は禁止。 |
+| `.auth_profile`, `.auth_migration`, `.user_revocations`, `.management_api.lock` | [追加管理認証profile状態](#multi-user-profile-state) と [失効復旧状態](#multi-user-revocation-state)。lockは既存OS flock形式。 |
+| `.notify_payloads/{delivery_id}.json`, `.notify_resends` | [手動再送状態](#manual-webhook-resend-state)。 |
 | `.datastore_config` | `{ "active_store": string, "stores": DatastoreStore[], "pending_switch": DatastoreSwitchRecord|null }` |
 | `.config_snapshots/{id}.json` | `ConfigSnapshotObject` |
 | `.projects` | `{ "projects": ProjectRecord[] }` |
@@ -1543,6 +2298,42 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | write validation | caller は write 前に対象 record 全体を schema validation する。部分 object だけの保存、未知 key 維持、既存破損 file への追記は禁止する。 |
 | JSON Lines append | `.admin_events`、`.mcp_audit_log`、`.mcp_client_log` は 1 record 1 行、末尾 LF 必須、途中改行禁止とする。append 失敗時は部分行を残さない。 |
 
+read validation のJSON Lines破損判定は、読取adapterが行単位除外を明示するfileでは「不正行を検出してcallerへ分類を返す」ことを意味する。`.admin_events` のread-only一覧/streamは [API詳細本文責務](api.md#sec-27-66) の除外規則を使用し、fileを修復しない。write callerは破損した既存JSON Linesへ追記しない。
+
+<a id="multi-user-profile-state"></a>
+**追加管理認証のprofile状態：** `.auth_profile` は不在ならlegacy単一管理者、存在時は閉じたJSON `{schema_version:1,profile:"multi-user-v1",admin_user_id:string,migrated_at:string}`。admin_user_idは移行したUserRecord.id、migrated_atはUTC秒精度。cicd-v1のstateとは共有しない。破損/読取不能はAPI起動拒否でありlegacy fallbackしない。`.auth_migration` は閉じたJSON `{schema_version:1,admin_user_id:string,started_at:string,source_sha256:object,output_sha256:object,phase:"prepared"|"committed"}`。source_sha256のkeyは `.admin_credentials`、`.totp_secret`、`.api_tokens`、値は元file byteのSHA256（不在はnull）。output_sha256は予定するusers/roles/api_tokensのcanonical JSON digestを持ち、prepared保存前に全出力を構築して固定する。journalはruntime復旧状態であり変更記録ではない。0600/owner一致、破損時は停止し自動再生成しない。
+
+multi-user-v1では `.users`、`.roles` は必須で不在fallback禁止。`.api_tokens` の各recordは既存schemaに `user_id`（実在UserRecord.id、必須）を加えた閉じた型とする。legacyではこのkeyを追加しない。`.users` は最大1000件、`.roles` は最大128件、各file最大4MiB。auth profileを見ずにschemaを推測しない。user credential/totpを旧2fileと二重読取・二重更新しない。
+
+APIは起動からshutdownまで `.management_api.lock` のnonblocking OS flockを保持し、同state-dirの2つ目のAPI/移行CLIを拒否する。fileは0600、inodeをunlinkしない。認証更新はprocess内の単一authorization mutexでread/validate/一つの主file commitを直列化する。通常のuser更新はusersだけ、role更新はrolesだけ、token更新はapi_tokensだけを変更し、跨fileの同時変更APIを作らない。statefile個別adapterのlockとは別のlifecycle排他であり、callback内から別adapterを呼ぶ許可ではない。readも同mutexでusers/roles/tokenの世代混在を防ぐ。
+
+<a id="multi-user-revocation-state"></a>
+**user token失効の復旧状態：** `.user_revocations` は `{users:[{user_id:string,requested_at:string}]}` の閉じたJSON、最大1000件、user_id一意、ASCII昇順、UTC秒精度。不在は空集合。破損はAPI起動停止・認証拒否であり空集合再生成禁止。失効対象userを記録してsync→users主state変更→tokensの対象user全件revoked_atを設定→marker entry除去の順（fileはunlinkせずusers=[]もatomic保存）。失敗時はmarkerを維持し、そのuserの全認証を拒否する。再起動はlisten前に同じ失効を完了してmarkerを除去する。users変更前に中断した場合も失効は取消さない。tokensが既に失効済みなら元時刻を維持する。通常file0600、statefile adapterだけで更新する。
+
+<a id="additional-management-initial-state"></a>
+**追加管理初期状態：** 追加管理機能の明示初期化時に、callerは検証済み `repository_root`（絶対path）、`branch`（ProjectRecordの制約）、`initialized_at`（UTC秒精度）を渡す。`.roles` は [security詳細本文責務のsystem role表](security.md#sec-27-58) を全件、表の順に生成し、各recordのcreated_at/updated_atをinitialized_atとする。`.projects` は `{projects:[{id:"default",name:"Default",status:"active",root:repository_root,branch:branch,default:true,created_at:initialized_at,updated_at:initialized_at}]}` を生成する。既存fileの欠損key補完や上書きには使わない。不在fileのread-only応答では同じ構築関数をmemory上だけで使用し、時刻は `1970-01-01T00:00:00Z` 固定とする。repository_root/branchを取得できない場合はread failureであり、不完全recordを返さない。
+
+<a id="manual-webhook-resend-state"></a>
+**手動再送状態：** owner=`statefile`、`STD`。payload objectは `{delivery_id:string,channel_id:string,event:string,payload:NotificationPayload,payload_sha256:Digest,created_at:Time}` の全key必須、65536byte以下。delivery id/event/channelはnotify_logとexact一致、hashは既存canonical JSONを使用する。再送対応の通常Webhookは初回送信前にcreate-only保存し、同id内容違いは送信拒否。旧logだけからpayloadを推測復元しない。保存fileは0600、directory0700、symlink/hardlink禁止、破損は送信拒否。最大1000fileまたは64MiB、超過時は新しいpayload保存と対応送信を拒否し自動削除しない。手動再送有効化前の既存通知経路は変更しない。有効化はmulti-user-v1導入時に行う。
+
+`.notify_resends` は `{schema_version:1,records:ResendRecord[]}`、最大1000record/4MiB、時刻/id昇順、破損時は自動再生成せず再送停止。ResendRecordは `{id:string,source_delivery_id:string,delivery_id:string,payload_sha256:Digest,channel_id:string,status:string,queued_at:Time,updated_at:Time,attempt:integer,next_attempt_at:Time|null,result_code:string|null}` の閉じた型。idは `rsnd_` + 26 Crockford文字、source_delivery_idは全recordで一意、delivery_idは新規notify id（旧idと異なる）、statusはqueued/sending/succeeded/failed/recovery_required、attemptは0..11、result_codeはnull/http_success/http_failure/timeout/channel_unavailable/payload_unavailable/abandoned。queuedはattempt0..10/next_attempt_at非null、sendingはattempt>=1/next_attempt_at=null、terminal/recoveryはnext_attempt_at=null。recordsの物理削除APIは設けない。満杯は新規受付409とし、既存の結果照合は継続する。
+
+<a id="additional-management-datastore-contract"></a>
+**追加管理データストア選択：** `STD`。許可store集合はid/type=`statefile`、enabled=true、path=nullの1件だけ、active_store=`statefile`、pending_switch=nullに固定する。外部DB、別state directoryへの移送、plugin/provider追加をこのAPIの実装判断で許可しない。target_store=`statefile` の検証はschema/owner/mode/readabilityの順とし、各checkのnameは `schema`、`ownership`、`permissions`、`readability`、statusは成功時 `ok`、messageは `OK`。1件でも失敗した場合はcallerへ失敗を返し、stateを変更しない。現在storeへの選択はdry_runの有無によらずno-opとする。将来の別store採用は本契約と [SPECポリシー責務](../SPEC.md#policy-dependencies) の先行改訂なしには行わない。
+
+<a id="additional-response-cache-policy"></a>
+**追加管理cache policy：** 閉じたobjectでenabledはbool、ttl_secondsはinteger 1..300、endpointsは重複なしstring配列0..10、保存順ASCII昇順とする。許可値は [API詳細本文責務](api.md#sec-27-68) を参照する。未知key/型不正を保存しない。不在keyのreadだけはserver_config表の既定値をmemory適用する。保存先は `.server_config.response_cache_policy` であり、top-levelにttl_seconds/endpointsを作らない。
+
+<a id="automatic-config-snapshot-contract"></a>
+**自動設定snapshot：** `STD`。config_snapshot_policyはenabled bool/max_count integer 1..1000の全key必須。APIの設定変更callerは [backup/restore対象](api.md#backup-restore-contract) のJSON設定fileを変更する際、変更前policyがenabled=trueかつ実際の差分がある場合だけ、主state write前に既存設定一式をsnapshotとして保存する。対象一覧は同参照を唯一の集合とし、snapshot自体のcreate/delete、cache保存、log追記、user/role変更は再帰的snapshotを作らない。label=null、created_by=`system`、時刻/id/secret marker/hashはConfigSnapshotObjectを使用する。
+
+全config変更のpreflight→snapshot→主state→必須logを同一設定更新coordinatorで直列化し、snapshotは変更前stateだけを表す。snapshot作成失敗は主stateを変更しない。主state失敗でも確定済みsnapshotは残し、失敗を成功と表記しない。既存snapshot数がmax_count以上なら追加前にconflictを返し、自動削除/無断上書きをしない。手動deleteで空きを作るまで変更を拒否する。policy無効化も変更前policyを適用し、容量不足ならdisable-only更新に限りsnapshot不要として明示的に保存できる。この例外は他設定との同時更新を許可しない。手動snapshot作成にも同じ件数上限を適用する。
+
+<a id="config-snapshot-diff-contract"></a>
+**設定snapshot差分：** `STD`。左右snapshotを全件schema/hash検証してから、files objectを再帰比較する。objectはkey集合のbyte昇順、arrayは要素差分へ分割せず1値として比較、numberはschema-valid値の数学的一致、その他は型と値の一致を用いる。未存在とJSON nullを区別する。pathはfiles直下keyから始まる `/` 区切りで、keyの `~`→`~0`、`/`→`~1` をこの順でescapeする。
+
+差分は `{path,change,left,right}`、changeはadded/removed/modifiedのいずれか。addedのleftとremovedのrightはnull、他方は該当値とする。secret値は比較前にmarkerへ置換し、差分本文へ平文/secret hashを渡さない。結果はpathのUTF-8 byte昇順、同一snapshot idは空changes。missingはnot-found、schema/hash不一致はcorruption、read failureはread-failedをcallerへ返し、入力snapshotを変更しない。
+
 **UserRecord：**
 
 | key | 型 | 必須 | 仕様 |
@@ -1551,10 +2342,10 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | `username` | string | yes | 3〜64 文字。lowercase ASCII、digit、`-`、`_` だけを許可する。 |
 | `display_name` | string | yes | 1〜128 Unicode scalar values。 |
 | `status` | string | yes | `active`、`disabled`、`locked` のいずれか。 |
-| `role_ids` | string[] | yes | `.roles.roles[].id` に存在する id。空配列禁止。 |
-| `password_hash` | string|null | yes | local password 未設定時は `null`。平文禁止。 |
-| `external_subjects` | object[] | yes | provider id と subject の組。 |
-| `totp_enabled` | boolean | yes | TOTP 有効状態。 |
+| `role_ids` | string[] | yes | `.roles.roles[].id` に存在するidを1..32件、重複なしASCII昇順。空配列禁止。 |
+| `credential` | AdminCredentials|null | yes | local password 未設定時は `null`。非nullは [主要状態schema](#sec-22-0c) の `.admin_credentials` と同じ閉じた型。資格情報をhash文字列だけで保存せず、salt/algorithm/parameterを同型に結び付ける。API投影対象外。 |
+| `external_subjects` | object[] | yes | `{provider_id:string,subject:string}` だけを持つobjectを0..16件。provider_idは存在するExternalAuthProvider.id、subjectは1..255byte UTF-8（NUL/CR/LF禁止）。provider_id/subjectの組は全user間で一意、provider_id/subjectのbyte昇順。 |
+| `totp` | TOTPSecret | yes | [主要状態schema](#sec-22-0c) の `.totp_secret` と同じ閉じた型。公開投影のtotp_enabledはtotp.enabledから算出する。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
 
@@ -1562,9 +2353,9 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 
 | key | 型 | 必須 | 仕様 |
 |-----|----|------|------|
-| `id` | string | yes | lowercase ASCII、digit、`-`、`_`。 |
+| `id` | string | yes | 1..64文字、lowercase ASCII、digit、`-`、`_`。同じroles内で一意。 |
 | `name` | string | yes | 1〜64 Unicode scalar values。 |
-| `permissions` | string[] | yes | [`docs/details/security.md` 詳細本文責務 §27.58](security.md#sec-27-58) の permission 名。 |
+| `permissions` | string[] | yes | [`docs/details/security.md` 詳細本文責務 §27.58](security.md#sec-27-58) のpermissionを1..7件、重複なしASCII昇順。 |
 | `system` | boolean | yes | system role は削除禁止。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
@@ -1580,6 +2371,7 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | `client_id` | string | yes | 1〜256 文字。 |
 | `client_secret_ref` | string|null | yes | secret path または `null`。secret 本体禁止。 |
 | `scopes` | string[] | yes | OIDC scope。 |
+| `redirect_uri` | string | yes | HTTPSの管理UI origin + `/`。query/fragment/userinfo禁止。securityのOIDC開始・完了契約を参照。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
 
@@ -1614,13 +2406,20 @@ ConfigSnapshotObject の secret file marker は `{"secret_set":boolean,"value":"
 | `id` | string | yes | lowercase ASCII、digit、`-`、`_`。`default` は既定 project だけが使用する。 |
 | `name` | string | yes | 1〜128 Unicode scalar values。 |
 | `status` | string | yes | `active`、`archived` のいずれか。 |
-| `root` | string | yes | absolute path または repository ref 表現。NUL、CR、LF 禁止。 |
-| `branch` | string | yes | branch 名。空文字、NUL、CR、LF、`..`、先頭 `/` 禁止。 |
+| `root` | string | yes | [project入力・実行対応](#additional-project-binding) の絶対pathまたは `repo:default`。 |
+| `branch` | string | yes | [project入力・実行対応](#additional-project-binding) の短いbranch名。 |
 | `default` | boolean | yes | 既定 project だけ `true`。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
 
 ProjectRecord は `.projects.projects` 内で `id` を一意とし、`default:true` の record を 1 件だけ持つ。`default:true` の record は `status:"active"` 固定とし、archive、物理削除、id 変更を禁止する。`root` は保存時に前後空白を保持せず、入力に前後空白がある場合は validation failure とする。
+
+<a id="additional-project-binding"></a>
+**project入力・実行対応：** `STD`。idは1..64文字。repository refの許可集合は `repo:default` だけとし、setupで検証済みの当該API instanceのrepository_rootへ解決する。URL、SSH ref、`repo:`の未知名、相対path、環境変数展開、tilde展開は禁止する。絶対pathは4096byte以下のcleanなLinux pathとし、空要素、`.`、`..`、NUL、CR/LF、前後空白、symlink ancestorを拒否する。登録時は既存directoryとそのowner/modeをread-only検証し、repository_root以外のpathは422。登録によってclone、fetch、mkdir、shellを実行しない。
+
+branchはUTF-8で1..255byte、ASCII英数から始まり、以降はASCII英数・`-`・`_`・`.`・`/`だけ。末尾`.`/`/`、`//`、`..`、`@{`、先頭`.`のsegment、末尾`.lock`のsegment、`HEAD`、`refs/` prefixは禁止。実行先はrunnerの既存branch targetであり、登録branchは最新branch_configのtarget branchにexact一致しなければ422。projectはそのtargetへの管理用labelであって新executor、別checkout、別state dirを生成しない。target削除後のdangling projectは実行解決時409、archiveだけ許可する。
+
+追加管理の権限はinstance全体であり、project別ACL・tenant隔離を保証しない。project作成は既存permissionを拡張せず、userはsecurityのinstance権限で全projectを参照/変更する。build triggerの既存入力へproject_idを暗黙追加しない。別repository実行またはproject単位認可はcicd-v1の登録projectと明示grantだけを使用し、本recordと相互変換しない。
 
 **ConfigTemplateRecord：**
 
@@ -1665,13 +2464,17 @@ ConfigTemplateRecord の `name` は `.config_templates.templates` 内で完全�
 |-----|----|------|------|
 | `key` | string | yes | method、path、query、vary を canonical JSON 化した SHA-256 lowercase hex。 |
 | `endpoint` | string | yes | cache 対象 endpoint path。 |
-| `vary` | object | yes | cache key 算出に使った query object、target id、branch name、method、path の値。secret 禁止。 |
+| `vary` | object | yes | [API cache key契約](api.md#sec-27-68) のhash入力object全体を保存する。閉じた型はmethod="GET"/path:string/query:map(string)/vary:map(string)の4key。内側varyの許可keyは同正本。secret禁止。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `expires_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `status` | integer | yes | HTTP status。`200` だけを保存する。 |
 | `headers` | object | yes | cache response に必要な公開 header。`Set-Cookie`、`Authorization` 禁止。 |
 | `body_sha256` | string | yes | body canonical JSON byte の SHA-256 lowercase hex。 |
 | `body` | object | yes | JSON response だけを保存する。binary、SVG、SSE、user 固有 response は保存禁止。 |
+| `instance_id` | string | yes | 起動instanceの16byte乱数を表す32文字lowercase hex。secret/認証IDではない。 |
+| `generation` | integer | yes | 0..9007199254740991。保存元API processのcache世代。 |
+
+entriesのdictionary keyはentry.keyと一致、endpointはentry.vary.pathと一致、entry.keyはentry.varyのcanonical JSON digestと一致を必要とする。headersはstring値だけ、CR/LF禁止、bodyはobjectだけ。違反entryを正規化保存しない。既存のinstance_id/generation欠落entryはmissとして扱い、read時に補完保存しない。世代と保存上限は [API詳細本文責務](api.md#additional-response-cache-concurrency) を参照する。
 
 **McpConfig：**
 
@@ -1745,6 +2548,6 @@ Phase 13 の statefile 実装は以下の operation 境界を持つ。operation 
 | `recover_state` | corruption / stale lock / partial write の検出、隔離 path 決定、snapshot 作成、復旧 plan、復旧 write、検証、recovery record。 | 復旧不能時は `recovery_required` 状態を返し、破損 file を削除しない。 |
 | `verify_state_dir` | state directory path 正規化、owner、mode `0700`、group / other write 不可、symlink / non-directory 拒否。 | 不一致時は API / runner / MCP の状態変更を開始しない。 |
 
-JSON Lines corruption は、partial line、invalid UTF-8、invalid JSON、unknown required key、type mismatch、duplicate record id、future schema version を別々の reason として記録する。読み取り側が破損行を読み飛ばして残りを成功扱いにすることは禁止する。復旧処理で隔離する場合の隔離 path は同一 state directory 配下の `quarantine/` 以下とし、隔離後の path を recovery record に保存する。
+JSON Lines corruption は、partial line、invalid UTF-8、invalid JSON、unknown required key、type mismatch、duplicate record id、future schema version を別々の reason として記録する。明示read adapterの行単位除外契約なしに、破損行を黙って読み飛ばすことは禁止する。除外契約があるread-only callerは同契約の分類を行い、修復保存しない。復旧処理で隔離する場合の隔離 path は同一 state directory 配下の `quarantine/` 以下とし、隔離後の path を recovery record に保存する。
 
 Phase 13 の `statefile` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_direct_state_mutation_count=0`、`phase13_state_safety_open_count=0`、`phase13_jsonl_corruption_open_count=0`、`phase13_required_log_write_ignore_count=0` を満たすまで完了扱いにしてはならない。

@@ -1,5 +1,18 @@
 # Adlaire CI Web デザイン仕様
 
+<a id="phase-19-admin-visual-contract"></a>
+**Phase 19 管理画面視覚契約：**
+
+本節は視覚値だけを所有する。操作/DOM/stateは [`docs/details/ui.md` 詳細本文責務 ui正本](details/ui.md#phase-19-ui-contract)、色/font/focusは既存 [`docs/DESIGN.md` デザイン責務 標準管理UI視覚契約](#admin-ui-visual-contract) を使用し、新token/package/外部fontを追加しない。生成site themeは変更しない。
+
+desktop（821px以上）は既存sidebar幅を維持し、main内project toolbar高さ48px、gap16px、一覧100%幅、detailはminmax(0,1fr)で配置する。820px以下は1column、toolbar高さauto/min48px、各field幅100%、buttonは32px以上で折返す。全view min-width:0、body横overflow禁止。tableはtable wrapper内でだけ横scrollし、min-width720px、先頭ID列160px固定、状態120px、残列はauto。狭幅でもID/状態を隠さない。
+
+job依存は既定table、切替controlはtable/DAGのsegmented control。DAGはCSS gridによるlevel列（各180px、gap24px）、各job高さ64px、arrowは既存icon styleで補助表示、同じjob名/状態をtableと照合可能にする。graph wrapper内scroll、色だけに依存しない。logはdesktop高さ320px/mobile240px、monospace12px/line-height1.5、white-space:pre-wrap/overflow-wrap:anywhere、両streamはtabs、欠落separatorは通常logと別status行。
+
+environmentは現在/要求を2column（各minmax(0,1fr)）、820px以下1column。digestはfont12px/overflow-wrap:anywhere、一覧は先頭12hexと全文tooltip、詳細/confirmationは全文表示。見出しは既存panel heading size、hero文字やカード内カードを使わない。繰返しitem以外はunframed section、radiusは既存tokenかつ8px以下。
+
+refresh/retry/cancel/downloadは既存管理UIのicon button style、accessible nameとhover/focus tooltip必須。未登録iconは文字buttonを暫定実装せず、既存browser標準描画の矢印/停止/保存記号をicon-onlyとして使用する。approval/配備/rollbackは明確なcommand textを持ち、danger確認は通常refreshから24px以上離す。全viewport 360x800/820x1180/1440x900でtext overlap0、button label欠落0、keyboard focus可視をfixtureで確認する。
+
 **対象 surface：** `adlaire-ci-build` が生成する静的 Web サイトと [`admin/index.html`](../admin/index.html) の標準管理 UI
 **実装 artifact：** 生成静的 Web サイトは [`components/builder/`](../components/builder/)、標準管理 UI は [`admin/index.html`](../admin/index.html)
 **デザインシステム正本 revision：** [Adlaire Design System `3c51349791883b8b7dd599a569b63c11779dfa88`](https://github.com/fqwink/Adlaire-Design-System/tree/3c51349791883b8b7dd599a569b63c11779dfa88)
@@ -338,3 +351,6 @@
 | overflow | `pre` は内部 scroll を許可し、通常 text、label、button text、field text は親要素外へ不可視にはみ出さない。 |
 
 [`admin/index.html`](../admin/index.html) の inline CSS は、[標準管理 UI 視覚契約](#admin-ui-visual-contract) の token、selector、視覚値を実装しなければならない。視覚値を変更する場合は、先に [`docs/DESIGN.md` デザイン責務](DESIGN.md) を改訂する。
+
+<a id="status-badge-visual-contract"></a>
+**管理API status badge視覚契約：** 寸法は120×20px、viewBox=`0 0 120 20`、角丸なし。左領域x=0..65、右領域x=66..119、左背景`#555555`、文字`#ffffff`、font-family=`Verdana,Arial,sans-serif`、font-size=10px、letter-spacing=0。左textは`Adlaire CI`、x=33/y=14、右textはstatus、x=93/y=14、両方text-anchor=middle。右背景はsuccess=`#2e7d32`、failure=`#c62828`、running=`#1565c0`、skipped=`#6d6d6d`、unknown=`#455a64`。shadow/gradient/animation/外部fontは使用しない。aria-labelは`Adlaire CI: {status}`、role=img。status導出・HTTP・動的値の禁止境界は [api詳細本文責務](details/api.md#sec-27-56) を参照する。

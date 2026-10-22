@@ -31,6 +31,35 @@ type fakeSetupOps struct {
 	apiRestartFailures int
 }
 
+func setupTempDir(t *testing.T) string {
+	t.Helper()
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+func TestSetupValidatePathRejectsSymlinkSegments(t *testing.T) {
+	root := setupTempDir(t)
+	target, link := filepath.Join(root, "target"), filepath.Join(root, "link")
+	if err := os.Mkdir(target, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	ops := setupRealOps{}
+	if err := ops.ValidatePath(filepath.Join(target, "missing")); err != nil {
+		t.Fatalf("real temp path rejected: %v", err)
+	}
+	for _, path := range []string{link, filepath.Join(link, "missing")} {
+		if err := ops.ValidatePath(path); err == nil || err.Error() != "symlink path segment" {
+			t.Fatalf("symlink segment accepted: %v", err)
+		}
+	}
+}
+
 func newFakeSetupOps() *fakeSetupOps {
 	return &fakeSetupOps{
 		versions:   map[string]string{},
@@ -314,7 +343,7 @@ func TestRunSetupHelpVersionPrecedence(t *testing.T) {
 }
 
 func TestRunSetupInstallSuccess(t *testing.T) {
-	root := t.TempDir()
+	root := setupTempDir(t)
 	installDir := filepath.Join(root, "install")
 	binDir := filepath.Join(root, "bin")
 	downloadDir := filepath.Join(root, "download")
@@ -374,7 +403,7 @@ func TestRunSetupInstallSuccess(t *testing.T) {
 }
 
 func TestRunSetupInstallObsidianSuccess(t *testing.T) {
-	root := t.TempDir()
+	root := setupTempDir(t)
 	binDir := filepath.Join(root, "bin")
 	downloadDir := filepath.Join(root, "download")
 	ops := newFakeSetupOps()
@@ -416,7 +445,7 @@ func TestRunSetupInstallObsidianSuccess(t *testing.T) {
 }
 
 func TestRunSetupFailureContracts(t *testing.T) {
-	root := t.TempDir()
+	root := setupTempDir(t)
 	installDir := filepath.Join(root, "install")
 	binDir := filepath.Join(root, "bin")
 	downloadDir := filepath.Join(root, "download")
@@ -472,7 +501,7 @@ func TestRunSetupFailureContracts(t *testing.T) {
 }
 
 func TestRunSetupInstallAPIUnsafeAdminArchivePreservesExistingAdmin(t *testing.T) {
-	root := t.TempDir()
+	root := setupTempDir(t)
 	installDir := filepath.Join(root, "install")
 	binDir := filepath.Join(root, "bin")
 	downloadDir := filepath.Join(root, "download")
@@ -510,7 +539,7 @@ func TestRunSetupInstallAPIUnsafeAdminArchivePreservesExistingAdmin(t *testing.T
 }
 
 func TestRunSetupUpdateAPIRollback(t *testing.T) {
-	root := t.TempDir()
+	root := setupTempDir(t)
 	installDir := filepath.Join(root, "install")
 	binDir := filepath.Join(root, "bin")
 	downloadDir := filepath.Join(root, "download")
@@ -557,7 +586,7 @@ func TestPhase18MaterializeAdminAssets(t *testing.T) {
 	t.Cleanup(func() { SetEmbeddedAdminAssets(originalIndex, originalSDK) })
 	SetEmbeddedAdminAssets([]byte("<main>phase18</main>\n"), []byte("export const phase18 = true;\n"))
 
-	installDir := filepath.Join(t.TempDir(), "runtime")
+	installDir := filepath.Join(setupTempDir(t), "runtime")
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	code := RunSetup([]string{"phase18-materialize-admin", "--install-dir", installDir}, &stdout, &stderr)
@@ -586,7 +615,7 @@ func TestPhase18MaterializeAdminRejectsUnsafeTarget(t *testing.T) {
 	t.Cleanup(func() { SetEmbeddedAdminAssets(originalIndex, originalSDK) })
 	SetEmbeddedAdminAssets([]byte("index"), []byte("sdk"))
 
-	root := t.TempDir()
+	root := setupTempDir(t)
 	target := filepath.Join(root, "target")
 	if err := os.Symlink(filepath.Join(root, "missing"), target); err != nil {
 		t.Fatal(err)
@@ -600,7 +629,7 @@ func TestPhase18MaterializeAdminRejectsUnsafeTarget(t *testing.T) {
 }
 
 func TestSetupAtomicWriteTextSyncsFileAndParent(t *testing.T) {
-	dir := t.TempDir()
+	dir := setupTempDir(t)
 	target := filepath.Join(dir, "asset.txt")
 	ops := defaultSetupAtomicWriteOps()
 	syncTargets := []string{}
@@ -643,7 +672,7 @@ func TestSetupAtomicWriteTextFailureKeepsExistingTarget(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			dir := t.TempDir()
+			dir := setupTempDir(t)
 			target := filepath.Join(dir, "asset.txt")
 			if err := os.WriteFile(target, []byte("old-value"), 0644); err != nil {
 				t.Fatal(err)
@@ -676,12 +705,12 @@ func TestPhase18MaterializeAdminRejectsAssetSymlink(t *testing.T) {
 	t.Cleanup(func() { SetEmbeddedAdminAssets(originalIndex, originalSDK) })
 	SetEmbeddedAdminAssets([]byte("index"), []byte("sdk"))
 
-	installDir := filepath.Join(t.TempDir(), "runtime")
+	installDir := filepath.Join(setupTempDir(t), "runtime")
 	adminDir := filepath.Join(installDir, "admin")
 	if err := os.MkdirAll(adminDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	outside := filepath.Join(t.TempDir(), "outside")
+	outside := filepath.Join(setupTempDir(t), "outside")
 	if err := os.WriteFile(outside, []byte("unchanged"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -701,7 +730,7 @@ func TestPhase18MaterializeAdminRejectsAssetSymlink(t *testing.T) {
 }
 
 func TestSetupInitCredentialsAcceptsSpecifiedChildOutput(t *testing.T) {
-	root := t.TempDir()
+	root := setupTempDir(t)
 	apiPath := filepath.Join(root, "api")
 	passwordPath := filepath.Join(root, "password")
 	if err := os.WriteFile(apiPath, []byte("#!/bin/sh\nprintf 'credentials initialized\\n'\n"), 0700); err != nil {

@@ -1,10 +1,153 @@
 # Adlaire CI — Setup 詳細仕様
 
+<a id="inhouse-iac-contract"></a>
+**内製IaC v1採用範囲：** owner=`setup`、分類=`INHOUSE`（plan差分/復旧制御）、primitiveはGo標準encoding/json・crypto/sha256・os・syscall/flock・os/execと既存statefile adapter、systemctlだけ。既存VPS上の既存cicd-v1構成を宣言状態へ整合させる `existing-vps-v1` providerを採用する。VM作成/削除/resize、課金、IP/volume/firewall/DNS変更、任意shell、OS package導入、Terraform/provider SDKは不採用。対象外操作をno-op成功へ変換しない。全cloud provisioningに相当するとは表記しない。
+
+<a id="inhouse-iac-manifest"></a>
+**manifest・plan：** manifestはUTF-8 JSON最大1MiB、全key必須、duplicate/unknown key禁止。閉じた型は `{schema_version:1,provider:"existing-vps-v1",target_id:Id,resources:Resource[]}`。Idは `[a-z][a-z0-9_-]{0,63}`、resource数1..64、id一意。Resourceは次の2variantだけ。
+
+| type | 全key / 型と制約 |
+|---|---|
+| config | `{id:Id,type:"config",role:"coordinator"|"worker"|"site",config:object}`。configは [cicd setup入力](#phase-19-setup-input) の完全な同型でrole/id一致。対象pathはその固定config pathから導出し任意path入力禁止。対象は既存fileだけ、内容secret禁止。 |
+| service | `{id:Id,type:"service",unit:string,active:bool,enabled:bool}`。unitはadlaire-cicd-coordinator.service/adlaire-cicd-api.service/adlaire-cicd-site.serviceのいずれか。同unit重複禁止、既存unitがsetup正本と一致することを前提とする。任意unit/生成unitは拒否。 |
+
+target_idは当該state-dirに導入時create-onlyで記録したhost identityとexact一致させ、hostname/IPから推測しない。configはsemantic canonical JSONで比較し、同値ならformatだけを直さない。mode/owner不一致やsymlink/hardlinkはdriftではなくunsafe_inputで拒否する。service観測は `systemctl show UNIT --property=LoadState,ActiveState,UnitFileState --no-pager` の固定argv、loaded/activeまたはinactive/enabledまたはdisabledだけを受理し、activating/failed/masked/static/未知値は拒否する。実行timeout10秒、output65536byte、LANG=C、環境secret継承禁止。
+
+planは `{schema_version:1,target_id:Id,manifest_sha256:Digest,created_at:Time,expires_at:Time,observed:Observation[],changes:Change[],sha256:Digest}`。expires_at=created_at+300秒。Observationは `{id:Id,type:"config"|"service",before:object}`、config.before=`{sha256:Digest,uid:integer,gid:integer,mode:"0640"}`、service.before=`{active:bool,enabled:bool}`。Changeは `{id:Id,action:"replace_config"|"set_service",after:object}`、afterはmanifestのconfig objectまたは `{active,enabled}`。全resourceのobservedをid ASCII昇順、changesはconfig id昇順→service id昇順、同値resourceはchangesへ含めない。sha256は自身keyを除くplan canonical JSON、manifest hashも同じcanonical規則。planへ旧file本文・secret・command stdoutを保存しない。
+
+<a id="inhouse-iac-admission"></a>
+**plan整合と適用受付時刻：** `Time` / `Digest` は [`docs/details/statefile.md` 詳細本文責務 型記法](statefile.md#phase-19-schema-registry)、canonical JSON は [状態transaction](statefile.md#phase-19-state-transaction) のcanonical bytesを使用する。plan生成は全resource観測完了後にcreated_atを採取する。plan入力はUTF-8最大4MiB、plan/Observation/Changeの列挙keyすべて必須・各fieldのnull禁止・unknown/duplicate key禁止とし、config内のnullable fieldだけは [docs/details/setup.md 詳細本文責務 cicd入力](#phase-19-setup-input) の同型を維持する。expires_atはcreated_atから正確に300秒後でなければinvalid_input/exit2とする。時刻加算overflowも同じ結果とし、期限を読取時刻から再計算して延長しない。
+
+planの自己hashは破損検出であり、manifestとの意味上の一致を保証しない。applyはmanifest hash、自己hash、confirmationの一致に加え、observedがmanifestの全resourceとid/typeで1対1対応すること、beforeが対応variantの閉じた型であることを検証する。そのbeforeとmanifestのdesired値からchangesを再導出し、id/action/after/件数/配列順をcanonical比較する。configはbefore.sha256とdesired configのcanonical digest、serviceはbeforeとdesiredのactive/enabledを比較する。同値の変更追加、変更欠落、after差替え、順序変更、重複・未知resourceは、攻撃入力側でhash/confirmationを再計算していてもinvalid_input/exit2。manifestからpath/unitを導出し、planから実行対象や任意commandを採用しない。
+
+apply/noopの時刻判定はpreflight、IaC lock取得直後、lock内の全resource再観測完了直後、prepared保存を開始する直前（noopは応答直前）の4点で、それぞれ新しいUTC clock値について `created_at <= now < expires_at` を要求する。下限未満、上限一致/超過はstale_plan/exit3で、prepared前のoperation_id=null/status=failed、resource変更・journal・snapshot作成0。構文不正はinvalid_input/exit2を優先し、その後target/hash/changesを照合してから時刻を判定する。clock取得失敗はstate_failed/exit4、副作用0。lock timeoutはstatefile正本の単調時間で計測し、wall clock後退で待機を延長しない。外側の成功判定をlock内へ流用しない。
+
+最後の時刻判定が成功してprepared保存を開始した同一operationは、その後にplan期限を迎えても期限だけを理由に中断・再受付・新id化せず、既存の適用/補償/不確定復旧契約で終端させる。prepared保存失敗の扱いも既存のdurability判定に従う。rollback/recoverは保存済みoperation・実観測（rollbackではconfirmationも）を検証し、元planの適用期限を復旧権限の期限へ流用しない。期限切れplanを新applyで再利用することは許可しない。
+
+<a id="inhouse-iac-execution"></a>
+**CLI・適用・drift・復旧：** `adlaire-ci-setup iac-plan|iac-drift --manifest ABS --state-dir ABS`、`iac-apply --manifest ABS --plan-file ABS --confirmation-file ABS --state-dir ABS`、`iac-rollback --operation-id ID --confirmation-file ABS --state-dir ABS`、`iac-recover --operation-id ID --state-dir ABS`。optionは重複/未知/短縮/`=`形式を拒否する。rootだけを許可し、絶対path・no-follow・通常file・実行owner・0600の入力を必要とする（既存configのmodeはその正本を使う）。plan/driftは状態を一切writeしない。apply/rollbackのconfirmation fileは `{target_id:Id,plan_sha256:Digest,action:"apply"|"rollback"}` の全key必須で対象一致を要求し、file存在をユーザー作業承認の代用にしない。
+
+applyは [plan整合と適用受付時刻](#inhouse-iac-admission) の検証→全resource再観測exact一致→state-dir内IaC排他lock→同契約の再検証と全resource再観測→operation prepared保存→旧config byte snapshot保存・sync→各change intent保存→直前precondition再確認→変更→read-back確認→applied保存の順。busy/容量検査も同じlock内のprepared前に完了する。plan生成後の実観測差分はstale_planで拒否、部分実行しない。configはsetupのroot管理config用atomic adapterで置換し、元uid/gid・mode0640を保持する。runtime state用0600 adapterを流用してmodeを変えない。serviceはenable/disable→start/stopの固定argvだけを実行する。各command10秒、health確認はsystemctl再観測だけでアプリの健全性を保証しない。変更0件はsuccess/noop、journal/snapshot/logの新規作成も行わない。
+
+確定した前段までの失敗は旧値を逆順で復元し、各対象が本operationのafterと一致するときだけ復元する。第三者変更は上書きせずrecovery_required。provider全体のatomic適用を保証しない。不確定service commandを無条件再発行しない。復旧不能状態の解除は仕様外の自動修復ではなく運用者による実状態整合と再観測を必要とする。
+
+<a id="inhouse-iac-recovery-transition"></a>
+**operation中断・復旧の閉じた遷移：** applyは新規operationだけを開始し、prepared/applying/rolling_back/recovery_required、またはapplied stepが残るfailedのoperationが1件でもあればbusy/exit3とする。失敗operationを同じapplyで暗黙再開しない。operation idはrandom128bit Crockford26文字でcreate-only、衝突は10回まで再生成、上限でstate_failed/exit4。prepared保存時はdirection=apply/全step pending/step_index=0、config snapshotの予定raw byte digestだけを記録する。この段階でsnapshotが未作成でも成功記録ではなく、最初のintent前に必要snapshot全件の保存・digest照合を完了する。snapshot不在/不一致のままresourceを変更しない。snapshotは直前観測の元file byteそのものを保存し、raw digest=step.snapshot_sha256かつdecode後canonical digest=plan.observed.before.sha256の両方を検証する。非canonicalな元formatもrollback時は元byteへ復元し、canonical JSONで上書き再生成しない。
+
+step_indexはforwardの適用済みprefix長（0..changes.length）。最初のintentと同じjournal更新でstatus=applying、step.state=intentとし、applied確定時にprefix長を1増やす。最終step後だけstatus=succeeded。rollbackの受付は [rollback状態別受付](#inhouse-iac-rollback-admission) に従い、pending/revertedは変更対象にしない。全applied stepの現在値がafterに一致すること、全pending/revertedがbeforeに一致することを先に確認する。direction=rollback/status=rolling_backを同時sync後、逆順に対象stepをintent保存→変更→before読戻し→reverted保存とし、rollback中のstep_indexはappliedの残数。最後にrolled_back/step_index=0。未確定intentがある時はrollbackせず先にrecoverを必要とする。
+
+<a id="inhouse-iac-rollback-admission"></a>
+**rollback状態別受付：** confirmationと対象journalの検証後、同じIaC lock下で次表を判定する。別operationにprepared/applying/rolling_back/recovery_required、またはappliedが残るfailedがあれば、対象状態にかかわらずbusy/exit3・journal/resource不変。対象自身の状態は実値から推測せず、recoverが確定した保存値を使う。
+
+| 対象status / step | 受付結果 |
+|---|---|
+| succeeded、またはfailedでintentなし・appliedあり | before/after全件照合後に既存逆順rollbackを開始する。 |
+| rolled_back、またはfailedでintentなし・appliedなし | 全resourceのbefore一致と必要snapshotの整合を確認し、既存status/operation_idを保持してexit0/noop。journal byte・updated_at・direction不変、変更command0。failedを適用成功と呼ばない。 |
+| prepared/applying/rolling_back/recovery_required、またはintentあり | busy/exit3。先にrecoverで確定し、得られたterminal statusに対して新たな明示rollbackを行う。変更command/journal更新0。 |
+| 上2行の実観測が既存記録と異なる | 既存復旧遷移表のrecovery_required/exit5を適用し、第三者値を上書きしない。 |
+
+directionはprepared/applying/succeededではapply、rolling_back/rolled_backではrollbackを必須とし、failed/recovery_requiredでは最後の実行方向を保存する。intentは同時に1step以下、applyはapplied prefix→任意intent1→pending suffix、rollbackはapplied prefix→任意intent1→復元済reverted区間→未開始pending suffixとし、directionを実状態から推測して変更しない。安全な自動補償を始める場合も先にdirection=rollback/status=rolling_backをsyncする。
+
+recoverは同じIaC lock内で全resourceとsnapshotを検証し、resource変更command/renameを発行せず、次表のjournal更新だけを行う。journal書込に失敗すればstate_failed/exit4で確定を報告しない。stdoutは同節の既存result型で、表のjournal statusをそのまま返せるようstatusにprepared/applying/rolling_backを加える。復旧先が既知でも未完了operationを成功済み適用と呼ばない。
+
+| 入力journal / 実観測 | 更新後journal / exit・code |
+|---|---|
+| prepared、全step before、snapshot未作成またはvalidな予定値 | 全step pending/status=failed/step_index=0、exit0/ok。新規applyは新planと新idで開始する。 |
+| applying、intentをbeforeへ一致判定、前段はafter・後段はbefore | intentをpending、前段appliedを保持、status=failed、step_index=前段件数、exit0/ok。後段を実行せずrollbackだけを許可する。 |
+| applying、intentをafterへ一致判定、前段はafter・後段はbefore | intentをapplied、全step appliedならsucceeded、残りpendingならfailed、step_index=applied prefix長、exit0/ok。 |
+| applying、intent保存なしで全stepが既存記録と一致 | all appliedはsucceeded、それ以外はfailed、対応prefix長、exit0/ok。 |
+| rolling_back、intentの現在値=before | intentをreverted。残applied0ならrolled_back、あればfailed、step_index=残applied数、exit0/ok。 |
+| rolling_back、intentの現在値=after | intentをapplied、status=failed、step_index=残applied数、exit0/ok。新しい明示rollbackで続行可能。 |
+| recovery_required、direction=applyで全resourceがbefore/afterへ確定しprefix成立 | applyingの対応行と同じ結果へ確定する。記録済appliedもafter一致を必須とし、未知値のまま自動再発行しない。 |
+| recovery_required、direction=rollbackで全resourceがbefore/afterへ確定しprefix/suffix成立 | rolling_backの対応行と同じ結果へ確定する。未確定intent無しならapplied残数0でrolled_back、残る場合failed。 |
+| terminal succeeded/rolled_back/failedかつ全stepが記録どおり | journal byte不変、exit0/ok、元status。failedのapplied/pending/revertedの組はforward prefix / rollback suffixだけを許可する。 |
+| serviceがactive=true/enabled=false等のbefore/afterどちらでもない値、記録と異なる非intent、digest不一致、prefix/suffix不成立 | recovery_required/exit5/recovery_required。既存step情報を保持し、command0。snapshot不在はprepared/pendingの未作成以外この行。 |
+
+通常のcommand/state失敗後に全変更を安全に逆順復元できた場合はstatus=failed/exit4、code=command_failedまたはstate_failed、復元済step=reverted/step_index=0。実値がbefore/afterのどちらか不明、部分service変更、復元失敗、journal sync後成否不明はrecovery_required/exit5を優先する。結果確定後のstdout/stderr書込失敗を理由に実resourceを再実行しない。
+
+stdoutはplanで上記Plan、driftで `{target_id,manifest_sha256,drifted:bool,resource_ids:Id[]}`（差分id昇順）、他は `{operation_id:string|null,status:"prepared"|"applying"|"rolling_back"|"succeeded"|"rolled_back"|"recovery_required"|"failed",code:string}`、JSON1個+LF。exit0成功/2入力・権限/3stale・競合/4変更失敗/5不確定、stderrは同じcode+LFだけ。codeはok/noop/invalid_input/unsafe_input/target_mismatch/stale_plan/busy/command_failed/state_failed/recovery_required。生のOS error/path/config本文を出さない。
+
+状態schemaは [statefile詳細本文責務](statefile.md#inhouse-iac-state)、具体vector/fixture/mutationは [fixture証跡責務](fixture.md#inhouse-iac-fixture-contract)。保守ownerはsetup、provider廃止は未完了operation=0と検証済みexport後だけ。resource variant追加はこのmanifest/復旧/fixtureを先に改訂し、未知variantを既存config操作へfallbackしない。
+
+<a id="phase-19-setup-contract"></a>
+
+**Phase 19 profile導入・隔離・受入：**
+
+ownerは `setup`、実装主体は [components/setup/](../../components/setup/)。[`docs/SPEC.md` 方針・ポリシー責務 SPEC profile適用](../SPEC.md#policy-inhouse-cicd) に従う。既存setupのroot導入/oneshot unitと本節の専用user profileは別であり、既存unitを自動置換しない。VPS作成/resize/課金操作は扱わない。
+
+<a id="phase-19-setup-input"></a>
+**閉じたCLI / config：**
+
+`adlaire-ci-setup cicd-install|cicd-update|cicd-rollback|cicd-probe --config ABS --trust-file ABS --release-dir ABS`。recoverだけ `adlaire-ci-setup cicd-recover --config ABS --generation N --snapshot-sha256 HEX --confirmation-file ABS --credential-stdin`。未知/重複/短縮option拒否、--name valueだけ。probeはread-onlyでcapabilityの実測用temporaryをstate-dir/work下に作り必ず削除し、登録・unit変更なし。install/update/rollbackはroot実行、job/coordinator/site実行はnon-root。stdout JSON `{operation,state,code,previous_release,current_release,capabilities:[],cleanup_ok}`、exit0成功/2入力/3環境検証失敗/4変更失敗/5復旧不明、stderrはmask済みcodeのみ。
+
+config JSONは全key必須：
+`{schema_version:1,profile:"cicd-v1",role:"coordinator"|"worker"|"site",id:Id,allowed_projects:list(Id,0,64),allowed_environments:list({project_id:Id,environment_id:Id,host:text(1,253),port:int(1,65535)},0,1024),user:Id,state_dir:AbsPath,release_id:string,listen:string,tls_cert_file:null|AbsPath,tls_key_file:null|AbsPath,allow_http:bool,worker_slots:int(1,4),toolchains:[{capability:"builder"|"go"|"deno",version:string,root:AbsPath,files:[{path:RelPath,sha256:Digest,executable:bool}]}],ssh_authorized_key_file:null|AbsPath}`。allowed_projectsはcoordinatorでは空、worker/siteでは1件以上で重複禁止。allowed_environmentsはcoordinator/workerで空、siteでは1件以上、project/environmentの組とhost/portの組をそれぞれ重複禁止しallowed_projects内だけ。hostはrunnerのSSH hostと同じ正規化済DNS名/IP、DNSはlowercase、portは公開URL側（listen portとは別）とする。worker_slotsはworkerで同時job上限、他roleでは1固定。roleごと専用user、uid!=0、home=state_dir。coordinatorのlogin shellはnologin、SSHを受けるworker/siteだけはroot所有・非書込の/bin/shとする（sshdがforced commandもlogin shellの-cで起動するため）。password authentication/keyboard-interactive/TTY/forwarding/user rc/user environmentを専用Match Userで無効化し、公開鍵と固定forced command以外ではログインさせない。対話shellを許可したと解釈しない。coordinator `adlaire-cicd` / worker `adlaire-worker` / site `adlaire-site` がUI初期値。state_dirは/var/lib/adlaire-ci/{role}/{id}以下、他role/userと共有禁止。listenはcoordinatorで127.0.0.1:9321、workerは空、siteは指定host:port（1024以上、default8443）。siteだけTLS2file必須、allow_http=trueは127.0.0.1だけ。private key0600、cert0644、directory0700。config最大1 MiB、trust最大65536 bytes。configは `/etc/adlaire-ci/cicd/{role}-{id}.json` のregular file、root所有・専用service groupの0640、親はroot所有で当該groupが探索できる0750とし、symlink/hardlinkを拒否する。サービスuserによるconfig変更は不可。起動時に全ancestorとfile descriptorの所有権/modeを照合する。coordinator APIとrunnerは同じcoordinator configだけを読む。
+
+**trust schema：** `{schema_version:1,revision:int(1,2147483647),keys:[{key_id:Digest,public_key:base64,status:"active"|"revoked",valid_from:Time,valid_until:Time}]}`、1〜32key、decodedpublic32bytes、key_id=SHA256public、from<until、一意。管理者が別経路で/etc/adlaire-ci/trust.jsonへroot0600配置、downloadしたReleaseから鍵を導入しない。revisionは保存済み値以上、同revision内容差拒否、revokedを同key_idで再有効化禁止。検証時nowが有効半開区間でactiveだけを採用。rollbackでも失効鍵/署名なしを許可しない。legacy版はcicd profileへ取り込めず、新規cicd初期化だけを許可する。
+
+release-dirは [`docs/details/release.md` 詳細本文責務 release asset正本](release.md#phase-19-release-contract) の12file閉集合。HTTPS取得は既存GitHub Release adapterでstagingへ行い、設定release_idに固定し、全signature/checksum/provenance/SBOM/OSarch/tagcommitを検証後だけ配置する。旧版/新版admin混在不可。`/opt/adlaire-ci/cicd/current` は `/opt/adlaire-ci/cicd/releases/{release_id}` のcohortを指すatomic symlink（setupだけの固定例外、jobから不可視）。profile専用のbin/admin/config/systemdを一緒に切替える。前2cohortを保持、untrusted既存installからの逆引きtrustは禁止。
+
+<a id="phase-19-sandbox-profile"></a>
+**Linux capability profile：**
+
+workerはLinux amd64、systemd>=255、cgroup v2、user namespace、system systemd manager、RAM>=2 GiB、state-dir空き>=4 GiBが必要。rootでsource/jobを実行しない。OpenSSHの専用keyに `restrict,command="/opt/adlaire-ci/cicd/current/bin/adlaire-ci-runner --cicd-worker-stdio --config CONFIG --state-dir S"`（siteは--cicd-site-agent、同じ--config/--state-dirを必須とする）を設定する。Sは検証済み定数。shell入力からcommandを組立てず、SSH_ORIGINAL_COMMANDは定数adlaire-cicd-v1以外拒否。coordinator identity/known_hostsはstatefile登録path、更新時はdrain後再probe。
+
+job sandboxは下記brokerがroot所有のverified minimal RootDirectoryを作り、trusted runner wrapperとtoolchain manifestの全fileだけをread-only配置する。Node/シェル/SSH/systemctl/host state/秘密fileは配置しない。`systemd-run --system --wait --collect --pipe --quiet --unit adlaire-job-OP-sN --property NAME=VALUE ... /tools/bin/adlaire-ci-runner --cicd-job-stdio` をexec.Commandでtoken配列として起動する。OPはjob/tryのo-ID、Nはstage番号0〜64。各stage終了後にunitとrootを回収し次stageでrootを再作成する。root pathは下記broker専用root/OP/root。systemd-runを起動するのはbrokerだけであり、workerにsystem managerの任意unit作成権限を与えない。固定propertyは以下。
+
+| property | exact値 |
+|---|---|
+| RootDirectory | 上記root絶対path |
+| DynamicUser / PrivateTmp / RemoveIPC / RestrictSUIDSGID | yes / yes / yes / yes。User/Group指定なし、同時unitは異なる非root host UID。 |
+| CapabilityBoundingSet / AmbientCapabilities | 空集合 / 空集合 |
+| PrivateUsers / PrivateNetwork / PrivateDevices / NoNewPrivileges | yes / yes / yes / yes |
+| ProtectSystem / ProtectHome | strict / yes |
+| InaccessiblePaths | /proc /sys /run /home /root |
+| TemporaryFileSystem | `/job:rw,size=DISK_MBM,mode=1777`（DISK_MB=512なら `size=512M`）。各子directoryはwrapperが0700作成。 |
+| WorkingDirectory | /source |
+| NoExecPaths | / |
+| ExecPaths | /tools/bin/adlaire-ci-runner + 実行stageのmanifest検証済み絶対実行fileだけ |
+| MemoryMax / CPUQuota / TasksMax | memory_mb M / cpu_percent% / tasks |
+| RuntimeMaxSec / TimeoutStopSec / KillMode | timeout_seconds / 5 / control-group |
+| RestrictAddressFamilies / UMask | AF_UNIX / 0077 |
+
+brokerがworkerからのsource byte列をroot所有stagingへ再コピーし、file0444/directory0555へ固定する。FDを保持して全digestを再検証し、root内/sourceと/job/testsの空mountpointを作り、 `BindReadOnlyPaths=HOST_SOURCE:/source` を追加する。起動wrapperはstdinのassign/secretを読み、source bytesを再取得しない。/jobはunit専用tmpfs、output/cache/tmp/home/test compile先をここへ作る。rootからhost /procを見せず、jobにmount権限を与えない。outputはtrusted wrapperがarchive framingでworkerへ返し、host側workへ検証保存する。compile test fileもこの方式で転送し、次stageでは `BindReadOnlyPaths=HOST_TESTS:/job/tests` を追加する。compileとtest実行はrunner契約どおり別unit。sourceへexec許可を与えない。Goのtool実行pathはmanifest列挙に限り、test実行stageは凍結testfileのdigestを再検証して追加する。Denoは--no-npm/--no-remoteでlocal JS checkだけ。実行時downloadやtoolchain自動更新なし。
+
+probeは各制御を実測する：worker/coordinatorとjobのhost UID不一致、同時2jobのUID不一致、他job/workerへのsignal・ptrace拒否、host sentinel読取不可、/proc親process不可、TCP接続不可、未許可file exec不可、source書換不可、memory/disk/task上限停止、TERM後5秒以内KILL、child残存0、workspace残存0。全制御が成功したcapabilityだけを返し、unsupported/権限拒否を省略設定で通さない。systemd仕様の根拠は [systemd.exec v255](https://raw.githubusercontent.com/systemd/systemd/v255/man/systemd.exec.xml) と [resource-control v255](https://raw.githubusercontent.com/systemd/systemd/v255/man/systemd.resource-control.xml)。本表の値は本製品の選択であり、OS名称だけで有効性を保証しない。
+
+<a id="phase-19-sandbox-broker"></a>
+**隔離起動brokerの境界：**
+
+実装主体は既存runner owner package、起動は `adlaire-ci-runner --cicd-sandbox-broker --config CONFIG --state-dir B`、worker hostだけのroot system unit `adlaire-cicd-sandbox.service`。B=`/var/lib/adlaire-ci/sandbox/{worker-id}` はroot0700、root所有cohort/configだけを読む。root processはsource/test/builderを起動せず、検証済みsystemd-runを通してDynamicUser unit内のtrusted wrapperを起動する。setupが検証したworkerのUIDだけをUNIX peer credential SO_PEERCREDで受理する。socketは `/run/adlaire-ci-sandbox/{worker-id}.sock`、root:worker-group0660、parent root:worker-group0750、TCP listenerなし。
+
+IPCはrunnerの [framing/ACK](runner.md#phase-19-ipc-framing)、[接続と転送](runner.md#phase-19-worker-session)、[lease期限](runner.md#phase-19-worker-lease-deadlines) と同じcodecを使うがtransportはUNIX stream。1connection=1job/try、認証済peerへだけhello、assign/metadata/source chunk/start/cancel/query/heartbeatと結果/log/artifact/test chunkだけを受け渡す。shell文字列、任意argv/property、任意host path/UID、別worker IDは受けない。command・resource上限・mount元・rootをbrokerがregistry/configから導出し、client提示値で置き換えない。secret_envだけはstart時memory pipe、永続化しない。空環境からregistryのallowlistを再構成し、user manager/SSH/service managerの環境をjobへ継承しない。
+
+B下の許可pathは `broker.json`、`broker.lock`、`work/{operation}/root/`、`work/{operation}/source/`、`work/{operation}/tests/`、`work/{operation}/output/` だけ。broker.jsonはstatefile WorkerExecution配列（最大256/4 MiB）、lockは非blocking flock、JSON0600のatomic adapter。broker unitはType=simple/User=root/UMask0077/Restart=on-failure/RestartSec5/TimeoutStopSec30/ProtectSystem=strict/ProtectHome=yes/PrivateTmp=yes/ReadWritePaths=Bとsocket parent、通信はAF_UNIXだけ、secret環境なし。system managerの制御socketはhostにだけ見せ、jobへmountしない。sourceは100 MiB、test/outputは各job.disk_mb以下、全work合計4 GiB、brokerはWorkerExecution.resources.memory_mb合計が実RAM-512 MiB以下、実行数がworker_slots以下であることもclaim lock下で検査する。空き256 MiB未満またはslot不足はP19_STORAGE/P19_BUSYで拒否する。metadataにないpath/link/device/重複chunkを拒否し、上限はwrite前に検査する。受信完了前にunitを作らず、stagingはrootだけが変更できる。
+
+受理claimと予定unit_namesをdurable保存→root/source検証→unit作成→非root UID/制御を検査→start→出力drain→Waitとunit cgroup空を照合→残存file/mountを回収→終端保存の順。EOF/lease期限/期限切れcancelはunit停止後に照会可能な終端記録を残す。broker再起動は記録unitをsystemdへ照会して停止・回収し、確認不能ならそのslotをrecovery_requiredで閉鎖する。起動しなかったことを確認するまで再割当しない。DynamicUser UIDを解放する前にwritable mount/process/IPC残存0を確認する。root側stagingだけをGCし、任意path削除を受け付けない。brokerにschema制約のないroot command実行機能を作らない。
+
+この境界はsystemdの [DynamicUser仕様](https://raw.githubusercontent.com/systemd/systemd/v255/man/systemd.exec.xml) と [OpenSSHのlogin shell/forced-command仕様](https://man.openbsd.org/sshd.8) を使用する。sourceからbrokerへ直接接続できないこともprobeで検証する。
+
+<a id="phase-19-service-lifecycle"></a>
+**起動・更新・障害復旧：**
+
+coordinatorは `adlaire-ci-runner --cicd-coordinator --config CONFIG --state-dir S`、worker/site-agentはSSH forced commandで要求時起動、site配信はAPI site mode。system unitは `adlaire-cicd-coordinator.service` / `adlaire-cicd-api.service` / `adlaire-cicd-site.service`、Type=simple、User=専用user、UMask0077、Restart=on-failure、RestartSec5、TimeoutStopSec30、NoNewPrivilegesyes、ProtectSystemstrict、ProtectHomeyes、ReadWritePaths=該当S、PrivateTmpyes、LimitNOFILE4096。API/coordinatorは同user/Sだけを共有し、worker/siteとは分離する。workerのjob起動はsandbox brokerへ限定し、linger/user manager/sudoを実行権限の代替にしない。unit内secret環境禁止。管理APIのExecStartは [`docs/details/api.md` 詳細本文責務 profile起動interface](api.md#phase-19-api-cli)、runner各modeは [`docs/details/runner.md` 詳細本文責務 profile起動interface](runner.md#phase-19-runner-cli) を参照する。config pathはcohort切替に追従する不変のroot管理入力であり、unitへsecret値を埋め込まない。
+
+installはcapability/署名/容量→専用user/directory→masterと初期Root→unit生成→daemon-reload→start→health（1秒間隔、最大30秒）の順。初期Rootはgeneration1、admin user/有効platform-admin grant、他配列空、head hash一致。admin credentialはlegacy認証初期化を明示実行しnull aliasへ接続する。worker/siteはcoordinator Rootを作らずlocal adapterだけ初期化する。
+
+updateはdrain→lease/active deployment0を最大300秒待機（timeoutは現行維持）→サービス停止→全cohort検証→current atomic切替/fsync→start/health/probe。失敗時は旧cohortへ戻してstart/health、両結果を保存する。schema_version1は同版読取互換だけでmigrationなし。rollbackも同手順で署名検証済み保持cohortを選択、user data/配備成果物を巻戻さない。成功判定にはunit activeとAPI認証付きread、worker probe、site healthをroleに応じすべて要求する。
+
+recoverは停止/drain済み、generation/digest一致snapshot、confirmation JSON `{operations:[{id,state,external_generation,artifact}],confirmed_by:Id}` を入力し、実際のworker/site queryと一致した場合だけstatefile recovery commitを行う。query不能では復旧拒否。旧Headへ単純コピーせず新generationで監査し、確認者は復元対象Rootの有効platform-adminかつid=adminとし、stdin JSON `{user_id:"admin",password,totp:null|string}`（最大8192 bytes、1回）を既存security認証で検証する。確認入力のsubjectと一致しなければ拒否する。環境ごとの不確定状態を解消せずサービスを再開しない。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) へ接続する。
+
 [`docs/details/setup.md`](setup.md) 詳細本文責務は、バイナリ配布、配置、systemd、セットアップ、アップデート、Release 成果物の受け入れ・checksum 検証を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務を参照する。実装 artifact と機能の現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、fixture、fake、expected / effects、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 [`docs/details/setup.md`](setup.md) が定義するのは [`components/setup/`](../../components/setup/) が `adlaire-ci-setup` として実行する setup / update の挙動と、Release 成果物の受け入れ・checksum 検証契約である。GitHub Release 成果物の生成・公開前検証・公開は [`docs/details/release.md`](release.md) の `release` owner component が持ち、[`docs/details/setup.md`](setup.md) の責務に含めない。実装可否は [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](../SPEC.md#detail-contract-required-fields)、現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。
 
 ---
+
+<a id="phase-19-setup-implementation-classification"></a>
+**実装分類：** trust/cohort/復旧と限定sandbox brokerは `INHOUSE`、使用primitiveはcrypto/ed25519、encoding/json、os/exec、syscall SO_PEERCRED、OS systemd/OpenSSH（`STD`）。入力/状態/異常系は[`docs/details/setup.md` 詳細本文責務](#phase-19-sandbox-broker)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `setup`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="0-責務境界"></a>
 
