@@ -64,14 +64,13 @@ func validateCICDType(expression string, value any, context string, depth int) b
 			}
 			for key, childType := range schema {
 				child, exists := object[key]
-				if !exists {
-					return false
-				}
 				if expression == "Job" && (key == "task" || key == "cache") {
-					if !validateCICDDeferredTask(childType, child, "", depth+1) {
+					if !exists || !validateCICDDeferredTask(childType, child, "", depth+1) {
 						return false
 					}
-				} else if !validateCICDType(childType, child, expression+"."+key, depth+1) {
+					continue
+				}
+				if !exists || !validateCICDType(childType, child, expression+"."+key, depth+1) {
 					return false
 				}
 			}
