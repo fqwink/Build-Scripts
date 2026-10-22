@@ -300,6 +300,50 @@ func TestCICDSourceBlob(t *testing.T) {
 }
 
 func TestCICDSourceHTTP(t *testing.T) {
+	transport := cicdSourceTransport()
+	defer transport.CloseIdleConnections()
+	client := cicdSourceClient(transport)
+	if transport.Proxy != nil || !transport.DisableKeepAlives || !transport.DisableCompression || transport.TLSNextProto == nil || len(transport.TLSNextProto) != 0 ||
+		transport.ForceAttemptHTTP2 || transport.DialContext == nil || transport.TLSHandshakeTimeout != 10*time.Second || transport.ResponseHeaderTimeout != 10*time.Second || client.Timeout != 10*time.Second {
+		t.Fatal("runner.phase19-source.http.transport-profile")
+	}
+	var mu sync.Mutex
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		requests++
+		if !r.Close {
+			t.Error("runner.phase19-source.http.connection-reuse")
+		}
+		if requests == 1 {
+			_, _ = io.WriteString(w, `{}`)
+			return
+		}
+		connection, _, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			t.Error("runner.phase19-source.http.hijack")
+			return
+		}
+		_ = connection.Close()
+	}))
+	defer server.Close()
+	response, err := client.Get(server.URL)
+	if err != nil {
+		t.Fatal("runner.phase19-source.http.initial")
+	}
+	_, _ = io.Copy(io.Discard, response.Body)
+	_ = response.Body.Close()
+	response, err = client.Get(server.URL)
+	if response != nil {
+		_ = response.Body.Close()
+	}
+	mu.Lock()
+	count := requests
+	mu.Unlock()
+	if err == nil || response != nil || count != 2 {
+		t.Fatal("runner.phase19-source.http.implicit-retry")
+	}
 	for _, test := range []struct {
 		name, body      string
 		status          int
@@ -344,7 +388,7 @@ func TestCICDSourceHTTP(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	started, released := make(chan struct{}), make(chan struct{})
-	client := cicdSourceClient(cicdSourceTestTransport(func(request *http.Request) (*http.Response, error) {
+	cancelClient := cicdSourceClient(cicdSourceTestTransport(func(request *http.Request) (*http.Response, error) {
 		close(started)
 		<-request.Context().Done()
 		close(released)
@@ -352,7 +396,7 @@ func TestCICDSourceHTTP(t *testing.T) {
 	}))
 	done := make(chan error, 1)
 	go func() {
-		got, err := cicdFetchSource(ctx, cicdSourceTestRequest(), "fixture-token", client)
+		got, err := cicdFetchSource(ctx, cicdSourceTestRequest(), "fixture-token", cancelClient)
 		if got != nil {
 			done <- errors.New("partial")
 			return
@@ -1138,6 +1182,7 @@ func TestCICDPlanMutations(t *testing.T) {
 		{"source-body-limit", "runner/execute.go", "if int64(len(data)) > limit {", "if false && int64(len(data)) > limit {", "runner.phase19-source.http.result"},
 		{"source-metadata-copy", "runner/execute.go", "return append(json.RawMessage(nil), snapshot.metadata...)", "return snapshot.metadata", "runner.phase19-source.metadata.alias"},
 		{"source-file-copy", "runner/execute.go", "return append([]byte{}, data...), nil", "return data, nil", "runner.phase19-source.file.alias"},
+		{"source-no-reuse", "runner/execute.go", "DisableKeepAlives: true", "DisableKeepAlives: false", "runner.phase19-source.http.transport-profile"},
 	} {
 		t.Run(mutation.id, func(t *testing.T) {
 			root := t.TempDir()

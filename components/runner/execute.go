@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -24,13 +25,19 @@ import (
 )
 
 func FetchCICDSource(ctx context.Context, request CICDSourceRequest, token string) (*CICDSourceSnapshot, error) {
-	transport := &http.Transport{
-		DialContext:         (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
-		TLSHandshakeTimeout: 10 * time.Second, ResponseHeaderTimeout: 10 * time.Second,
-		DisableCompression: true, MaxIdleConnsPerHost: 1,
-	}
+	transport := cicdSourceTransport()
 	defer transport.CloseIdleConnections()
 	return cicdFetchSource(ctx, request, token, cicdSourceClient(transport))
+}
+
+func cicdSourceTransport() *http.Transport {
+	// A fresh HTTP/1 connection prevents Transport's implicit replay of reused GETs.
+	return &http.Transport{
+		DialContext:         (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
+		TLSHandshakeTimeout: 10 * time.Second, ResponseHeaderTimeout: 10 * time.Second,
+		DisableCompression: true, DisableKeepAlives: true,
+		TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{},
+	}
 }
 
 func cicdSourceClient(transport http.RoundTripper) *http.Client {

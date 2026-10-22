@@ -58,7 +58,7 @@ process reviewの追加2callは、検証済みnative GoのGOROOT/bin/goによる
 
 truncated/必須key/null、unsafe/重複/親欠落/file祖先path、symlink/submodule/未知mode/type、size/SHA不正、10000/10001file、合計100 MiB一致/1byte超過、directory/空tree、blob identity/size/base64/改竄/paddingの正負を検査する。HTTPはredirect/401/429/media/encoding/JSON重複・末尾token・surrogate・UTF-8・整数文法、宣言容量と実読取超過/一致、I/O/取消を検査し、close・上限+1読取・再送0・途中結果nil・秘密のない固定errorを要求する。取消はbarrierでHTTP待機を固定し、context cancel後の終了を照合する。`TestCICDSourceConcurrent` は完成snapshotを8goroutine/各16回読み、返却copyを書き換えて内部不変をrace detectorで確認する。assertion IDは `runner.phase19-source.<case>.<result>`。
 
-既存 `TestCICDPlanMutations` の隔離compileを再利用し、sourceのtruncated/file数/合計容量/親directory/SHA1/blob size/base64 pad bits/応答容量/metadata copy/file copyの10制御を追加する。既存計画14件と計24件を個別にcompileし、compile成功後の所定assertion失敗だけをkillとする。base64負例のblob SHA1は正規形の正例と共通とし、別のhash拒否でpad-bit検査の欠落を隠さない。新たなprocess callは追加せず、固定mutation test選択の変更を [Go process review入力](#development-actions-go-process-review-input) へ反映する。ref先端解決/実行用source admission/受付transaction/worker転送、正式384 assertion/18 record closure/最低1GB実働はこの検証でclosedにしない。
+既存 `TestCICDPlanMutations` の隔離compileを再利用し、sourceのtruncated/file数/合計容量/親directory/SHA1/blob size/base64 pad bits/応答容量/metadata copy/file copy/接続再利用の11制御を追加する。既存計画14件と計25件を個別にcompileし、compile成功後の所定assertion失敗だけをkillとする。base64負例のblob SHA1は正規形の正例と共通とし、別のhash拒否でpad-bit検査の欠落を隠さない。HTTP transportのproxy/再利用/HTTP2/圧縮/期限を検査し、実loopback serverが2回目の応答前にconnectionを閉じても要求2回だけで再送しないことを確認する。新たなprocess callは追加せず、固定mutation test選択の変更を [Go process review入力](#development-actions-go-process-review-input) へ反映する。ref先端解決/実行用source admission/受付transaction/worker転送、正式384 assertion/18 record closure/最低1GB実働はこの検証でclosedにしない。
 
 <a id="phase-19-memory-evidence"></a>
 **最低実働メモリの単体検証と実測証跡：** [components/runner/runner_test.go](../../components/runner/runner_test.go) の `TestCICDResources` / `TestCICDMemoryAdmission` / `TestCICDHostMemoryParser` / `TestCICDMemorySpecification` は [docs/details/statefile.md 詳細本文責務 Resources](statefile.md#phase-19-schema-registry)、[docs/details/setup.md 詳細本文責務 host観測](setup.md#phase-19-memory-profile)、[docs/details/runner.md 詳細本文責務 メモリ受付](runner.md#phase-19-memory-admission) を独立期待値で検査する。入力には実測896/960/1024 MiB、Available319/320、単独budget384/385、slot境界1535/1536、既存claim合計1536/1537、4slot満杯、不正claim/overflow/順序優先、meminfoのKiB丸め前超過・単位・重複・I/O失敗・65536/65537 bytesを含む。小メモリの2job目はP19_BUSY、単独で成立しない旧既定jobはP19_CAPABILITY、入力値/claim配列不変、エラーの秘密文字列漏えい0とする。schema/default/複合制約をmemory copyで変更する5negative controlを拒否する。assertion IDは `runner.phase19-memory.<case>.value/parse/admit/reject`。これらはbudget計算/読取/資源境界の検証であり、未実装のcoordinator/broker接続・OOM回収や1GB実働成功を証明しない。
@@ -3552,7 +3552,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
     },
     {
       "path": "components/runner/runner_test.go",
-      "source_sha256": "a8a285dcc9b717a424283cc14a1b83cfe552163035bddbf2e7b9549b355d6b32",
+      "source_sha256": "69b74d2ea49da4275e4f3affe742d115b3e7d427f5d42a22d6a54a32ae4a3362",
       "calls_sha256": "2308d236dc399c5f874b3246cd1088ccdb1fa71bab4fb2c58f6b3e4463236369",
       "call_count": 3,
       "review_basis": "native-fixture-only"
