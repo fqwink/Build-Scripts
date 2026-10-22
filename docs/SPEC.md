@@ -1095,6 +1095,7 @@ GitHub Actions 障害、runner 不足、ネットワーク障害をローカル�
 | 計画と実行 | 入力検証と実行計画の確定前に、ジョブ起動、配備、承認消費を行ってはならない。プレビューは実行予約ではなく、実行時に対象 revision と権限を再確認する。 |
 | 実行方式 | 汎用ジョブ化は追加 executor の採用判断として扱う。未登録の実行方式、任意 shell、外部 plugin を既存経路へ混入させてはならない。登録条件と正規化済み argv を runner 正本で固定する。 |
 | 隔離 | 利用者コードの実行に必要な OS 隔離、資源制限、秘密情報・通信の境界を確認できない環境では実行を拒否する。Go の使用、専用 directory、runner label だけを sandbox の証拠にしない。 |
+| 最低実働環境 | cicd-v1は公称1GB RAMの単一ホストでcoordinator・API・worker・siteを分離して実働できることを必須とする。検証専用の例外や起動確認だけへ縮小せず、増設・swap・隔離解除を成立条件にしない。資源の定義・受入は [docs/details/setup.md 詳細本文責務 最低実働メモリ](details/setup.md#phase-19-memory-profile)、割当は [docs/details/runner.md 詳細本文責務 メモリ受付](details/runner.md#phase-19-memory-admission)、実測は [docs/details/production-validation.md 本番検証詳細本文責務](details/production-validation.md#phase-19-minimum-live-validation) を参照する。 |
 | 成功確定 | API 受付、queue 登録、command 終了、転送終了だけで配備・復旧成功を確定してはならない。実体の整合、切替、health、必須状態保存の結果を判断へ含める。 |
 | 不確定結果 | 通信断・process crash により外部副作用の成否が不明な場合、無条件再送で解消してはならない。照合可能な操作 ID と世代を用い、照合不能なら後続配備を停止する。外部操作全体の exactly-once を保証したと表記しない。 |
 | 配備方式 | 無停止、旧新版併存、一部利用者への先行配備は、通信切替の管理主体、必要容量、health、切戻しを固定できる構成だけで扱う。構成条件を満たさない環境へ自動で代替方式を選ばない。 |

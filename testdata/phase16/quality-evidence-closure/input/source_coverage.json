@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "6535258b3d1fb20b45f55594ed9cf7432bdc83e60218829a815a008131e5fe5b",
+  "source_group_sha256": "dd481727a79d7309d05e63f810a41acfed355a18de49cc7476a86403204ba393",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -115,8 +115,8 @@
     {
       "path": "docs/SPEC.md",
       "source_exists": true,
-      "sha256": "6904ebdfd6986d6ba4dba2fc7cae4c00dcaf1eb49097bcc50864dbcd9b795787",
-      "size_bytes": 216817,
+      "sha256": "15432627e67e49717c8a11cf5770b0621ff9d9884e960fa762cb91033c4478e6",
+      "size_bytes": 217515,
       "owner_component": "runner",
       "area": "policy",
       "detected_terms": [
@@ -155,8 +155,8 @@
     {
       "path": "docs/DETAIL_INDEX.md",
       "source_exists": true,
-      "sha256": "c7f896556e60c275575443e1ac6d22469e9be717e6b5660815cf6d8b5c2d96b7",
-      "size_bytes": 184025,
+      "sha256": "db078e6eb350eee24b67d29ce7f0c533150668b00aee5715abbf458cefaaf886",
+      "size_bytes": 184208,
       "owner_component": "runner",
       "area": "detail-index",
       "detected_terms": [
@@ -175,8 +175,8 @@
     {
       "path": "docs/DOCUMENT_INDEX.md",
       "source_exists": true,
-      "sha256": "a507f4f22988ba7696305f8a97c68304809779cb36b52d5436dc60a3a59c41c1",
-      "size_bytes": 70274,
+      "sha256": "2f66dec470c5e3ac2d8fec50d0604c5f00d8d7155623210238af6f24e0cf7325",
+      "size_bytes": 71032,
       "owner_component": "runner",
       "area": "document-index",
       "detected_terms": [
@@ -195,8 +195,8 @@
     {
       "path": "docs/details/fixture.md",
       "source_exists": true,
-      "sha256": "9e8e284961d07192363b6ad9f8082bf5cc85542f2c7090c6fb82619ce1b13bce",
-      "size_bytes": 1346322,
+      "sha256": "dbc3aaeef8fcfefe22df20d1f1f74d469442501ca915cd50ff5a30fa10dcf8a6",
+      "size_bytes": 1350029,
       "owner_component": "runner",
       "area": "fixture-spec",
       "detected_terms": [

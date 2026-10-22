@@ -10,6 +10,13 @@
 
 [main_test.go](../../main_test.go) の `TestPlannedPhaseMaturityBoundary` は独立した最小ROADMAP入力で、active未設定+Phase19未実装、およびactive19+実装中の2正例を受理する。Phase20/21開始、active宣言重複/競合/欠落、activeと状態の不一致、Phase19の早期完了、後続Phaseの早期完了、依存先不一致を拒否する。assertion IDは `statefile.phase19-maturity.<case>.accept/reject`。Phase18 checkerはPhase18の完了状態を保持し、この共通境界へ接続する。承認判断そのものをcheckerへ代行させない。mutationはcanonical key sort/配列順/duplicate検査/整数境界/Unicode検査/control escape/HTML保持/digest入力/開始状態と後続Phase制限を対象に、隔離copyでcompileと検出reasonを分離する。
 
+<a id="phase-19-memory-evidence"></a>
+**最低実働メモリの単体検証と実測証跡：** [components/runner/runner_test.go](../../components/runner/runner_test.go) の `TestCICDResources` / `TestCICDMemoryAdmission` / `TestCICDHostMemoryParser` / `TestCICDMemorySpecification` は [docs/details/statefile.md 詳細本文責務 Resources](statefile.md#phase-19-schema-registry)、[docs/details/setup.md 詳細本文責務 host観測](setup.md#phase-19-memory-profile)、[docs/details/runner.md 詳細本文責務 メモリ受付](runner.md#phase-19-memory-admission) を独立期待値で検査する。入力には実測896/960/1024 MiB、Available319/320、単独budget384/385、slot境界1535/1536、既存claim合計1536/1537、4slot満杯、不正claim/overflow/順序優先、meminfoのKiB丸め前超過・単位・重複・I/O失敗・65536/65537 bytesを含む。小メモリの2job目はP19_BUSY、単独で成立しない旧既定jobはP19_CAPABILITY、入力値/claim配列不変、エラーの秘密文字列漏えい0とする。schema/default/複合制約をmemory copyで変更する5negative controlを拒否する。assertion IDは `runner.phase19-memory.<case>.value/parse/admit/reject`。これらはbudget計算/読取/資源境界の検証であり、未実装のcoordinator/broker接続・OOM回収や1GB実働成功を証明しない。
+
+mutation selectionはhost下限/予約/guard/実効slot閾値/claim計上/資源下限/disk差分/meminfo重複/単位/読取error/byte上限/丸め前比較の12制御を各1箇所変更する。隔離copyでコンパイル成功を先に確認し、同じ4testと `TestCICDMemoryConcurrent` の期待失敗を要求する。expectedの256 MiBを改竄する対照も失敗し、復元した正例は成功する。純粋関数は共有可変状態を持たず、同一immutable入力の8goroutine/各100回呼出も `go test -race` で確認する。Linuxで固定meminfoの実読取、他OSでP19_CAPABILITY、過大Readerから検出用1byteを超えて読まないことを照合する。claim lock本体やOOMのraceをこの結果でclosedにしない。
+
+minimum-liveは [docs/details/production-validation.md 本番検証詳細本文責務](production-validation.md#phase-19-minimum-live-validation) の運用入力に接続し、既存package `phase19-inhouse-cicd` のsession recordへ `memory_evidence` を追加する。全key必須の型は `{nominal_ram_mb:integer,measured_total_mb:integer,swap_total_kib:integer,resource_values:Resources,configured_slots:integer,effective_slots:integer,sample_count:integer,duration_seconds:integer,samples_sha256:Digest,peak_control_mb:integer,min_available_mb:integer,max_parallel:integer,unexpected_oom_count:integer,injected_job_oom_count:integer,completed_cycles_per_project:integer[],go_build_ok:bool,go_test_ok:bool,go_vet_ok:bool,cancel_recovered:bool,oom_recovered:bool,restart_reconciled:bool,cleanup_ok:bool}`。samplesはworkflow/session temporary内のJSON Lines、各行は `{at:Time,total_kib:integer,available_kib:integer,swap_total_kib:integer,control_bytes:integer,job_bytes:integer,active_jobs:integer,oom:integer,oom_kill:integer}`、時刻1秒間隔/欠測0、非負値とし、集計を独立再導出してrecordと照合する。marker/host名/IP/credential/生pathを保存しない。サンプルhashはraw bytes、KiB/bytes→MiBのピークは切上げ、最小値は切捨て。memory_evidenceの欠落・サンプル改竄・sample_count/期間/周期不一致・不正なtopology・swap利用・2job同時・OOM回収前slot再利用を負例で拒否する。正式session未実行はskip/gapへ接続し、値0やbool=trueの仮記録を作らない。
+
 <a id="phase-19-fixture-layout"></a>
 **正式root / artifact：** 実装時に `testdata/phase19/inhouse-cicd/` を作り、rootに `manifest.json`、各case IDのlowercase directory（例 `p19-plan/`）に `input.json`, `fake.json`, `expected.json`, `effects.json`, `security_expected.json` を配置する。これらは現時点で未作成、実在を索引へ偽記載しない。harnessは既存 `main_test.go`、owner testは既存 `components/<owner>/<owner>_test.go`、SDK/UI Deno test driverは既存root Go testからtemporaryへ抽出してDenoで実行する。owner package6個目のGo fileやPhase専用仕様書を作らない。
 
@@ -3494,7 +3501,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
     },
     {
       "path": "components/runner/runner_test.go",
-      "source_sha256": "711cd2396502b8594d976a01ebf133a3c37201eef36661b6e3bf2a6f229dc008",
+      "source_sha256": "33f7154e97fc4a704df7d6249d6955f1ef15ac4723371b316f8d07bf1ac180fd",
       "calls_sha256": "6b5a66ed1794109b2f6ee8f24e9cb67f6321dd5b68dc9174c4fbf6ebc621b46a",
       "call_count": 1,
       "review_basis": "native-fixture-only"

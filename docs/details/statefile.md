@@ -54,7 +54,7 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
     },
     "Resources": {
       "cpu_percent": "int(10,400)",
-      "memory_mb": "int(512,8192)",
+      "memory_mb": "int(256,8192)",
       "disk_mb": "int(128,2048)",
       "tasks": "int(8,256)",
       "timeout_seconds": "int(1,3600)",
@@ -309,7 +309,7 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "last_seen": "nullable(Time)",
       "leases": "list(Lease,0,4)",
       "toolchain_digest": "Digest",
-      "total_memory_mb": "int(2048,1048576)"
+      "total_memory_mb": "int(896,1048576)"
     },
     "JobResult": {
       "id": "Id",
@@ -641,7 +641,7 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
 
 **複合制約と既定値：** record 配列は owner の複合キーで一意とする。definition / template は project,id,revision、environment は project,id、run は project,id,attempt、artifact は project,digest、cache は project,key、grant は subject_kind,subject_id,project_id,environment_id,role。SecretMetaはproject_id,id,version一意。idを持つその他のRoot entityはid一意。Credentialのcicd-v1 login_countだけは安全整数上限9007199254740991以下に追加制限する（legacy fileの型は変更しない）。全entity参照は同一project内で解決し（user/worker/serviceはglobal、digestを識別子へ代用しない）、不在・無効・deleting参照を拒否する。ただし成果物digestの保持記録は [履歴参照境界](#phase-19-retained-content-references) を適用し、live foreign keyと区別する。rev / generationの上限では wrap せず P19_REVISION。Timeの順序逆転・不正なstate / timestamp組合せは P19_STATE_CORRUPT。Task、Grant、Environmentの意味上の制約は各owner正本を参照する。
 
-保存時のschema既定値はない。作成UIの初期値だけを `Quota={parallel:1,queue:64,artifact_mb:1024,cache_mb:256,retention_days:7}`、`Resources={cpu_percent:100,memory_mb:1024,disk_mb:512,tasks:128,timeout_seconds:900,output_mb:16}`、`Retry={max_attempts:1,backoff_seconds:1}`、cache無効・paths空・TTL604800秒、empty selector / matrix / template / env / secret、optional=false、fail_fast=false とする。memory_mb >= disk_mb+256、env全値合計32768 bytes以下、secret投入後の合計16384 bytes以下を要求する。Templateは他Templateを参照しない。EnvironmentStateはproject,environmentで一意。TriggerCursorはproject,definition,definition_revision,kind,trigger_idで一意であり、immutable Definitionとは別に更新する。StatusDeliveryの保存・一意性は [StatusDelivery保存契約](#phase-19-status-delivery-state) を参照する。Notification.idはcanonical `{project_id,target_id,target_attempt,source_revision,event}` のSHA256先頭63文字にnを付ける。target_attemptはRun.attempt（Deploymentは1）、source_revisionは通知を生成する遷移後のRun/Deployment.revision。同一遷移再処理では同じidとし、配信retry用attemptと混同しない。Source.filesはpath昇順、UTF-8合計100 MiB以下、tree_digestはcanonical files配列のSHA256。snapshot全体は32 MiB、active run16、全実行job64、projectごとの上限はQuotaでさらに制限する。
+保存時のschema既定値はない。作成UIの初期値だけを `Quota={parallel:1,queue:64,artifact_mb:1024,cache_mb:256,retention_days:7}`、`Resources={cpu_percent:100,memory_mb:256,disk_mb:128,tasks:64,timeout_seconds:900,output_mb:16}`、`Retry={max_attempts:1,backoff_seconds:1}`、cache無効・paths空・TTL604800秒、empty selector / matrix / template / env / secret、optional=false、fail_fast=false とする。memory_mb >= disk_mb+128、env全値合計32768 bytes以下、secret投入後の合計16384 bytes以下を要求する。memory_mb/disk_mb/total_memory_mbの単位・測定は [docs/details/setup.md 詳細本文責務 最低実働メモリ](setup.md#phase-19-memory-profile) を参照する。Templateは他Templateを参照しない。EnvironmentStateはproject,environmentで一意。TriggerCursorはproject,definition,definition_revision,kind,trigger_idで一意であり、immutable Definitionとは別に更新する。StatusDeliveryの保存・一意性は [StatusDelivery保存契約](#phase-19-status-delivery-state) を参照する。Notification.idはcanonical `{project_id,target_id,target_attempt,source_revision,event}` のSHA256先頭63文字にnを付ける。target_attemptはRun.attempt（Deploymentは1）、source_revisionは通知を生成する遷移後のRun/Deployment.revision。同一遷移再処理では同じidとし、配信retry用attemptと混同しない。Source.filesはpath昇順、UTF-8合計100 MiB以下、tree_digestはcanonical files配列のSHA256。snapshot全体は32 MiB、active run16、全実行job64、projectごとの上限はQuotaでさらに制限する。
 
 <a id="phase-19-status-delivery-state"></a>
 **StatusDelivery保存・保持境界：** 一意keyはproject_id/run_id/attempt/stateであり、対応する同projectのRun/attemptの存在を要求する。atはclaimを最初にcommitしたUTC時刻で不変。sent=false/code=nullは送信権を確保済みで結果未確定、sent=true/code=nullは201確認済み、sent=false/code非nullは送信停止または失敗確定とする。sent=true/code非nullはP19_STATE_CORRUPT。結果更新は同keyの結果未確定から1回だけ許可し、確定後の再処理はbyte不変。新規claimはRoot lock下で最新候補とkey不在を照合して1recordを追加する。Root commit不確定時は送信せず、Head照合による復旧まで止める。選択・固定code・HTTP再発行禁止は [docs/details/commitstatus.md 詳細本文責務 最新結果の送信契約](commitstatus.md#phase-19-status-delivery) を参照する。

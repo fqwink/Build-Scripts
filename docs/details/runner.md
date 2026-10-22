@@ -61,7 +61,7 @@ topological順で `selected=own_match && all(needs.selected)` を一度だけ確
 | artifact-verify / archive | 外部commandなし。archive adapterで指定digestのmanifest / 全fileを検証。 |
 | deploy / deploy | 外部commandなし。本書配備state machineへ渡す。job workerへ配備secretを送らない。 |
 
-Go環境追加は `CGO_ENABLED=0 GOPROXY=off GOSUMDB=off GOENV=off GOWORK=off GOTOOLCHAIN=local GOCACHE=/job/gocache GOMODCACHE=/job/modcache`。go.mod require/replace、vendor、go:generate、exec script、Node関連manifest/runtime入力を拒否する。go.modはmodule/go/toolchain行と空白/commentだけを受理し、require/replace/exclude/retract/useを含む行やblockは拒否する。Go compilerが解釈する前にこの閉じたgrammarを検査し、toolchain行は導入版と一致しなければ拒否する。sourceから任意command、plugin、download、外部module解決を行わない。source file admissionはNode禁止契約に従う。Go testのcompile段階とtest実行段階はsandboxを作り直し、前者の実行allowlistはGo toolchain、後者は検証済みtest digestとtrusted wrapperだけにする。実行しない検証結果をexit0へ変換しない。
+Go環境追加は `CGO_ENABLED=0 GOPROXY=off GOSUMDB=off GOENV=off GOWORK=off GOTOOLCHAIN=local GOCACHE=/job/gocache GOMODCACHE=/job/modcache GOMAXPROCS=1`。全Go commandへbuild flag `-p=1`をcommand名直後に加え、trusted wrapper/builder/Go toolのGOMEMLIMITは `(memory_mb-disk_mb-32)MiB` とする。これはsoft limitでありcgroup MemoryMaxを置き換えない。go.mod require/replace、vendor、go:generate、exec script、Node関連manifest/runtime入力を拒否する。go.modはmodule/go/toolchain行と空白/commentだけを受理し、require/replace/exclude/retract/useを含む行やblockは拒否する。Go compilerが解釈する前にこの閉じたgrammarを検査し、toolchain行は導入版と一致しなければ拒否する。sourceから任意command、plugin、download、外部module解決を行わない。source file admissionはNode禁止契約に従う。Go testのcompile段階とtest実行段階はsandboxを作り直し、前者の実行allowlistはGo toolchain、後者は検証済みtest digestとtrusted wrapperだけにする。実行しない検証結果をexit0へ変換しない。
 
 <a id="phase-19-trigger-state"></a>
 **trigger / queue / attempt：**
@@ -70,13 +70,26 @@ coordinatorは250ms tick、同一state-dirで1processだけ（起動lock保持�
 
 event_keyはcanonical `{project_id,definition_id,definition_revision,kind,trigger_id,source_sha,due}` のSHA256。manual/retry/resumeではtrigger_idに要求ID、due=null。watchはdue=null。last_sha / last_due更新と受付を同じtransactionでcommitする。取得失敗はcursorを進めず、1/2/4/8/16/30秒のbackoffで次回へ回す。watchの新SHA受付時、同一project/definition/revision/refの未割当queued runだけをcancelledに集約する。既にassigned以上のrunは残す。queueがproject上限ならP19_QUOTAでcursor不変。
 
-queue順はcreated_at,run.id,attempt。ready jobは上記topological順。project同時実行数はQuota.parallel、global64、active run16。workerはcapability / project /toolchain digest /空slotを満たし、割当memory合計+新job.memory_mb<=total_memory_mb-512を要求してworker.id昇順にround-robin（最後の割当IDの次、末尾で先頭）する。deployはenvironment排他でcoordinatorが処理する。
+queue順はcreated_at,run.id,attempt。ready jobは上記topological順。project同時実行数はQuota.parallel、global64、active run16。workerはcapability / project /toolchain digestと [メモリ受付](#phase-19-memory-admission) を満たし、worker.id昇順にround-robin（最後の割当IDの次、末尾で先頭）する。deployはenvironment排他でcoordinatorが処理する。
 
 Runはqueued→running→succeeded/failed/cancelled/recovery_required、cancel_requestedはqueued/runningからのみ。JobResultはqueued→assigned→running→succeeded/failed（artifact-verify/deployはworker不要のlocal assigned/runningをdurable保存）、cancel要求時はcancel_requested→cancelled。dependency停止はskipped。required job1件でもfailedならrun failed、optionalだけの失敗はrun succeededだがJobResult失敗を保持。全job skippedはP19_EMPTYでfailed。fail_fast=trueは最初のrequired失敗で未開始jobをskippedにし、実行中にもcancel要求を送る。自発cancelとfail-fastの原因はoperation.kindで区別する。
 
 retryはP19_TRANSPORT/P19_LEASEで、かつ外部副作用なしを照合できる場合だけ、retry.max_attemptsまで。同一job内try_numberを増やし、待機はbackoff_seconds*2^(try_number-1)、最大30秒。input/auth/capability/digest/timeout/exit不良はretryしない。配備切替の不確定結果はrecovery_requiredで自動再送しない。runRetry/runResumeの新attemptは [固定Planの再実行](#phase-19-attempt-plan) に従う。
 
 cancel受付は202 Operationであって完了ではない。coordinatorが新割当停止→worker停止要求→process group TERM→5秒待機→KILL→Wait→log drain→workspace cleanup→終端保存を行う。cleanup失敗はP19_CLEANUPでworkerをdrainし、processが生存/照合不能ならrecovery_required。実体停止前にcancelledを返さない。再起動時assigned/runningをlease照合し、未起動と確認できる場合だけqueueへ戻し、実行済み不明はrecovery_required。
+
+<a id="phase-19-memory-admission"></a>
+**メモリ受付とOOM後の回収：** `CICDResources` は [docs/details/statefile.md 詳細本文責務 registryと複合制約](statefile.md#phase-19-schema-registry) のResources同型、`DefaultCICDResources` は同正本のUI初期値だけを返す。欠落fieldを保存時に補完する用途には使用しない。`ValidateCICDResources` は全fieldとmemory/disk複合制約を検査し、不正はP19_SCHEMA。`CICDHostMemory={TotalMB:int64,AvailableMB:int64}` は [docs/details/setup.md 詳細本文責務 host観測](setup.md#phase-19-memory-profile) の値とし、`CheckCICDMemory(memory,reservations,configuredSlots,requestedMB)` は次の順で判定する純粋関数とする。変更を行わず、errorはcodeだけとする。
+
+1. configuredSlotsが1..4外、requestedMBがResources.memory_mb範囲外ならP19_SCHEMA。
+2. TotalMBがWorker.total_memory_mb範囲外、AvailableMB<0またはTotalMB超過ならP19_CAPABILITY。
+3. reservationsは同hostの未回収claimのmemory_mb配列、最大4件。件数が設定slot超過、各値がResources.memory_mb範囲外ならP19_STATE_CORRUPT。assigned/running/cancel_requested/recovery_requiredを含め、実体停止・cleanup・終端保存の照合が終わるまで除外しない。queuedと回収済terminalは含めない。
+4. budget=TotalMB-[setup正本のhost予約](setup.md#phase-19-memory-profile)。requestedMB>budgetならP19_CAPABILITY（そのworkerで単独でも成立しない）。全対応workerがこの条件ならplan/run受付も拒否し、永久queueへ入れない。将来の空き待ちと能力不足を分離する。
+5. 実効slot以上のclaim、予約合計+requestedMB>budget、またはAvailableMB<予約合計+requestedMB+64 MiBならP19_BUSY。空き量には既存processの使用分が既に反映されていても、未起動claimとの競合を防ぐため予約全量を保守的に再計上する。等号は受理。全条件成立時だけ成功。
+
+coordinatorは登録実測TotalMBで恒久不足を排除し、worker/brokerはassign受理とunit start直前の各claim lock下で最新観測を使って再検査する。start再検査では自身のclaimだけをreservationsから外しrequestedMBとして一度計上し、他claimを除かない。P19_BUSYは副作用・secret復号・新unit起動0、queueの順序を保って次tickへ戻す。claim/ACK済みでstartできない時も未起動照合・回収・終端保存後までslotを再利用しない。メモリ不足をretry対象transport失敗へ変換しない。全値は検査後に加算するためint64 overflowさせず、観測失敗時に古いAvailable値やMemFreeで代用しない。
+
+jobのMemoryMaxはwrapper/子processとtmpfs/cacheを含む上限であり、disk_mbを別枠の追加RAMとして扱わない。各unitの稼働中にmemory.eventsのoom/oom_killを観測し、その増加またはsetup正本の結果照合でResult=oom-killならexit値にかかわらず失敗/P19_EXIT、診断理由は固定`memory_limit`とする。unit終了/回収の照合は [docs/details/setup.md 詳細本文責務 unit回収](setup.md#phase-19-sandbox-profile) を使い、失敗unitの結果が不明ならrecovery_required/P19_LEASE。OOMを観測できなくても非zero exitを成功へ変換しない。OOMでも既存のTERM/KILL/Wait/cgroup空/出力drain/cleanupを完遂し、成功artifact publish・retry・slot先行解放をしない。停止照合不能はrecovery_required、停止確認済cleanup不良はP19_CLEANUPを優先する。回収済みのjob OOMだけでworker全体を恒久停止せず、次の実測とprobe成功後に新jobを処理する。host/control planeのOOMはworkerをdrainし、再起動時に既存lease/processを照合する。上限が足りない利用者jobは失敗を明示し、最小実働で無制限の入力・任意のbuild規模を保証しない。
 
 <a id="phase-19-trigger-admission"></a>
 **自動triggerの入力とcursor：** watch/scheduleはProjectが現在参照するDefinition.id/revisionだけを使用する。watches非空またはenabled scheduleありのDefinitionはrequired inputを含めて保存できない（P19_SCHEMA）。未指定の任意入力は [型付き入力](#phase-19-input-normalization) で確定し、外部値を推測注入しない。manual=falseはAPI runStartだけを拒否し、自動triggerを無効化しない。plan previewはmanual=falseでも読取として許可する。watch/scheduleの内部requesterは [docs/details/security.md 詳細本文責務 自動trigger主体](security.md#phase-19-automatic-subject) を使用する。イベント識別子は本書event_keyにDefinition.idも含め、同revision番号/trigger名の別Definitionと衝突させない。cursorの複合キー・初期値・回収は [docs/details/statefile.md 詳細本文責務 Plan保存整合](statefile.md#phase-19-plan-state-invariants) を参照する。

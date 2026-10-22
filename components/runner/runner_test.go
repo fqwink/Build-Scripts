@@ -16,11 +16,256 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"reflect"
+	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
+
+func TestCICDResources(t *testing.T) {
+	want := CICDResources{CPUPercent: 100, MemoryMB: 256, DiskMB: 128, Tasks: 64, TimeoutSeconds: 900, OutputMB: 16}
+	if got := DefaultCICDResources(); got != want || ValidateCICDResources(got) != nil {
+		t.Fatal("runner.phase19-memory.defaults.value: unexpected defaults")
+	}
+	fields := []struct {
+		name     string
+		min, max int64
+		set      func(*CICDResources, int64)
+	}{
+		{"cpu", 10, 400, func(r *CICDResources, v int64) { r.CPUPercent = v }},
+		{"memory", 256, 8192, func(r *CICDResources, v int64) { r.MemoryMB = v }},
+		{"disk", 128, 2048, func(r *CICDResources, v int64) { r.DiskMB = v }},
+		{"tasks", 8, 256, func(r *CICDResources, v int64) { r.Tasks = v }},
+		{"timeout", 1, 3600, func(r *CICDResources, v int64) { r.TimeoutSeconds = v }},
+		{"output", 1, 16, func(r *CICDResources, v int64) { r.OutputMB = v }},
+	}
+	for _, field := range fields {
+		for _, value := range []int64{field.min - 1, field.min, field.max, field.max + 1, -1, 1<<63 - 1} {
+			t.Run(fmt.Sprintf("%s-%d", field.name, value), func(t *testing.T) {
+				r := want
+				if field.name == "disk" {
+					r.MemoryMB = 8192
+				}
+				field.set(&r, value)
+				before := r
+				err := ValidateCICDResources(r)
+				valid := value >= field.min && value <= field.max
+				if valid && err != nil || !valid && err != ErrCICDSchema || r != before {
+					t.Fatal("runner.phase19-memory.resources.boundary: unexpected validation or mutation")
+				}
+			})
+		}
+	}
+	for _, gap := range []int64{127, 128, 129} {
+		r := want
+		r.MemoryMB, r.DiskMB = 512, 512-gap
+		if err := ValidateCICDResources(r); (gap >= 128 && err != nil) || (gap < 128 && err != ErrCICDSchema) {
+			t.Fatal("runner.phase19-memory.resources.gap: unexpected compound boundary")
+		}
+	}
+	if ValidateCICDResources(CICDResources{}) != ErrCICDSchema {
+		t.Fatal("runner.phase19-memory.resources.missing: zero input accepted")
+	}
+}
+
+func TestCICDMemoryAdmission(t *testing.T) {
+	tests := []struct {
+		id               string
+		total, available int64
+		reserved         []int64
+		slots, request   int64
+		want             error
+	}{
+		{"minimum", 896, 320, nil, 1, 256, nil},
+		{"nominal-one-gib", 1024, 1024, nil, 4, 256, nil},
+		{"kernel-reservation", 960, 600, nil, 1, 256, nil},
+		{"host-below", 895, 895, nil, 1, 256, ErrCICDCapability},
+		{"host-upper", 1048576, 1048576, nil, 4, 8192, nil},
+		{"host-above", 1048577, 1048577, nil, 4, 256, ErrCICDCapability},
+		{"host-overflow", 1<<63 - 1, 320, nil, 1, 256, ErrCICDCapability},
+		{"available-negative", 896, -1, nil, 1, 256, ErrCICDCapability},
+		{"available-excess", 896, 897, nil, 1, 256, ErrCICDCapability},
+		{"available-zero", 896, 0, nil, 1, 256, ErrCICDBusy},
+		{"guard-below", 896, 319, nil, 1, 256, ErrCICDBusy},
+		{"budget-exact", 896, 448, nil, 1, 384, nil},
+		{"budget-above", 896, 896, nil, 1, 385, ErrCICDCapability},
+		{"old-default-rejected", 960, 960, nil, 1, 1024, ErrCICDCapability},
+		{"low-host-single-slot", 1024, 1024, []int64{256}, 4, 256, ErrCICDBusy},
+		{"slot-threshold-below", 1535, 1535, []int64{256}, 4, 256, ErrCICDBusy},
+		{"slot-threshold-exact", 1536, 1536, []int64{256}, 4, 256, nil},
+		{"configured-single", 8192, 8192, []int64{256}, 1, 256, ErrCICDBusy},
+		{"configured-four", 8192, 8192, []int64{256, 256, 256}, 4, 256, nil},
+		{"four-full", 8192, 8192, []int64{256, 256, 256, 256}, 4, 256, ErrCICDBusy},
+		{"claim-count-invalid", 8192, 8192, []int64{256, 256, 256, 256, 256}, 4, 256, ErrCICDStateCorrupt},
+		{"configured-count-invalid", 8192, 8192, []int64{256, 256}, 1, 256, ErrCICDStateCorrupt},
+		{"reserved-negative", 8192, 8192, []int64{-1}, 4, 256, ErrCICDStateCorrupt},
+		{"reserved-below", 8192, 8192, []int64{255}, 4, 256, ErrCICDStateCorrupt},
+		{"reserved-above", 8192, 8192, []int64{8193}, 4, 256, ErrCICDStateCorrupt},
+		{"reserved-overflow", 8192, 8192, []int64{1<<63 - 1}, 4, 256, ErrCICDStateCorrupt},
+		{"reserve-total-exact", 2048, 1600, []int64{1024}, 4, 512, nil},
+		{"reserve-total-above", 2048, 2048, []int64{1025}, 4, 512, ErrCICDBusy},
+		{"pressure-with-claim", 2048, 1599, []int64{1024}, 4, 512, ErrCICDBusy},
+		{"request-below", 896, 896, nil, 1, 255, ErrCICDSchema},
+		{"request-above", 16384, 16384, nil, 1, 8193, ErrCICDSchema},
+		{"slots-below", 896, 896, nil, 0, 256, ErrCICDSchema},
+		{"slots-above", 896, 896, nil, 5, 256, ErrCICDSchema},
+		{"schema-before-capability", 0, 0, nil, 0, 0, ErrCICDSchema},
+		{"capability-before-state", 0, 0, []int64{-1}, 1, 256, ErrCICDCapability},
+		{"state-before-budget", 896, 896, []int64{-1}, 1, 512, ErrCICDStateCorrupt},
+	}
+	for _, tc := range tests {
+		t.Run(tc.id, func(t *testing.T) {
+			memory := CICDHostMemory{TotalMB: tc.total, AvailableMB: tc.available}
+			before := append([]int64(nil), tc.reserved...)
+			if got := CheckCICDMemory(memory, tc.reserved, tc.slots, tc.request); got != tc.want || !reflect.DeepEqual(before, tc.reserved) {
+				t.Fatal("runner.phase19-memory." + tc.id + ".admit: unexpected code or input mutation")
+			}
+		})
+	}
+}
+
+func checkCICDMemorySpecification(data []byte) error {
+	parts := bytes.SplitN(data, []byte("```json\n"), 2)
+	if len(parts) != 2 {
+		return errors.New("memory-spec: missing registry")
+	}
+	block := bytes.SplitN(parts[1], []byte("\n```"), 2)
+	var registry struct {
+		Types map[string]json.RawMessage `json:"types"`
+	}
+	if len(block) != 2 || json.Unmarshal(block[0], &registry) != nil {
+		return errors.New("memory-spec: invalid registry")
+	}
+	var resources map[string]string
+	var worker map[string]json.RawMessage
+	want := map[string]string{"cpu_percent": "int(10,400)", "memory_mb": "int(256,8192)", "disk_mb": "int(128,2048)", "tasks": "int(8,256)", "timeout_seconds": "int(1,3600)", "output_mb": "int(1,16)"}
+	if json.Unmarshal(registry.Types["Resources"], &resources) != nil || !reflect.DeepEqual(resources, want) ||
+		json.Unmarshal(registry.Types["Worker"], &worker) != nil || string(worker["total_memory_mb"]) != `"int(896,1048576)"` {
+		return errors.New("memory-spec: resource bounds")
+	}
+	if !bytes.Contains(data, []byte("Resources={cpu_percent:100,memory_mb:256,disk_mb:128,tasks:64,timeout_seconds:900,output_mb:16}")) ||
+		!bytes.Contains(data, []byte("memory_mb >= disk_mb+128")) {
+		return errors.New("memory-spec: default or compound bound")
+	}
+	return nil
+}
+
+func TestCICDMemorySpecification(t *testing.T) {
+	data, err := os.ReadFile("../../docs/details/statefile.md")
+	if err != nil || checkCICDMemorySpecification(data) != nil {
+		t.Fatal("runner.phase19-memory.specification.accept: contract drift")
+	}
+	for _, old := range []string{`"int(256,8192)"`, `"int(896,1048576)"`, "memory_mb:256", "disk_mb:128", "memory_mb >= disk_mb+128"} {
+		if !bytes.Contains(data, []byte(old)) {
+			t.Fatal("runner.phase19-memory.specification.fixture: negative-control target absent")
+		}
+		changed := bytes.Replace(data, []byte(old), []byte("invalid-control"), 1)
+		if checkCICDMemorySpecification(changed) == nil {
+			t.Fatal("runner.phase19-memory.specification.reject: modified contract accepted")
+		}
+	}
+}
+
+func TestCICDMemoryConcurrent(t *testing.T) {
+	memory := CICDHostMemory{TotalMB: 8192, AvailableMB: 8192}
+	claims := []int64{256, 512, 1024}
+	errorsSeen := make(chan bool, 8)
+	var group sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			for j := 0; j < 100; j++ {
+				parsed, err := ParseCICDHostMemory(strings.NewReader("MemTotal: 8388608 kB\nMemAvailable: 8388608 kB\n"))
+				if err != nil || parsed != memory || CheckCICDMemory(memory, claims, 4, 256) != nil || ValidateCICDResources(DefaultCICDResources()) != nil {
+					errorsSeen <- true
+					return
+				}
+			}
+		}()
+	}
+	group.Wait()
+	close(errorsSeen)
+	if len(errorsSeen) != 0 || !reflect.DeepEqual(claims, []int64{256, 512, 1024}) {
+		t.Fatal("runner.phase19-memory.concurrent.admit: shared input mutated or inconsistent result")
+	}
+}
+
+type cicdMemoryFaultReader struct{}
+
+func (cicdMemoryFaultReader) Read(p []byte) (int, error) {
+	return copy(p, "MemTotal: 1048576 kB\nMemAvailable: 655360 kB\n"), errors.New("private-memory-marker")
+}
+
+func TestCICDHostMemoryParser(t *testing.T) {
+	base := "MemTotal: 1048576 kB\nMemAvailable: 655360 kB\n"
+	tests := []struct {
+		id, text string
+		want     CICDHostMemory
+		valid    bool
+	}{
+		{"normal", base, CICDHostMemory{1024, 640}, true},
+		{"padded", "MemAvailable:\t655360\tkB\nMemTotal:  983040  kB", CICDHostMemory{960, 640}, true},
+		{"fraction-floor", "MemTotal: 917505 kB\nMemAvailable: 328703 kB\n", CICDHostMemory{896, 320}, true},
+		{"available-zero", "MemTotal: 917504 kB\nMemAvailable: 0 kB\n", CICDHostMemory{896, 0}, true},
+		{"unknown-key", base + "SwapTotal: 99999999 kB\n", CICDHostMemory{1024, 640}, true},
+		{"maximum", "MemTotal: 1073741824 kB\nMemAvailable: 1073741824 kB\n", CICDHostMemory{1048576, 1048576}, true},
+		{"size-exact", base + strings.Repeat(" ", 65536-len(base)), CICDHostMemory{1024, 640}, true},
+		{"size-excess", base + strings.Repeat(" ", 65537-len(base)), CICDHostMemory{}, false},
+		{"empty", "", CICDHostMemory{}, false},
+		{"missing-available", "MemTotal: 1048576 kB\nMemFree: 655360 kB\n", CICDHostMemory{}, false},
+		{"missing-total", "MemAvailable: 655360 kB\n", CICDHostMemory{}, false},
+		{"duplicate-total", base + "MemTotal: 1048576 kB\n", CICDHostMemory{}, false},
+		{"duplicate-available", base + "MemAvailable: 655360 kB\n", CICDHostMemory{}, false},
+		{"zero-total", "MemTotal: 0 kB\nMemAvailable: 0 kB\n", CICDHostMemory{}, false},
+		{"available-excess-before-floor", "MemTotal: 917504 kB\nMemAvailable: 917505 kB\n", CICDHostMemory{}, false},
+		{"value-above", "MemTotal: 1073741825 kB\nMemAvailable: 0 kB\n", CICDHostMemory{}, false},
+	}
+	for _, value := range []string{"-1", "+1", "1.5", "1e6", "9223372036854775808", "NaN", ""} {
+		tests = append(tests, struct {
+			id, text string
+			want     CICDHostMemory
+			valid    bool
+		}{"invalid-value-" + value, "MemTotal: " + value + " kB\nMemAvailable: 0 kB\n", CICDHostMemory{}, false})
+	}
+	for _, suffix := range []string{"MB", "kb", "kB extra", "kB\r", "kB\x00", ""} {
+		tests = append(tests, struct {
+			id, text string
+			want     CICDHostMemory
+			valid    bool
+		}{"invalid-unit-" + suffix, "MemTotal: 1048576 " + suffix + "\nMemAvailable: 0 kB\n", CICDHostMemory{}, false})
+	}
+	for _, tc := range tests {
+		t.Run(tc.id, func(t *testing.T) {
+			got, err := ParseCICDHostMemory(strings.NewReader(tc.text))
+			if got != tc.want || tc.valid && err != nil || !tc.valid && err != ErrCICDCapability {
+				t.Fatal("runner.phase19-memory." + tc.id + ".parse: unexpected value or error")
+			}
+		})
+	}
+	for _, reader := range []io.Reader{nil, cicdMemoryFaultReader{}} {
+		if got, err := ParseCICDHostMemory(reader); got != (CICDHostMemory{}) || err != ErrCICDCapability {
+			t.Fatal("runner.phase19-memory.read-error.reject: error or partial data leaked")
+		}
+	}
+	long := strings.NewReader(base + strings.Repeat(" ", 131072))
+	if _, err := ParseCICDHostMemory(long); err != ErrCICDCapability || long.Len() != len(base)+131072-65537 {
+		t.Fatal("runner.phase19-memory.bounded-read.reject: read exceeded detection byte")
+	}
+	if runtime.GOOS == "linux" {
+		got, err := ReadCICDHostMemory()
+		if err != nil || got.TotalMB <= 0 || got.AvailableMB < 0 || got.AvailableMB > got.TotalMB {
+			t.Fatal("runner.phase19-memory.linux-read.value: physical host observation failed")
+		}
+	} else {
+		if got, err := ReadCICDHostMemory(); got != (CICDHostMemory{}) || err != ErrCICDCapability {
+			t.Fatal("runner.phase19-memory.unsupported.reject: unsupported host accepted")
+		}
+	}
+}
 
 type nativeBuilderFixture struct {
 	Code         int    `json:"code"`
