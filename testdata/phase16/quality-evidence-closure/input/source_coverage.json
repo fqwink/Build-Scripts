@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "d4268fe92836a618977e647d61cbb1eeb1b5faeaf2c8fa1d049c4db1387a50d2",
+  "source_group_sha256": "413a3fdd40bd0aefd05f9378a5c29fdc74f9f9b364b7f116a4e1a78b7ae7f5de",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -175,8 +175,8 @@
     {
       "path": "docs/DOCUMENT_INDEX.md",
       "source_exists": true,
-      "sha256": "eef2d0d9030c7cf2e93350bf6eb69adfc834a79b900103f2361c3f076d9d8190",
-      "size_bytes": 73481,
+      "sha256": "815ee3a0e043a742b7050897fb7627db18efa60d1d77f1a85f6785f5da330870",
+      "size_bytes": 73539,
       "owner_component": "runner",
       "area": "document-index",
       "detected_terms": [
