@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -24,10 +25,395 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"github.com/fqwink/build-scripts/components/statefile"
 )
+
+type cicdSourceTestTransport func(*http.Request) (*http.Response, error)
+
+func (transport cicdSourceTestTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	return transport(request)
+}
+
+type cicdSourceTestBody struct {
+	io.Reader
+	read   int
+	closed bool
+}
+
+func (body *cicdSourceTestBody) Read(data []byte) (int, error) {
+	n, err := body.Reader.Read(data)
+	body.read += n
+	return n, err
+}
+
+func (body *cicdSourceTestBody) Close() error { body.closed = true; return nil }
+
+func cicdSourceTestResponse(data []byte) *http.Response {
+	return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(bytes.NewReader(data)), ContentLength: int64(len(data))}
+}
+
+func cicdSourceTestRequest() CICDSourceRequest {
+	return CICDSourceRequest{Owner: "owner", Repo: "repo", RefKind: "branch", Ref: "feature/next", SHA: strings.Repeat("b", 40)}
+}
+
+func cicdSourceTestFixture(t *testing.T) (map[string]any, map[string]any) {
+	t.Helper()
+	tree := cicdPlanTestObject(t, `{"sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","truncated":false,"tree":[{"path":"hello.txt","mode":"100644","type":"blob","size":6,"sha":"ce013625030ba8dba906f756967f9e9ca394464a"},{"path":"empty.txt","mode":"100755","type":"blob","size":0,"sha":"e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"},{"path":"alpha.bin","mode":"100644","type":"blob","size":3,"sha":"506cd141ad4a679eee22d6a21dd267cca5734b92"}]}`)
+	blobs := map[string]any{
+		"ce013625030ba8dba906f756967f9e9ca394464a": cicdPlanTestObject(t, `{"sha":"ce013625030ba8dba906f756967f9e9ca394464a","size":6,"encoding":"base64","content":"aGVs\nbG8K\r\n","url":"https://ignored.invalid/secret"}`),
+		"e69de29bb2d1d6434b8b29ae775ad8c2e48c5391": cicdPlanTestObject(t, `{"sha":"e69de29bb2d1d6434b8b29ae775ad8c2e48c5391","size":0,"encoding":"base64","content":""}`),
+		"506cd141ad4a679eee22d6a21dd267cca5734b92": cicdPlanTestObject(t, `{"sha":"506cd141ad4a679eee22d6a21dd267cca5734b92","size":3,"encoding":"base64","content":"AP8K"}`),
+	}
+	return tree, blobs
+}
+
+func cicdSourceTestClient(t *testing.T, tree map[string]any, blobs map[string]any, calls *[]string) *http.Client {
+	t.Helper()
+	return cicdSourceClient(cicdSourceTestTransport(func(request *http.Request) (*http.Response, error) {
+		*calls = append(*calls, request.URL.RequestURI())
+		deadline, ok := request.Context().Deadline()
+		if request.Method != http.MethodGet || request.URL.Scheme != "https" || request.URL.Host != "api.github.com" || request.URL.User != nil ||
+			request.Header.Get("Authorization") != "Bearer fixture-token" || request.Header.Get("Accept") != "application/vnd.github+json" ||
+			request.Header.Get("X-GitHub-Api-Version") != "2022-11-28" || request.Header.Get("Accept-Encoding") != "identity" || !ok || time.Until(deadline) > 10*time.Second {
+			t.Fatal("runner.phase19-source.http.request")
+		}
+		if request.URL.RequestURI() == "/repos/owner/repo/git/trees/"+strings.Repeat("b", 40)+"?recursive=1" {
+			return cicdSourceTestResponse(cicdPlanTestRaw(t, tree)), nil
+		}
+		value, exists := blobs[strings.TrimPrefix(request.URL.Path, "/repos/owner/repo/git/blobs/")]
+		if !exists {
+			t.Fatal("runner.phase19-source.http.unexpected")
+		}
+		return cicdSourceTestResponse(cicdPlanTestRaw(t, value)), nil
+	}))
+}
+
+func TestCICDSource(t *testing.T) {
+	tree, blobs := cicdSourceTestFixture(t)
+	before := cicdPlanTestRaw(t, tree)
+	var calls []string
+	snapshot, err := cicdFetchSource(context.Background(), cicdSourceTestRequest(), "fixture-token", cicdSourceTestClient(t, tree, blobs, &calls))
+	if err != nil || snapshot == nil {
+		t.Fatal("runner.phase19-source.fetch.accept", err)
+	}
+	wantFiles := cicdPlanTestObject(t, `{"files":[{"path":"alpha.bin","blob_sha":"506cd141ad4a679eee22d6a21dd267cca5734b92","sha256":"712450d3c4a79eea9509e75dc1dacdeff58034df538536cfae2da882bd8a0c50","size":3,"executable":false},{"path":"empty.txt","blob_sha":"e69de29bb2d1d6434b8b29ae775ad8c2e48c5391","sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","size":0,"executable":true},{"path":"hello.txt","blob_sha":"ce013625030ba8dba906f756967f9e9ca394464a","sha256":"5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03","size":6,"executable":false}]}`)["files"]
+	digest := sha256.Sum256(cicdPlanTestRaw(t, wantFiles))
+	want := cicdPlanTestRaw(t, map[string]any{"owner": "owner", "repo": "repo", "ref_kind": "branch", "ref": "feature/next", "sha": strings.Repeat("b", 40), "files": wantFiles, "tree_digest": hex.EncodeToString(digest[:])})
+	if !bytes.Equal(snapshot.Metadata(), want) || !bytes.Equal(before, cicdPlanTestRaw(t, tree)) || !reflect.DeepEqual(calls, []string{
+		"/repos/owner/repo/git/trees/" + strings.Repeat("b", 40) + "?recursive=1",
+		"/repos/owner/repo/git/blobs/506cd141ad4a679eee22d6a21dd267cca5734b92",
+		"/repos/owner/repo/git/blobs/e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+		"/repos/owner/repo/git/blobs/ce013625030ba8dba906f756967f9e9ca394464a",
+	}) {
+		t.Fatal("runner.phase19-source.snapshot.value")
+	}
+	for name, expected := range map[string][]byte{"alpha.bin": {0, 255, 10}, "empty.txt": {}, "hello.txt": []byte("hello\n")} {
+		got, err := snapshot.ReadFile(name)
+		if err != nil || !bytes.Equal(got, expected) {
+			t.Fatal("runner.phase19-source.file.value")
+		}
+		if len(got) > 0 {
+			got[0] ^= 255
+		}
+		fresh, _ := snapshot.ReadFile(name)
+		if !bytes.Equal(fresh, expected) {
+			t.Fatal("runner.phase19-source.file.alias")
+		}
+	}
+	metadata := snapshot.Metadata()
+	metadata[0] = '!'
+	if !bytes.Equal(snapshot.Metadata(), want) {
+		t.Fatal("runner.phase19-source.metadata.alias")
+	}
+	if data, err := snapshot.ReadFile("unknown"); data != nil || err != ErrCICDNotFound {
+		t.Fatal("runner.phase19-source.file.missing")
+	}
+	for _, empty := range []*CICDSourceSnapshot{nil, {}} {
+		if empty.Metadata() != nil {
+			t.Fatal("runner.phase19-source.zero.metadata")
+		}
+		if data, err := empty.ReadFile("hello.txt"); data != nil || err != ErrCICDSource {
+			t.Fatal("runner.phase19-source.zero.read")
+		}
+	}
+	p, d, _, projection := cicdPlanTestFixture(t)
+	plan, err := cicdPlanTestDraft(t, p, d, `{}`).Resolve(snapshot.Metadata(), nil, projection)
+	if err != nil || plan == nil {
+		t.Fatal("runner.phase19-source.plan.connect")
+	}
+}
+
+func TestCICDSourceInput(t *testing.T) {
+	for _, change := range []func(*CICDSourceRequest, *string){
+		func(r *CICDSourceRequest, _ *string) { r.Owner = "../owner" },
+		func(r *CICDSourceRequest, _ *string) { r.Owner = "a_b" },
+		func(r *CICDSourceRequest, _ *string) { r.Repo = "repo?key=x" },
+		func(r *CICDSourceRequest, _ *string) { r.Repo = strings.Repeat("a", 101) },
+		func(r *CICDSourceRequest, _ *string) { r.RefKind = "commit" },
+		func(r *CICDSourceRequest, _ *string) { r.Ref = "../main" },
+		func(r *CICDSourceRequest, _ *string) { r.SHA = "main" },
+		func(r *CICDSourceRequest, _ *string) { r.SHA = strings.Repeat("B", 40) },
+		func(_ *CICDSourceRequest, token *string) { *token = "" },
+		func(_ *CICDSourceRequest, token *string) { *token = "space token" },
+		func(_ *CICDSourceRequest, token *string) { *token = "token\r\n" },
+		func(_ *CICDSourceRequest, token *string) { *token = "日本語" },
+		func(_ *CICDSourceRequest, token *string) { *token = strings.Repeat("a", 4097) },
+	} {
+		request, token := cicdSourceTestRequest(), "fixture-token"
+		change(&request, &token)
+		got, err := FetchCICDSource(context.Background(), request, token)
+		if got != nil || err != ErrCICDSchema {
+			t.Fatal("runner.phase19-source.input.reject")
+		}
+	}
+	if got, err := FetchCICDSource(nil, cicdSourceTestRequest(), "fixture-token"); got != nil || err != ErrCICDSchema {
+		t.Fatal("runner.phase19-source.input.nil-context")
+	}
+	request := cicdSourceTestRequest()
+	request.Owner, request.Repo, request.RefKind, request.Ref = "a-1", "repo_1.git", "tag", "v1.0"
+	if !cicdSourceRequestValid(request, strings.Repeat("a", 4096)) {
+		t.Fatal("runner.phase19-source.input.boundary")
+	}
+}
+
+func TestCICDSourceTree(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		edit func(map[string]any)
+		err  error
+	}{
+		{"truncated", func(v map[string]any) { v["truncated"] = true }, ErrCICDSource},
+		{"missing-truncated", func(v map[string]any) { delete(v, "truncated") }, ErrCICDTransport},
+		{"null-truncated", func(v map[string]any) { v["truncated"] = nil }, ErrCICDTransport},
+		{"missing-tree", func(v map[string]any) { delete(v, "tree") }, ErrCICDTransport},
+		{"null-tree", func(v map[string]any) { v["tree"] = nil }, ErrCICDTransport},
+		{"missing-sha", func(v map[string]any) { delete(v, "sha") }, ErrCICDTransport},
+		{"entry-null", func(v map[string]any) { v["tree"].([]any)[0] = nil }, ErrCICDSource},
+		{"path-traversal", func(v map[string]any) { v["tree"].([]any)[0].(map[string]any)["path"] = "../file" }, ErrCICDSource},
+		{"path-absolute", func(v map[string]any) { v["tree"].([]any)[0].(map[string]any)["path"] = "/file" }, ErrCICDSource},
+		{"path-duplicate", func(v map[string]any) { v["tree"].([]any)[0].(map[string]any)["path"] = "empty.txt" }, ErrCICDSource},
+		{"missing-parent", func(v map[string]any) { v["tree"].([]any)[0].(map[string]any)["path"] = "missing/file" }, ErrCICDSource},
+		{"file-parent", func(v map[string]any) { v["tree"].([]any)[0].(map[string]any)["path"] = "empty.txt/file" }, ErrCICDSource},
+		{"symlink", func(v map[string]any) { v["tree"].([]any)[0].(map[string]any)["mode"] = "120000" }, ErrCICDSource},
+		{"submodule", func(v map[string]any) {
+			e := v["tree"].([]any)[0].(map[string]any)
+			e["mode"], e["type"] = "160000", "commit"
+		}, ErrCICDSource},
+		{"unknown-mode", func(v map[string]any) { v["tree"].([]any)[0].(map[string]any)["mode"] = "100664" }, ErrCICDSource},
+		{"unknown-type", func(v map[string]any) { v["tree"].([]any)[0].(map[string]any)["type"] = "tree" }, ErrCICDSource},
+		{"missing-size", func(v map[string]any) { delete(v["tree"].([]any)[0].(map[string]any), "size") }, ErrCICDSource},
+		{"negative-size", func(v map[string]any) { v["tree"].([]any)[0].(map[string]any)["size"] = -1 }, ErrCICDSource},
+		{"large-file", func(v map[string]any) { v["tree"].([]any)[0].(map[string]any)["size"] = 10485761 }, ErrCICDSource},
+		{"bad-sha", func(v map[string]any) { v["tree"].([]any)[0].(map[string]any)["sha"] = "bad" }, ErrCICDSource},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			tree, blobs := cicdSourceTestFixture(t)
+			test.edit(tree)
+			var calls []string
+			got, err := cicdFetchSource(context.Background(), cicdSourceTestRequest(), "fixture-token", cicdSourceTestClient(t, tree, blobs, &calls))
+			if got != nil || err != test.err || len(calls) != 1 {
+				t.Fatal("runner.phase19-source.tree.reject", err)
+			}
+		})
+	}
+	for _, size := range []int{10000, 10001} {
+		tree, _ := cicdSourceTestFixture(t)
+		entry := tree["tree"].([]any)[0].(map[string]any)
+		entries := make([]any, size)
+		for i := range entries {
+			copy := cicdPlanClone(entry)
+			copy["path"] = fmt.Sprintf("file-%05d", i)
+			entries[i] = copy
+		}
+		tree["tree"] = entries
+		files, err := cicdSourceTree(tree)
+		if size == 10000 && (err != nil || len(files) != size) || size == 10001 && (files != nil || err != ErrCICDSource) {
+			t.Fatal("runner.phase19-source.tree.file-limit")
+		}
+	}
+	for _, total := range []int{104857600, 104857601} {
+		tree, _ := cicdSourceTestFixture(t)
+		entry := tree["tree"].([]any)[0].(map[string]any)
+		entries := make([]any, 11)
+		for i := range entries {
+			copy := cicdPlanClone(entry)
+			copy["path"], copy["size"] = fmt.Sprintf("file-%02d", i), json.Number("10485760")
+			if i == 10 {
+				copy["size"] = json.Number(fmt.Sprint(total - 104857600))
+			}
+			entries[i] = copy
+		}
+		tree["tree"] = entries
+		got, err := cicdSourceTree(tree)
+		if total == 104857600 && (err != nil || len(got) != 11) || total > 104857600 && (got != nil || err != ErrCICDSource) {
+			t.Fatal("runner.phase19-source.tree.total-limit")
+		}
+	}
+	tree, blobs := cicdSourceTestFixture(t)
+	entries := tree["tree"].([]any)
+	entries[0].(map[string]any)["path"] = "dir/hello.txt"
+	tree["tree"] = append(entries, map[string]any{"path": "dir", "mode": "040000", "type": "tree", "sha": strings.Repeat("a", 40), "size": nil})
+	var calls []string
+	if got, err := cicdFetchSource(context.Background(), cicdSourceTestRequest(), "fixture-token", cicdSourceTestClient(t, tree, blobs, &calls)); err != nil || got == nil {
+		t.Fatal("runner.phase19-source.tree.directory")
+	}
+	tree["tree"] = []any{}
+	if got, err := cicdFetchSource(context.Background(), cicdSourceTestRequest(), "fixture-token", cicdSourceTestClient(t, tree, nil, &calls)); err != nil || got == nil || len(got.files) != 0 {
+		t.Fatal("runner.phase19-source.tree.empty")
+	}
+}
+
+func TestCICDSourceBlob(t *testing.T) {
+	for _, edit := range []func(map[string]any){
+		func(v map[string]any) { delete(v, "content") },
+		func(v map[string]any) { v["content"] = nil },
+		func(v map[string]any) { v["content"] = "aGVs bG8K" },
+		func(v map[string]any) { v["content"] = "aGVs\rbG8K" },
+		func(v map[string]any) { v["content"] = "aGVsbG8=" },
+		func(v map[string]any) { v["content"] = "aGVsbG8J" },
+		func(v map[string]any) { v["content"] = "aGVsbG8_" },
+		func(v map[string]any) { v["encoding"] = "utf-8" },
+		func(v map[string]any) { v["sha"] = strings.Repeat("a", 40) },
+		func(v map[string]any) { v["size"] = json.Number("5") },
+		func(v map[string]any) { v["size"] = nil },
+	} {
+		tree, blobs := cicdSourceTestFixture(t)
+		edit(blobs["ce013625030ba8dba906f756967f9e9ca394464a"].(map[string]any))
+		var calls []string
+		got, err := cicdFetchSource(context.Background(), cicdSourceTestRequest(), "fixture-token", cicdSourceTestClient(t, tree, blobs, &calls))
+		if got != nil || err != ErrCICDDigest || len(calls) != 4 {
+			t.Fatal("runner.phase19-source.blob.reject")
+		}
+	}
+	file := map[string]any{"blob_sha": "4d1ae35ba2c8ec712fa2a379db44ad639ca277bd", "size": json.Number("1")}
+	blob := map[string]any{"sha": file["blob_sha"], "size": file["size"], "encoding": "base64", "content": "Zh=="}
+	if got, err := cicdSourceBlob(file, blob); got != nil || err != ErrCICDDigest {
+		t.Fatal("runner.phase19-source.blob.pad-bits")
+	}
+	blob["content"] = "Zg=="
+	if got, err := cicdSourceBlob(file, blob); err != nil || string(got) != "f" {
+		t.Fatal("runner.phase19-source.blob.padding")
+	}
+}
+
+func TestCICDSourceHTTP(t *testing.T) {
+	for _, test := range []struct {
+		name, body      string
+		status          int
+		media, encoding string
+		length          int64
+		failure         bool
+		want            error
+	}{
+		{"redirect", `{}`, 302, "application/json", "", 2, false, ErrCICDTransport},
+		{"unauthorized", `secret-response`, 401, "application/json", "", 15, false, ErrCICDTransport},
+		{"rate", `{}`, 429, "application/json", "", 2, false, ErrCICDTransport},
+		{"media", `{}`, 200, "text/plain", "", 2, false, ErrCICDTransport},
+		{"gzip", `{}`, 200, "application/json", "gzip", 2, false, ErrCICDTransport},
+		{"json", `{`, 200, "application/json", "", 1, false, ErrCICDTransport},
+		{"duplicate", `{"tree":[],"tree":[]}`, 200, "application/json", "", -1, false, ErrCICDTransport},
+		{"trailing", `{} {}`, 200, "application/json", "", -1, false, ErrCICDTransport},
+		{"null", `null`, 200, "application/json", "", -1, false, ErrCICDTransport},
+		{"surrogate", `{"x":"\ud800"}`, 200, "application/json", "", -1, false, ErrCICDTransport},
+		{"utf8", "{\"x\":\"\xff\"}", 200, "application/json", "", -1, false, ErrCICDTransport},
+		{"fraction", `{"x":1.0}`, 200, "application/json", "", -1, false, ErrCICDTransport},
+		{"exponent", `{"x":1e0}`, 200, "application/json", "", -1, false, ErrCICDTransport},
+		{"declared-large", `{}`, 200, "application/json", "", 65, false, ErrCICDBody},
+		{"actual-large", strings.Repeat("x", 100), 200, "application/json", "", -1, false, ErrCICDBody},
+		{"transport", `secret-response`, 200, "application/json", "", -1, true, ErrCICDTransport},
+		{"exact", "{}" + strings.Repeat(" ", 62), 200, "application/json; charset=utf-8", "", 64, false, nil},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			body := &cicdSourceTestBody{Reader: strings.NewReader(test.body)}
+			calls := 0
+			client := cicdSourceClient(cicdSourceTestTransport(func(request *http.Request) (*http.Response, error) {
+				calls++
+				if test.failure {
+					return nil, errors.New("private-token-and-url")
+				}
+				return &http.Response{StatusCode: test.status, Header: http.Header{"Content-Type": {test.media}, "Content-Encoding": {test.encoding}, "Location": {"https://other.invalid"}}, Body: body, ContentLength: test.length}, nil
+			}))
+			got, err := cicdSourceGet(context.Background(), client, "/repos/owner/repo/git/trees/"+strings.Repeat("b", 40), "fixture-token", 64)
+			if err != test.want || (test.want != nil && got != nil) || calls != 1 || body.read > 65 || (!test.failure && !body.closed) || (test.name == "declared-large" && body.read != 0) {
+				t.Fatal("runner.phase19-source.http.result")
+			}
+		})
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	started, released := make(chan struct{}), make(chan struct{})
+	client := cicdSourceClient(cicdSourceTestTransport(func(request *http.Request) (*http.Response, error) {
+		close(started)
+		<-request.Context().Done()
+		close(released)
+		return nil, errors.New("private-cancel-detail")
+	}))
+	done := make(chan error, 1)
+	go func() {
+		got, err := cicdFetchSource(ctx, cicdSourceTestRequest(), "fixture-token", client)
+		if got != nil {
+			done <- errors.New("partial")
+			return
+		}
+		done <- err
+	}()
+	<-started
+	cancel()
+	if err := <-done; err != ErrCICDTransport {
+		t.Fatal("runner.phase19-source.http.cancel")
+	}
+	<-released
+	for _, cancelled := range []bool{false, true} {
+		body := &cicdSourceTestBody{Reader: iotest.ErrReader(errors.New("private-read-detail"))}
+		calls := 0
+		client := cicdSourceClient(cicdSourceTestTransport(func(*http.Request) (*http.Response, error) {
+			calls++
+			response := cicdSourceTestResponse(nil)
+			response.Body = body
+			return response, nil
+		}))
+		ctx, cancel := context.WithCancel(context.Background())
+		if cancelled {
+			cancel()
+		}
+		got, err := cicdFetchSource(ctx, cicdSourceTestRequest(), "fixture-token", client)
+		cancel()
+		if got != nil || err != ErrCICDTransport || (!cancelled && (calls != 1 || !body.closed)) || (cancelled && calls != 0) {
+			t.Fatal("runner.phase19-source.http.read-failure")
+		}
+	}
+}
+
+func TestCICDSourceConcurrent(t *testing.T) {
+	tree, blobs := cicdSourceTestFixture(t)
+	var calls []string
+	snapshot, err := cicdFetchSource(context.Background(), cicdSourceTestRequest(), "fixture-token", cicdSourceTestClient(t, tree, blobs, &calls))
+	if err != nil {
+		t.Fatal("runner.phase19-source.concurrent.prepare")
+	}
+	metadata := snapshot.Metadata()
+	start := make(chan struct{})
+	var wait sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			<-start
+			for j := 0; j < 16; j++ {
+				data, err := snapshot.ReadFile("hello.txt")
+				if err != nil || string(data) != "hello\n" || !bytes.Equal(snapshot.Metadata(), metadata) {
+					t.Error("runner.phase19-source.concurrent.value")
+					return
+				}
+				data[0] = '!'
+			}
+		}()
+	}
+	close(start)
+	wait.Wait()
+}
 
 func cicdPlanTestObject(t *testing.T, raw string) map[string]any {
 	t.Helper()
@@ -742,6 +1128,16 @@ func TestCICDPlanMutations(t *testing.T) {
 		{"secret-version", "runner/execute.go", "if !found {\n\t\t\treturn ErrCICDSecret", "if false && !found {\n\t\t\treturn ErrCICDSecret", "runner.phase19-plan-unit.prerequisite.result"},
 		{"deferred-schema", "statefile/validate.go", "if expression == \"Job\" && (key == \"task\" || key == \"cache\") {", "if false && expression == \"Job\" && (key == \"task\" || key == \"cache\") {", "runner.phase19-plan-unit.prepare.accept"},
 		{"argv", "runner/execute.go", "|| !cicdPlanTaskValid(job[\"task\"].(map[string]any))", "|| false && !cicdPlanTaskValid(job[\"task\"].(map[string]any))", "runner.phase19-plan-unit.task-syntax.result"},
+		{"source-truncated", "runner/validate.go", "if truncated || len(entries) > 100000 {", "if false && truncated || len(entries) > 100000 {", "runner.phase19-source.tree.reject"},
+		{"source-file-limit", "runner/validate.go", "if len(files) > 10000 || total > 104857600 {", "if len(files) > 10001 || total > 104857600 {", "runner.phase19-source.tree.file-limit"},
+		{"source-total-limit", "runner/validate.go", "if len(files) > 10000 || total > 104857600 {", "if len(files) > 10000 || total > 104857601 {", "runner.phase19-source.tree.total-limit"},
+		{"source-parent", "runner/validate.go", "if paths[name] != \"tree\" {", "if false && paths[name] != \"tree\" {", "runner.phase19-source.tree.reject"},
+		{"source-sha1", "runner/execute.go", "if hex.EncodeToString(hash.Sum(nil)) != file[\"blob_sha\"] {", "if false && hex.EncodeToString(hash.Sum(nil)) != file[\"blob_sha\"] {", "runner.phase19-source.blob.reject"},
+		{"source-blob-size", "runner/execute.go", "blob[\"size\"] != file[\"size\"]", "false && blob[\"size\"] != file[\"size\"]", "runner.phase19-source.blob.reject"},
+		{"source-pad-bits", "runner/execute.go", "base64.StdEncoding.Strict().DecodeString(content)", "base64.StdEncoding.DecodeString(content)", "runner.phase19-source.blob.pad-bits"},
+		{"source-body-limit", "runner/execute.go", "if int64(len(data)) > limit {", "if false && int64(len(data)) > limit {", "runner.phase19-source.http.result"},
+		{"source-metadata-copy", "runner/execute.go", "return append(json.RawMessage(nil), snapshot.metadata...)", "return snapshot.metadata", "runner.phase19-source.metadata.alias"},
+		{"source-file-copy", "runner/execute.go", "return append([]byte{}, data...), nil", "return data, nil", "runner.phase19-source.file.alias"},
 	} {
 		t.Run(mutation.id, func(t *testing.T) {
 			root := t.TempDir()
@@ -779,7 +1175,7 @@ func TestCICDPlanMutations(t *testing.T) {
 			if _, err := compile.CombinedOutput(); err != nil {
 				t.Fatal("runner.phase19-plan-unit.mutation.compile-invalid")
 			}
-			command := exec.Command(filepath.Join(root, "mutation.test"), "-test.run=^TestCICDPlan(Inputs|Matrix|DAG|Selection|Prerequisites|Source|Deploy|TemplateAndSubstitution|TaskSyntax)$")
+			command := exec.Command(filepath.Join(root, "mutation.test"), "-test.run=^TestCICD(Plan(Inputs|Matrix|DAG|Selection|Prerequisites|Source|Deploy|TemplateAndSubstitution|TaskSyntax)|Source(Input|Tree|Blob|HTTP)?)$")
 			command.Dir = root
 			output, err := command.CombinedOutput()
 			if err == nil || !bytes.Contains(output, []byte(mutation.reason)) {

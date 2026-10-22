@@ -4,12 +4,88 @@ import (
 	"bytes"
 	"encoding/json"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/fqwink/build-scripts/components/statefile"
 )
+
+var cicdSourceOwnerPattern = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9-]{0,98}[A-Za-z0-9])?$`)
+var cicdSourceRepoPattern = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,98}[A-Za-z0-9])?$`)
+
+func cicdSourceRequestValid(request CICDSourceRequest, token string) bool {
+	if !cicdSourceOwnerPattern.MatchString(request.Owner) || !cicdSourceRepoPattern.MatchString(request.Repo) ||
+		len(token) == 0 || len(token) > 4096 {
+		return false
+	}
+	for _, char := range []byte(token) {
+		if char < 33 || char > 126 {
+			return false
+		}
+	}
+	value := map[string]any{
+		"owner": request.Owner, "repo": request.Repo, "ref_kind": request.RefKind,
+		"ref": request.Ref, "sha": request.SHA, "tree_digest": strings.Repeat("0", 64), "files": []any{},
+	}
+	return statefile.ValidateCICDValue("Source", cicdPlanBytes(value)) == nil
+}
+
+func cicdSourceTree(tree map[string]any) ([]map[string]any, error) {
+	entries, entriesOK := tree["tree"].([]any)
+	truncated, truncatedOK := tree["truncated"].(bool)
+	if !entriesOK || !truncatedOK || statefile.ValidateCICDValue("SHA", cicdPlanBytes(tree["sha"])) != nil {
+		return nil, ErrCICDTransport
+	}
+	if truncated || len(entries) > 100000 {
+		return nil, ErrCICDSource
+	}
+	paths := make(map[string]string, len(entries))
+	files := make([]map[string]any, 0)
+	total := int64(0)
+	for _, raw := range entries {
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			return nil, ErrCICDSource
+		}
+		name, nameOK := entry["path"].(string)
+		if !nameOK || paths[name] != "" || statefile.ValidateCICDValue("RelPath", cicdPlanBytes(name)) != nil ||
+			statefile.ValidateCICDValue("SHA", cicdPlanBytes(entry["sha"])) != nil {
+			return nil, ErrCICDSource
+		}
+		if entry["mode"] == "040000" && entry["type"] == "tree" && entry["size"] == nil {
+			paths[name] = "tree"
+			continue
+		}
+		if (entry["mode"] != "100644" && entry["mode"] != "100755") || entry["type"] != "blob" {
+			return nil, ErrCICDSource
+		}
+		file := map[string]any{
+			"path": name, "blob_sha": entry["sha"], "sha256": strings.Repeat("0", 64),
+			"size": entry["size"], "executable": entry["mode"] == "100755",
+		}
+		if statefile.ValidateCICDValue("SourceFile", cicdPlanBytes(file)) != nil {
+			return nil, ErrCICDSource
+		}
+		paths[name] = "blob"
+		files = append(files, file)
+		total += cicdPlanInt(file["size"])
+		if len(files) > 10000 || total > 104857600 {
+			return nil, ErrCICDSource
+		}
+	}
+	for name := range paths {
+		for i := strings.LastIndexByte(name, '/'); i >= 0; i = strings.LastIndexByte(name, '/') {
+			name = name[:i]
+			if paths[name] != "tree" {
+				return nil, ErrCICDSource
+			}
+		}
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i]["path"].(string) < files[j]["path"].(string) })
+	return files, nil
+}
 
 func cicdPlanObject(kind string, data []byte) (map[string]any, error) {
 	if statefile.ValidateCICDValue(kind, data) != nil {

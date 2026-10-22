@@ -1,17 +1,179 @@
 package runner
 
 import (
+	"bytes"
+	"context"
+	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"io"
+	"mime"
+	"net"
+	"net/http"
 	"os"
 	"reflect"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/fqwink/build-scripts/components/statefile"
 )
+
+func FetchCICDSource(ctx context.Context, request CICDSourceRequest, token string) (*CICDSourceSnapshot, error) {
+	transport := &http.Transport{
+		DialContext:         (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
+		TLSHandshakeTimeout: 10 * time.Second, ResponseHeaderTimeout: 10 * time.Second,
+		DisableCompression: true, MaxIdleConnsPerHost: 1,
+	}
+	defer transport.CloseIdleConnections()
+	return cicdFetchSource(ctx, request, token, cicdSourceClient(transport))
+}
+
+func cicdSourceClient(transport http.RoundTripper) *http.Client {
+	return &http.Client{
+		Transport: transport, Timeout: 10 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+}
+
+func cicdFetchSource(ctx context.Context, request CICDSourceRequest, token string, client *http.Client) (*CICDSourceSnapshot, error) {
+	if ctx == nil || !cicdSourceRequestValid(request, token) {
+		return nil, ErrCICDSchema
+	}
+	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	defer cancel()
+	base := "/repos/" + request.Owner + "/" + request.Repo + "/git/"
+	tree, err := cicdSourceGet(ctx, client, base+"trees/"+request.SHA+"?recursive=1", token, 8388608)
+	if err != nil {
+		return nil, err
+	}
+	files, err := cicdSourceTree(tree)
+	if err != nil {
+		return nil, err
+	}
+	snapshot := &CICDSourceSnapshot{files: make(map[string][]byte, len(files))}
+	for _, file := range files {
+		blob, err := cicdSourceGet(ctx, client, base+"blobs/"+file["blob_sha"].(string), token, 16777216)
+		if err != nil {
+			return nil, err
+		}
+		data, err := cicdSourceBlob(file, blob)
+		if err != nil {
+			return nil, err
+		}
+		sum := sha256.Sum256(data)
+		file["sha256"] = hex.EncodeToString(sum[:])
+		snapshot.files[file["path"].(string)] = data
+	}
+	digest, err := statefile.DigestCICDJSON(cicdPlanBytes(files))
+	if err != nil {
+		return nil, ErrCICDSource
+	}
+	metadata := map[string]any{
+		"owner": request.Owner, "repo": request.Repo, "ref_kind": request.RefKind,
+		"ref": request.Ref, "sha": request.SHA, "tree_digest": digest, "files": files,
+	}
+	snapshot.metadata, err = statefile.CanonicalCICDJSON(cicdPlanBytes(metadata))
+	if err != nil || statefile.ValidateCICDValue("Source", snapshot.metadata) != nil {
+		return nil, ErrCICDSource
+	}
+	if ctx.Err() != nil {
+		return nil, ErrCICDTransport
+	}
+	return snapshot, nil
+}
+
+func cicdSourceGet(ctx context.Context, client *http.Client, path, token string, limit int64) (map[string]any, error) {
+	if ctx.Err() != nil {
+		return nil, ErrCICDTransport
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com"+path, nil)
+	if err != nil {
+		return nil, ErrCICDTransport
+	}
+	request.Header.Set("Accept", "application/vnd.github+json")
+	request.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set("Accept-Encoding", "identity")
+	response, err := client.Do(request)
+	if err != nil {
+		return nil, ErrCICDTransport
+	}
+	defer response.Body.Close()
+	media, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
+	if response.StatusCode != http.StatusOK || err != nil ||
+		(media != "application/json" && media != "application/vnd.github+json") || response.Header.Get("Content-Encoding") != "" {
+		return nil, ErrCICDTransport
+	}
+	if response.ContentLength > limit {
+		return nil, ErrCICDBody
+	}
+	data, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
+	if err != nil {
+		return nil, ErrCICDTransport
+	}
+	if int64(len(data)) > limit {
+		return nil, ErrCICDBody
+	}
+	canonical, err := statefile.CanonicalCICDJSON(data)
+	if err != nil {
+		return nil, ErrCICDTransport
+	}
+	decoder := json.NewDecoder(bytes.NewReader(canonical))
+	decoder.UseNumber()
+	var result map[string]any
+	if decoder.Decode(&result) != nil || result == nil {
+		return nil, ErrCICDTransport
+	}
+	return result, nil
+}
+
+func cicdSourceBlob(file, blob map[string]any) ([]byte, error) {
+	content, contentOK := blob["content"].(string)
+	if blob["sha"] != file["blob_sha"] || blob["size"] != file["size"] || blob["encoding"] != "base64" || !contentOK {
+		return nil, ErrCICDDigest
+	}
+	// GitHub folds base64; all other whitespace and noncanonical pad bits are rejected.
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	content = strings.ReplaceAll(content, "\n", "")
+	size := cicdPlanInt(file["size"])
+	if len(content) != base64.StdEncoding.EncodedLen(int(size)) {
+		return nil, ErrCICDDigest
+	}
+	data, err := base64.StdEncoding.Strict().DecodeString(content)
+	if err != nil || int64(len(data)) != size {
+		return nil, ErrCICDDigest
+	}
+	hash := sha1.New()
+	hash.Write([]byte("blob " + strconv.FormatInt(size, 10) + "\x00"))
+	hash.Write(data)
+	if hex.EncodeToString(hash.Sum(nil)) != file["blob_sha"] {
+		return nil, ErrCICDDigest
+	}
+	return data, nil
+}
+
+func (snapshot *CICDSourceSnapshot) Metadata() json.RawMessage {
+	if snapshot == nil {
+		return nil
+	}
+	return append(json.RawMessage(nil), snapshot.metadata...)
+}
+
+func (snapshot *CICDSourceSnapshot) ReadFile(path string) ([]byte, error) {
+	if snapshot == nil || snapshot.metadata == nil || snapshot.files == nil {
+		return nil, ErrCICDSource
+	}
+	data, exists := snapshot.files[path]
+	if !exists {
+		return nil, ErrCICDNotFound
+	}
+	return append([]byte{}, data...), nil
+}
 
 func PrepareCICDPlan(project, definition, values json.RawMessage, templates []json.RawMessage) (*CICDPlanDraft, error) {
 	size := int64(len(project)) + int64(len(definition)) + int64(len(values))

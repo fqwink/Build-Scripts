@@ -17,7 +17,19 @@ var (
 	ErrCICDSecret       = errors.New("P19_SECRET")
 	ErrCICDNotFound     = errors.New("P19_NOT_FOUND")
 	ErrCICDQuota        = errors.New("P19_QUOTA")
+	ErrCICDSource       = errors.New("P19_SOURCE")
+	ErrCICDDigest       = errors.New("P19_DIGEST")
+	ErrCICDTransport    = errors.New("P19_TRANSPORT")
 )
+
+type CICDSourceRequest struct {
+	Owner, Repo, RefKind, Ref, SHA string
+}
+
+type CICDSourceSnapshot struct {
+	metadata json.RawMessage
+	files    map[string][]byte
+}
 
 // Raw projections use statefile's closed schemas, never an entire Root or plaintext secrets.
 type CICDPlanContext struct {
