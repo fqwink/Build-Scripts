@@ -11,10 +11,335 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
+
+func cicdConfigTestInput(role string) map[string]any {
+	input := map[string]any{"schema_version": 1, "profile": "cicd-v1", "role": role, "id": "test", "allowed_projects": []any{}, "allowed_environments": []any{}, "user": "adlaire-cicd", "state_dir": "/var/lib/adlaire-ci/" + role + "/test", "release_id": "V.1.0", "listen": "127.0.0.1:9321", "tls_cert_file": nil, "tls_key_file": nil, "allow_http": false, "worker_slots": 1, "toolchains": []any{}, "ssh_authorized_key_file": nil}
+	if role != "coordinator" {
+		input["allowed_projects"] = []any{"project"}
+		input["ssh_authorized_key_file"] = "/etc/adlaire-ci/authorized_keys"
+		input["listen"] = ""
+	}
+	if role == "site" {
+		input["listen"] = "127.0.0.1:8443"
+		input["tls_cert_file"], input["tls_key_file"] = "/etc/adlaire-ci/cert", "/etc/adlaire-ci/key"
+		input["allowed_environments"] = []any{map[string]any{"project_id": "project", "environment_id": "prod", "host": "example.test", "port": 443}}
+	}
+	return input
+}
+
+func cicdConfigTestJSON(input any) []byte {
+	data, _ := json.Marshal(input)
+	return data
+}
+
+func TestCICDConfig(t *testing.T) {
+	for _, role := range []string{"coordinator", "worker", "site"} {
+		t.Run(role, func(t *testing.T) {
+			input := cicdConfigTestInput(role)
+			input["toolchains"] = []any{map[string]any{"capability": "go", "version": "1.22.12", "root": "/opt/toolchains/go", "files": []any{map[string]any{"path": "bin/go", "sha256": strings.Repeat("a", 64), "executable": true}}}}
+			data := cicdConfigTestJSON(input)
+			before := append([]byte(nil), data...)
+			cfg, err := ParseCICDConfig(data)
+			if err != nil || cfg.Role != role || cfg.StateDir != input["state_dir"] || cfg.Toolchains[0].Files[0].Path != "bin/go" || !bytes.Equal(data, before) {
+				t.Fatal("setup.phase19-config.positive.value")
+			}
+		})
+	}
+	for key := range cicdConfigTestInput("coordinator") {
+		t.Run("missing-"+key, func(t *testing.T) {
+			input := cicdConfigTestInput("coordinator")
+			delete(input, key)
+			cfg, err := ParseCICDConfig(cicdConfigTestJSON(input))
+			if err == nil || err.Error() != "P19_SCHEMA" || !reflect.DeepEqual(cfg, CICDConfig{}) {
+				t.Fatal("setup.phase19-config.missing.reject")
+			}
+		})
+		if key == "tls_cert_file" || key == "tls_key_file" || key == "ssh_authorized_key_file" {
+			continue
+		}
+		t.Run("null-"+key, func(t *testing.T) {
+			input := cicdConfigTestInput("coordinator")
+			input[key] = nil
+			if _, err := ParseCICDConfig(cicdConfigTestJSON(input)); err == nil {
+				t.Fatal("setup.phase19-config.null.reject")
+			}
+		})
+	}
+	for _, tc := range []struct {
+		id, role, key string
+		value         any
+	}{
+		{"unknown", "coordinator", "unknown", true}, {"schema", "coordinator", "schema_version", 2}, {"profile", "coordinator", "profile", "legacy-v1"}, {"role", "coordinator", "role", "unknown"}, {"id", "coordinator", "id", "../test"}, {"user", "coordinator", "user", "ROOT"}, {"relative", "coordinator", "state_dir", "relative"}, {"dot", "coordinator", "state_dir", "/var/lib/adlaire-ci/coordinator/test/../test"}, {"foreign-state", "coordinator", "state_dir", "/var/lib/adlaire-ci/worker/test"}, {"prefix", "coordinator", "state_dir", "/var/lib/adlaire-ci/coordinator/test-other"}, {"release", "coordinator", "release_id", "latest"}, {"public", "coordinator", "listen", "0.0.0.0:9321"}, {"port", "coordinator", "listen", "127.0.0.1:8765"}, {"slots", "coordinator", "worker_slots", 2}, {"slot-zero", "worker", "worker_slots", 0}, {"slot-max", "worker", "worker_slots", 5}, {"projects", "coordinator", "allowed_projects", []any{"p"}}, {"empty-worker", "worker", "allowed_projects", []any{}}, {"duplicate", "worker", "allowed_projects", []any{"p", "p"}}, {"worker-key", "worker", "ssh_authorized_key_file", nil}, {"coordinator-key", "coordinator", "ssh_authorized_key_file", "/etc/key"}, {"http", "coordinator", "allow_http", true}, {"tls", "coordinator", "tls_key_file", "/etc/key"}, {"site-cert", "site", "tls_cert_file", nil}, {"site-low-port", "site", "listen", "127.0.0.1:443"}, {"site-port-leading-zero", "site", "listen", "127.0.0.1:08443"}, {"site-host", "site", "listen", "Example.test:8443"}, {"site-binding", "site", "allowed_environments", []any{}},
+	} {
+		t.Run(tc.id, func(t *testing.T) {
+			input := cicdConfigTestInput(tc.role)
+			input[tc.key] = tc.value
+			cfg, err := ParseCICDConfig(cicdConfigTestJSON(input))
+			if err == nil || err.Error() != "P19_SCHEMA" || !reflect.DeepEqual(cfg, CICDConfig{}) {
+				t.Fatal("setup.phase19-config.boundary.reject")
+			}
+		})
+	}
+	base := string(cicdConfigTestJSON(cicdConfigTestInput("coordinator")))
+	for id, data := range map[string]string{"duplicate": strings.Replace(base, `"schema_version":1`, `"schema_version":1,"schema_version":1`, 1), "escaped-duplicate": strings.Replace(base, `"schema_version":1`, `"schema_version":1,"schema_vers\u0069on":1`, 1), "exponent": strings.Replace(base, `"schema_version":1`, `"schema_version":1e0`, 1), "trailing": base + `{}`, "invalid-utf8": strings.Replace(base, "test", "\xff", 1), "surrogate": strings.Replace(base, "test", `\ud800`, 1), "oversize": strings.Repeat(" ", 1048577)} {
+		t.Run(id, func(t *testing.T) {
+			if _, err := ParseCICDConfig([]byte(data)); err == nil {
+				t.Fatal("setup.phase19-config.json.reject")
+			}
+		})
+	}
+}
+
+func TestCICDConfigNested(t *testing.T) {
+	for _, tc := range []struct {
+		id     string
+		change func(map[string]any)
+	}{
+		{"binding-unknown", func(b map[string]any) { b["extra"] = 1 }}, {"binding-missing", func(b map[string]any) { delete(b, "port") }}, {"binding-null", func(b map[string]any) { b["host"] = nil }}, {"binding-project", func(b map[string]any) { b["project_id"] = "foreign" }}, {"binding-host", func(b map[string]any) { b["host"] = "Example.test" }}, {"binding-port", func(b map[string]any) { b["port"] = 65536 }},
+	} {
+		t.Run(tc.id, func(t *testing.T) {
+			input := cicdConfigTestInput("site")
+			tc.change(input["allowed_environments"].([]any)[0].(map[string]any))
+			if _, err := ParseCICDConfig(cicdConfigTestJSON(input)); err == nil {
+				t.Fatal("setup.phase19-config.binding.reject")
+			}
+		})
+	}
+	for _, change := range []func(map[string]any){
+		func(tool map[string]any) { tool["unknown"] = 1 }, func(tool map[string]any) { delete(tool, "version") }, func(tool map[string]any) { tool["capability"] = "shell" }, func(tool map[string]any) { tool["version"] = "latest version" }, func(tool map[string]any) { tool["root"] = "relative" }, func(tool map[string]any) { tool["files"] = []any{} }, func(tool map[string]any) { tool["files"].([]any)[0].(map[string]any)["path"] = "../go" }, func(tool map[string]any) {
+			tool["files"].([]any)[0].(map[string]any)["sha256"] = strings.Repeat("A", 64)
+		}, func(tool map[string]any) { delete(tool["files"].([]any)[0].(map[string]any), "executable") }, func(tool map[string]any) { tool["files"] = append(tool["files"].([]any), tool["files"].([]any)[0]) },
+	} {
+		input := cicdConfigTestInput("worker")
+		tool := map[string]any{"capability": "go", "version": "1.22.12", "root": "/opt/go", "files": []any{map[string]any{"path": "bin/go", "sha256": strings.Repeat("a", 64), "executable": true}}}
+		change(tool)
+		input["toolchains"] = []any{tool}
+		if _, err := ParseCICDConfig(cicdConfigTestJSON(input)); err == nil {
+			t.Fatal("setup.phase19-config.toolchain.reject")
+		}
+	}
+	for _, host := range []string{"example.test", "127.0.0.1", "::1", "2001:db8::1"} {
+		if !cicdConfigHost(host) {
+			t.Fatal("setup.phase19-config.host.accept")
+		}
+	}
+	for _, host := range []string{"", "Example.test", "example.test.", "-a.test", "a..test", "127.0.0.999", "2001:DB8::1", "[::1]", "::1%lo"} {
+		if cicdConfigHost(host) {
+			t.Fatal("setup.phase19-config.host.reject")
+		}
+	}
+}
+
+func TestCICDConfigLimits(t *testing.T) {
+	data := cicdConfigTestJSON(cicdConfigTestInput("coordinator"))
+	data = append(data, bytes.Repeat([]byte{' '}, 1048576-len(data))...)
+	if _, err := ParseCICDConfig(data); err != nil {
+		t.Fatal("setup.phase19-config.bytes.maximum")
+	}
+	if _, err := ParseCICDConfig(append(data, ' ')); err == nil {
+		t.Fatal("setup.phase19-config.bytes.overflow")
+	}
+	input := cicdConfigTestInput("worker")
+	projects := []any{}
+	for i := 0; i < 64; i++ {
+		projects = append(projects, fmt.Sprintf("p%d", i))
+	}
+	input["allowed_projects"], input["worker_slots"] = projects, 4
+	if _, err := ParseCICDConfig(cicdConfigTestJSON(input)); err != nil {
+		t.Fatal("setup.phase19-config.projects.maximum")
+	}
+	input["allowed_projects"] = append(projects, "overflow")
+	if _, err := ParseCICDConfig(cicdConfigTestJSON(input)); err == nil {
+		t.Fatal("setup.phase19-config.projects.overflow")
+	}
+	input = cicdConfigTestInput("site")
+	bindings := []any{}
+	for i := 0; i < 1024; i++ {
+		bindings = append(bindings, map[string]any{"project_id": "project", "environment_id": fmt.Sprintf("e%d", i), "host": "example.test", "port": 1024 + i})
+	}
+	input["allowed_environments"] = bindings
+	if _, err := ParseCICDConfig(cicdConfigTestJSON(input)); err != nil {
+		t.Fatal("setup.phase19-config.environments.maximum")
+	}
+	for _, binding := range []map[string]any{{"project_id": "project", "environment_id": "overflow", "host": "example.test", "port": 3000}, {"project_id": "project", "environment_id": "other", "host": "example.test", "port": 1024}, {"project_id": "project", "environment_id": "e0", "host": "other.test", "port": 3000}} {
+		input["allowed_environments"] = append(append([]any{}, bindings...), binding)
+		if _, err := ParseCICDConfig(cicdConfigTestJSON(input)); err == nil {
+			t.Fatal("setup.phase19-config.environments.overflow")
+		}
+		input["allowed_environments"] = []any{bindings[0], binding}
+		_, err := ParseCICDConfig(cicdConfigTestJSON(input))
+		if binding["environment_id"] != "overflow" && err == nil {
+			t.Fatal("setup.phase19-config.environments.duplicate")
+		}
+	}
+	input = cicdConfigTestInput("coordinator")
+	tools := []any{}
+	for _, capability := range []string{"builder", "go", "deno"} {
+		tools = append(tools, map[string]any{"capability": capability, "version": strings.Repeat("v", 128), "root": "/opt/tool", "files": []any{map[string]any{"path": "bin/tool", "sha256": strings.Repeat("a", 64), "executable": true}}})
+	}
+	input["toolchains"] = tools
+	if _, err := ParseCICDConfig(cicdConfigTestJSON(input)); err != nil {
+		t.Fatal("setup.phase19-config.tools.maximum")
+	}
+	input["toolchains"] = append(tools, tools[0])
+	if _, err := ParseCICDConfig(cicdConfigTestJSON(input)); err == nil {
+		t.Fatal("setup.phase19-config.tools.overflow")
+	}
+	input["toolchains"] = []any{tools[0], tools[0]}
+	if _, err := ParseCICDConfig(cicdConfigTestJSON(input)); err == nil {
+		t.Fatal("setup.phase19-config.tools.duplicate")
+	}
+	input["toolchains"] = tools[:1]
+	tools[0].(map[string]any)["version"] = strings.Repeat("v", 129)
+	if _, err := ParseCICDConfig(cicdConfigTestJSON(input)); err == nil {
+		t.Fatal("setup.phase19-config.version.overflow")
+	}
+}
+
+func TestCICDConfigStamp(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config")
+	if os.WriteFile(path, []byte(`{}`), 0640) != nil || os.Chtimes(path, time.Unix(100, 0), time.Unix(100, 0)) != nil {
+		t.Fatal("setup.phase19-config.stamp.fixture")
+	}
+	before, _ := os.Stat(path)
+	if !sameCICDConfigFile(before, before, true) {
+		t.Fatal("setup.phase19-config.stamp.stable")
+	}
+	if os.Chtimes(path, time.Unix(200, 0), time.Unix(200, 0)) != nil {
+		t.Fatal("setup.phase19-config.stamp.change")
+	}
+	after, _ := os.Stat(path)
+	if sameCICDConfigFile(before, after, true) || !sameCICDConfigFile(before, after, false) {
+		t.Fatal("setup.phase19-config.stamp.content-change")
+	}
+	if os.Chmod(path, 0600) != nil {
+		t.Fatal("setup.phase19-config.stamp.chmod")
+	}
+	after, _ = os.Stat(path)
+	if sameCICDConfigFile(before, after, false) {
+		t.Fatal("setup.phase19-config.stamp.permission-change")
+	}
+	if os.Rename(path, path+".old") != nil || os.WriteFile(path, []byte(`{}`), 0640) != nil {
+		t.Fatal("setup.phase19-config.stamp.replace")
+	}
+	after, _ = os.Stat(path)
+	if sameCICDConfigFile(before, after, true) {
+		t.Fatal("setup.phase19-config.stamp.inode-change")
+	}
+}
+
+func TestCICDConfigAccount(t *testing.T) {
+	cfg, _ := ParseCICDConfig(cicdConfigTestJSON(cicdConfigTestInput("coordinator")))
+	line := "adlaire-cicd:x:1001:1001::" + cfg.StateDir + ":/usr/sbin/nologin\n"
+	if !cicdConfigAccount([]byte(line), cfg, 1001, 1001) {
+		t.Fatal("setup.phase19-config.account.accept")
+	}
+	for _, value := range []string{line + line, strings.Replace(line, "1001:1001", "0:1001", 1), strings.Replace(line, "1001:1001", "1001:1002", 1), strings.Replace(line, cfg.StateDir, "/other", 1), strings.Replace(line, "/usr/sbin/nologin", "/bin/sh", 1), strings.Replace(line, "adlaire-cicd", "other", 1), line + strings.Replace(line, "adlaire-cicd", "alias", 1), "bad\n"} {
+		if cicdConfigAccount([]byte(value), cfg, 1001, 1001) {
+			t.Fatal("setup.phase19-config.account.reject")
+		}
+	}
+	if cicdConfigAccount([]byte(line), cfg, 0, 1001) {
+		t.Fatal("setup.phase19-config.account.root-reject")
+	}
+	if cicdConfigAccount([]byte(strings.Replace(line, ":1001::", ":0::", 1)), cfg, 1001, 0) || cicdConfigAccount([]byte(line+"other:x:1002:1001::/other:/bin/sh\n"), cfg, 1001, 1001) {
+		t.Fatal("setup.phase19-config.account.shared-group-reject")
+	}
+}
+
+func TestCICDConfigRead(t *testing.T) {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		if _, err := ReadCICDConfig("/etc/adlaire-ci/cicd/coordinator-test.json"); err == nil || err.Error() != "P19_CAPABILITY" {
+			t.Fatal("setup.phase19-config.platform.reject")
+		}
+		t.Skip("P19_CAPABILITY: FD config fixture requires Linux amd64")
+	}
+	for _, fault := range []string{"none", "file-mode", "parent-mode", "parent-readable", "symlink", "parent-symlink", "hardlink", "directory", "oversize", "account", "filename", "owner", "group"} {
+		t.Run(fault, func(t *testing.T) {
+			root := t.TempDir()
+			for _, path := range []string{"etc", "etc/adlaire-ci", "etc/adlaire-ci/cicd"} {
+				mode := os.FileMode(0750)
+				if path == "etc" {
+					mode = 0755
+				}
+				if os.Mkdir(filepath.Join(root, path), mode) != nil {
+					t.Fatal("setup.phase19-config.read.fixture")
+				}
+			}
+			input := cicdConfigTestInput("coordinator")
+			path := "/etc/adlaire-ci/cicd/coordinator-test.json"
+			file := filepath.Join(root, path)
+			data := cicdConfigTestJSON(input)
+			uid, gid := uint32(os.Geteuid()), uint32(os.Getegid())
+			if gid == 0 {
+				gid = 1001
+			}
+			serviceUID := uid
+			if serviceUID == 0 {
+				serviceUID = 1001
+			}
+			passwd := "adlaire-cicd:x:" + strconv.FormatUint(uint64(serviceUID), 10) + ":" + strconv.FormatUint(uint64(gid), 10) + "::" + input["state_dir"].(string) + ":/usr/sbin/nologin\n"
+			if fault == "account" {
+				passwd = strings.Replace(passwd, "nologin", "shell", 1)
+			}
+			if fault == "oversize" {
+				data = bytes.Repeat([]byte{' '}, 1048577)
+			}
+			if os.WriteFile(filepath.Join(root, "etc/passwd"), []byte(passwd), 0644) != nil || os.WriteFile(file, data, 0640) != nil {
+				t.Fatal("setup.phase19-config.read.fixture-write")
+			}
+			if os.Getegid() == 0 {
+				for _, name := range []string{"etc/adlaire-ci", "etc/adlaire-ci/cicd", "etc/adlaire-ci/cicd/coordinator-test.json"} {
+					if os.Chown(filepath.Join(root, name), int(uid), int(gid)) != nil {
+						t.Fatal("setup.phase19-config.read.fixture-group")
+					}
+				}
+			}
+			switch fault {
+			case "file-mode":
+				_ = os.Chmod(file, 0644)
+			case "parent-mode":
+				_ = os.Chmod(filepath.Dir(file), 0770)
+			case "parent-readable":
+				_ = os.Chmod(filepath.Dir(file), 0755)
+			case "symlink":
+				_ = os.Rename(file, file+".real")
+				_ = os.Symlink(file+".real", file)
+			case "parent-symlink":
+				_ = os.Rename(filepath.Dir(file), filepath.Dir(file)+".real")
+				_ = os.Symlink(filepath.Dir(file)+".real", filepath.Dir(file))
+			case "hardlink":
+				_ = os.Link(file, file+".link")
+			case "directory":
+				_ = os.Remove(file)
+				_ = os.Mkdir(file, 0640)
+			case "filename":
+				path = "/etc/adlaire-ci/cicd/coordinator-other.json"
+				_ = os.Rename(file, filepath.Join(root, path))
+			case "owner":
+				uid++
+			case "group":
+				gid++
+			}
+			cfg, err := readCICDConfigAt(root, path, uid, serviceUID, gid)
+			if fault == "none" {
+				if err != nil || cfg.ID != "test" {
+					t.Fatalf("setup.phase19-config.read.accept: %v", err)
+				}
+			} else if err == nil || !reflect.DeepEqual(cfg, CICDConfig{}) {
+				t.Fatal("setup.phase19-config.read.reject")
+			}
+		})
+	}
+}
 
 type fakeSetupOps struct {
 	real setupRealOps

@@ -7,18 +7,221 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 	"unicode/utf8"
 
 	"github.com/fqwink/build-scripts/components/security"
+	"github.com/fqwink/build-scripts/components/setup"
 	"github.com/fqwink/build-scripts/components/statefile"
 )
+
+func parseCICDManagementArgs(args []string) (apiCLIConfig, bool, error) {
+	cfg := apiCLIConfig{CICDManagement: true}
+	reject := func() (apiCLIConfig, bool, error) {
+		return apiCLIConfig{}, false, exitError{Code: 2, Msg: "P19_INPUT"}
+	}
+	for _, arg := range args {
+		if !validCLIArgToken(arg) {
+			return reject()
+		}
+	}
+	seen := map[string]bool{}
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if seen[arg] {
+			return reject()
+		}
+		seen[arg] = true
+		switch arg {
+		case "--cicd-management":
+		case "--config", "--state-dir":
+			if i+1 >= len(args) || !cicdManagementPath(args[i+1]) {
+				return reject()
+			}
+			i++
+			if arg == "--config" {
+				cfg.CICDConfigPath = args[i]
+			} else {
+				cfg.StateDir = args[i]
+			}
+		default:
+			return reject()
+		}
+	}
+	if !seen["--cicd-management"] || !seen["--config"] || !seen["--state-dir"] {
+		return reject()
+	}
+	return cfg, false, nil
+}
+
+func cicdManagementPath(path string) bool {
+	return filepath.IsAbs(path) && filepath.Clean(path) == path && len(path) <= 4096 && !strings.Contains(path, "\\")
+}
+
+func prepareCICDManagement(cfg apiCLIConfig, readConfig func(string) (setup.CICDConfig, error)) (*http.Server, error) {
+	config, err := readConfig(cfg.CICDConfigPath)
+	if err != nil {
+		return nil, err
+	}
+	if config.Role != "coordinator" || config.StateDir != cfg.StateDir || config.Listen != "127.0.0.1:9321" {
+		return nil, errors.New("P19_SCHEMA")
+	}
+	store, err := statefile.OpenCICDIdentityStore(cfg.StateDir)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := os.Lstat(filepath.Join(cfg.StateDir, ".auth_profile")); !errors.Is(err, os.ErrNotExist) {
+		return nil, statefile.ErrCICDCorrupt
+	}
+	if err := cicdManagementLegacyFiles(cfg.StateDir); err != nil {
+		return nil, err
+	}
+	legacy, err := NewAPIServer(APIConfig{Addr: config.Listen, StateDir: cfg.StateDir})
+	if err != nil {
+		return nil, statefile.ErrCICDCorrupt
+	}
+	if _, err := legacy.readMergedConfig(); err != nil {
+		return nil, statefile.ErrCICDCorrupt
+	}
+	totp, err := readTOTPSecret(filepath.Join(cfg.StateDir, ".totp_secret"))
+	if err != nil || validateTOTPSecretValue(totp) != nil {
+		return nil, statefile.ErrCICDCorrupt
+	}
+	handler, err := newCICDAuthHTTP(legacy, store)
+	if err != nil {
+		return nil, err
+	}
+	server := legacy.HTTPServer()
+	server.Handler = cicdManagementHandler(handler)
+	return server, nil
+}
+
+func cicdManagementLegacyFiles(path string) error {
+	dir, err := os.OpenFile(path, os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return statefile.ErrCICDCorrupt
+	}
+	defer dir.Close()
+	for _, name := range []string{".admin_credentials", ".totp_secret", ".server_config"} {
+		file, err := os.OpenFile(fmt.Sprintf("/proc/self/fd/%d/%s", dir.Fd(), name), os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC|syscall.O_NONBLOCK, 0)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) && name != ".admin_credentials" {
+				continue
+			}
+			return statefile.ErrCICDCorrupt
+		}
+		info, err := file.Stat()
+		if err != nil {
+			_ = file.Close()
+			return statefile.ErrCICDCorrupt
+		}
+		stat, ok := info.Sys().(*syscall.Stat_t)
+		if !ok || !info.Mode().IsRegular() || info.Mode() != 0600 || stat.Uid != uint32(os.Geteuid()) || stat.Nlink != 1 || info.Size() > 1048576 {
+			_ = file.Close()
+			return statefile.ErrCICDCorrupt
+		}
+		data, readErr := io.ReadAll(io.LimitReader(file, 1048577))
+		closeErr := file.Close()
+		if readErr != nil || closeErr != nil || int64(len(data)) != info.Size() || len(data) > 1048576 {
+			return statefile.ErrCICDCorrupt
+		}
+		if _, err := statefile.CanonicalCICDJSON(data); err != nil {
+			return statefile.ErrCICDCorrupt
+		}
+		kind := ""
+		if name == ".admin_credentials" {
+			kind = "Credential"
+		}
+		if name == ".totp_secret" {
+			kind = "TOTP"
+		}
+		if kind != "" && statefile.ValidateCICDValue(kind, data) != nil {
+			return statefile.ErrCICDCorrupt
+		}
+	}
+	return nil
+}
+
+func cicdManagementHandler(handler *cicdAuthHTTP) http.Handler {
+	legacy := handler.legacy.Handler()
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/cicd" || strings.HasPrefix(r.URL.Path, "/api/cicd/") {
+			handler.ServeHTTP(w, r)
+			return
+		}
+		legacy.ServeHTTP(w, r)
+	})
+}
+
+func executeCICDManagement(cfg apiCLIConfig, stderr io.Writer) int {
+	server, err := prepareCICDManagement(cfg, setup.ReadCICDConfig)
+	if err != nil {
+		code := err.Error()
+		switch code {
+		case "P19_SCHEMA", "P19_CAPABILITY", "P19_BUSY", "P19_STATE_CORRUPT":
+		default:
+			code = "P19_STATE_CORRUPT"
+		}
+		fmt.Fprintln(stderr, code)
+		return 3
+	}
+	signals := make(chan os.Signal, 2)
+	signal.Notify(signals, syscall.SIGTERM, os.Interrupt)
+	defer signal.Stop(signals)
+	return listenCICDManagement(server, signals, stderr)
+}
+
+func listenCICDManagement(server *http.Server, signals <-chan os.Signal, stderr io.Writer) int {
+	listener, err := net.Listen("tcp4", server.Addr)
+	if err != nil {
+		fmt.Fprintln(stderr, "P19_STORAGE")
+		return 4
+	}
+	return serveCICDManagement(server, listener, signals, stderr)
+}
+
+func serveCICDManagement(server *http.Server, listener net.Listener, signals <-chan os.Signal, stderr io.Writer) int {
+	errCh := make(chan error, 1)
+	go func() { errCh <- server.Serve(listener) }()
+	select {
+	case <-errCh:
+		_ = server.Close()
+		fmt.Fprintln(stderr, "P19_STORAGE")
+		return 4
+	case <-signals:
+	}
+	done := make(chan error, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		done <- server.Shutdown(ctx)
+	}()
+	var shutdownErr error
+	select {
+	case shutdownErr = <-done:
+	case <-signals:
+		_ = server.Close()
+		<-done
+		shutdownErr = errors.New("P19_SHUTDOWN")
+	}
+	serveErr := <-errCh
+	if shutdownErr != nil || !errors.Is(serveErr, http.ErrServerClosed) {
+		_ = server.Close()
+		fmt.Fprintln(stderr, "P19_SHUTDOWN")
+		return 4
+	}
+	return 0
+}
 
 func newCICDAuthHTTP(legacy *APIServer, store cicdIdentityBackend) (*cicdAuthHTTP, error) {
 	if legacy == nil || store == nil {

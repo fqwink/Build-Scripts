@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -11,19 +12,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/fqwink/build-scripts/components/security"
+	"github.com/fqwink/build-scripts/components/setup"
 	"github.com/fqwink/build-scripts/components/statefile"
 )
 
@@ -500,7 +506,8 @@ func TestCICDAuthConcurrency(t *testing.T) {
 	}
 }
 
-func TestCICDAuthRealStore(t *testing.T) {
+func cicdAuthRealState(t *testing.T) string {
+	t.Helper()
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
 		t.Skip("P19_CAPABILITY: real authentication store requires Linux amd64")
 	}
@@ -532,6 +539,11 @@ func TestCICDAuthRealStore(t *testing.T) {
 			t.Fatal("api.phase19-auth.real.write")
 		}
 	}
+	return state
+}
+
+func TestCICDAuthRealStore(t *testing.T) {
+	state := cicdAuthRealState(t)
 	store, err := statefile.OpenCICDIdentityStore(state)
 	if err != nil {
 		t.Fatalf("api.phase19-auth.real.open: %v", err)
@@ -574,7 +586,7 @@ func TestCICDAuthMutations(t *testing.T) {
 	} {
 		t.Run(mutation.id, func(t *testing.T) {
 			copyDir := t.TempDir()
-			for _, owner := range []string{"api", "statefile", "security"} {
+			for _, owner := range []string{"api", "statefile", "security", "setup"} {
 				target := filepath.Join(copyDir, "components", owner)
 				if os.MkdirAll(target, 0700) != nil {
 					t.Fatal("api.phase19-auth.mutation.directory")
@@ -609,6 +621,355 @@ func TestCICDAuthMutations(t *testing.T) {
 			output, err := command.CombinedOutput()
 			if err == nil || !bytes.Contains(output, []byte(mutation.reason)) {
 				t.Fatal("api.phase19-auth.mutation.not-killed")
+			}
+		})
+	}
+}
+
+func TestCICDManagementCLI(t *testing.T) {
+	args := []string{"--cicd-management", "--config", "/etc/adlaire-ci/cicd/coordinator-test.json", "--state-dir", "/var/lib/adlaire-ci/coordinator/test"}
+	cfg, handled, err := parseAPIArgs(args, io.Discard)
+	if err != nil || handled || !cfg.CICDManagement || cfg.StateDir != args[4] || cfg.CICDConfigPath != args[2] {
+		t.Fatal("api.phase19-startup.cli.accept")
+	}
+	for _, invalid := range [][]string{
+		args[:3], args[1:], append(append([]string{}, args...), "--cicd-management"), append(append([]string{}, args...), "--config", "/else"), append(append([]string{}, args...), "--state-dir", "/else"), append(append([]string{}, args...), "--addr", "127.0.0.1:8765"), append(append([]string{}, args...), "--init-credentials"), append(append([]string{}, args...), "--cicd-site"), append(append([]string{}, args...), "--unknown"), append(append([]string{}, args...), "positional"), {"--cicd-site", "--config", "/etc/config", "--state-dir", "/state"}, {"--cicd-management", "--config", "relative", "--state-dir", "/state"}, {"--cicd-management", "--config=/etc/config", "--state-dir", "/state"}, {"--cicd-management", "--config", "/a/../b", "--state-dir", "/state"}, {"--cicd-management", "--config", "/etc/config", "--state-dir", "/state\x00"},
+	} {
+		var stdout, stderr bytes.Buffer
+		if code := RunAPI(invalid, strings.NewReader("secret-never-read"), &stdout, &stderr); code != 2 || stdout.Len() != 0 || stderr.String() != "P19_INPUT\n" {
+			t.Fatal("api.phase19-startup.cli.reject-before-io")
+		}
+	}
+	for _, priority := range []string{"--help", "--version"} {
+		var stdout, stderr bytes.Buffer
+		if code := RunAPI(append(append([]string{}, args...), "invalid", priority), strings.NewReader(""), &stdout, &stderr); code != 0 || stdout.Len() == 0 || stderr.Len() != 0 {
+			t.Fatal("api.phase19-startup.cli.priority")
+		}
+	}
+	var stdout, stderr bytes.Buffer
+	if code := RunAPI(args, strings.NewReader(""), &stdout, &stderr); code != 3 || stdout.Len() != 0 || (stderr.String() != "P19_CAPABILITY\n" && stderr.String() != "P19_SCHEMA\n") {
+		t.Fatal("api.phase19-startup.cli.config-reject")
+	}
+}
+
+func TestCICDManagementRoutes(t *testing.T) {
+	h, _ := cicdAuthTestFixture(t)
+	handler := cicdManagementHandler(h)
+	cicdToken := cicdAuthLoginToken(t, h)
+	legacyToken := login(t, h.legacy, "password123")
+	request := func(method, path, token, body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, path, strings.NewReader(body))
+		r.RemoteAddr = "192.0.2.1:1000"
+		r.Header.Set("Content-Type", "application/json")
+		if token != "" {
+			r.Header.Set("Authorization", "Bearer "+token)
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		return w
+	}
+	for _, path := range []string{"/api/config", "/api/auth/totp-status"} {
+		if request("GET", path, cicdToken, "").Code != 401 {
+			t.Fatal("api.phase19-startup.routes.legacy-reject")
+		}
+		if request("GET", path, legacyToken, "").Code != 200 {
+			t.Fatal("api.phase19-startup.routes.legacy-accept")
+		}
+	}
+	if w := request("POST", "/api/cicd/logout", legacyToken, `{}`); w.Code != 401 || !strings.Contains(w.Body.String(), `"code":"P19_AUTH"`) || len(h.sessions) != 1 {
+		t.Fatal("api.phase19-startup.routes.cicd-reject")
+	}
+	for _, path := range []string{"/api/cicd", "/api/cicd/projects", "/api/cicd/login/"} {
+		w := request("GET", path, cicdToken, "")
+		if w.Code != 404 || !strings.Contains(w.Body.String(), `"code":"P19_NOT_FOUND"`) {
+			t.Fatal("api.phase19-startup.routes.no-fallback")
+		}
+	}
+	if request("GET", "/api/auth/options", "", "").Code != 404 || request("GET", "/api/auth/me", cicdToken, "").Code != 404 {
+		t.Fatal("api.phase19-startup.routes.other-profile-absent")
+	}
+	if request("POST", "/api/cicd/logout", cicdToken, `{}`).Code != 200 || len(h.sessions) != 0 {
+		t.Fatal("api.phase19-startup.routes.logout")
+	}
+	if apiRequest(t, h.legacy, "POST", "/api/cicd/login", "", map[string]any{"user_id": "alice", "password": "password123", "totp": nil}).Code != 404 {
+		t.Fatal("api.phase19-startup.routes.legacy-unregistered")
+	}
+	for _, name := range []string{".access_log", ".audit_log", ".api_access_log"} {
+		data, _ := os.ReadFile(filepath.Join(h.legacy.cfg.StateDir, name))
+		if bytes.Contains(data, []byte(cicdToken)) || bytes.Contains(data, []byte(legacyToken)) || bytes.Contains(data, []byte("password123")) {
+			t.Fatal("api.phase19-startup.routes.no-secret-log")
+		}
+	}
+}
+
+func TestCICDManagementPreparation(t *testing.T) {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		t.Skip("P19_CAPABILITY: startup store requires Linux amd64")
+	}
+	for _, fault := range []string{"none", "config-error", "role", "state", "listen", "empty-state", "root", "profile", "credentials", "credential-mode", "credential-link", "totp", "merged"} {
+		t.Run(fault, func(t *testing.T) {
+			state := cicdAuthRealState(t)
+			cfg := apiCLIConfig{CICDManagement: true, StateDir: state, CICDConfigPath: "/etc/adlaire-ci/cicd/coordinator-test.json"}
+			config := setup.CICDConfig{Role: "coordinator", StateDir: state, Listen: "127.0.0.1:9321"}
+			switch fault {
+			case "role":
+				config.Role = "worker"
+			case "state":
+				config.StateDir = state + "/other"
+			case "listen":
+				config.Listen = "0.0.0.0:9321"
+			case "empty-state":
+				cfg.StateDir = t.TempDir()
+				_ = os.Chmod(cfg.StateDir, 0700)
+				config.StateDir = cfg.StateDir
+			case "root":
+				_ = os.WriteFile(filepath.Join(state, "cicd/head.json"), []byte(`{}`), 0600)
+			case "profile":
+				_ = os.WriteFile(filepath.Join(state, ".auth_profile"), []byte(`{}`), 0600)
+			case "credentials":
+				_ = os.WriteFile(filepath.Join(state, ".admin_credentials"), []byte(`{}`), 0600)
+			case "credential-mode":
+				_ = os.Chmod(filepath.Join(state, ".admin_credentials"), 0644)
+			case "credential-link":
+				_ = os.Link(filepath.Join(state, ".admin_credentials"), filepath.Join(state, "linked"))
+			case "totp":
+				_ = os.WriteFile(filepath.Join(state, ".totp_secret"), []byte(`{}`), 0600)
+			case "merged":
+				_ = os.WriteFile(filepath.Join(state, ".server_config"), []byte(`{`), 0600)
+			}
+			before, _ := os.ReadFile(filepath.Join(state, "cicd/head.json"))
+			calls := 0
+			server, err := prepareCICDManagement(cfg, func(path string) (setup.CICDConfig, error) {
+				calls++
+				if path != cfg.CICDConfigPath {
+					t.Fatal("api.phase19-startup.prepare.config-input")
+				}
+				if fault == "config-error" {
+					return setup.CICDConfig{}, errors.New("P19_CAPABILITY")
+				}
+				return config, nil
+			})
+			after, _ := os.ReadFile(filepath.Join(state, "cicd/head.json"))
+			if !bytes.Equal(before, after) || calls != 1 {
+				t.Fatal("api.phase19-startup.prepare.no-write")
+			}
+			if fault != "none" {
+				if server != nil || err == nil {
+					t.Fatal("api.phase19-startup.prepare.reject")
+				}
+				if fault == "empty-state" {
+					entries, _ := os.ReadDir(cfg.StateDir)
+					if len(entries) != 0 {
+						t.Fatal("api.phase19-startup.prepare.no-init")
+					}
+				}
+				return
+			}
+			if err != nil || server.Addr != "127.0.0.1:9321" || server.ReadHeaderTimeout != 5*time.Second || server.ReadTimeout != 30*time.Second || server.IdleTimeout != 60*time.Second || server.MaxHeaderBytes != 32768 {
+				t.Fatal("api.phase19-startup.prepare.server")
+			}
+			listener := httptest.NewServer(server.Handler)
+			defer listener.Close()
+			response, err := listener.Client().Post(listener.URL+"/api/cicd/login", "application/json", strings.NewReader(`{"user_id":"alice","password":"password123","totp":null}`))
+			if err != nil {
+				t.Fatal("api.phase19-startup.prepare.http")
+			}
+			body, _ := io.ReadAll(response.Body)
+			_ = response.Body.Close()
+			if response.StatusCode != 200 || !bytes.Contains(body, []byte(`"user_id":"alice"`)) || !bytes.Contains(body, []byte(`"generation":2`)) {
+				t.Fatal("api.phase19-startup.prepare.real-login")
+			}
+		})
+	}
+}
+
+type cicdManagementTestListener struct {
+	net.Listener
+	closed chan struct{}
+	once   sync.Once
+}
+
+func (l *cicdManagementTestListener) Close() error {
+	err := l.Listener.Close()
+	l.once.Do(func() { close(l.closed) })
+	return err
+}
+
+func TestCICDManagementShutdown(t *testing.T) {
+	for _, mode := range []string{"normal", "second-signal", "timeout"} {
+		t.Run(mode, func(t *testing.T) {
+			listener, err := net.Listen("tcp4", "127.0.0.1:0")
+			if err != nil {
+				t.Fatal("api.phase19-startup.shutdown.listen")
+			}
+			tracked := &cicdManagementTestListener{Listener: listener, closed: make(chan struct{})}
+			entered, release, returned := make(chan struct{}), make(chan struct{}), make(chan struct{})
+			server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				close(entered)
+				defer close(returned)
+				if mode == "normal" {
+					<-release
+					_, _ = io.WriteString(w, "done")
+					return
+				}
+				<-r.Context().Done()
+			})}
+			signals := make(chan os.Signal, 2)
+			var stderr bytes.Buffer
+			done := make(chan int, 1)
+			go func() { done <- serveCICDManagement(server, tracked, signals, &stderr) }()
+			clientDone := make(chan string, 1)
+			client := &http.Client{Timeout: 30 * time.Second}
+			defer client.CloseIdleConnections()
+			go func() {
+				response, err := client.Get("http://" + listener.Addr().String())
+				if err != nil {
+					clientDone <- "failed"
+					return
+				}
+				body, _ := io.ReadAll(response.Body)
+				_ = response.Body.Close()
+				clientDone <- string(body)
+			}()
+			<-entered
+			signals <- syscall.SIGTERM
+			<-tracked.closed
+			if mode == "normal" {
+				close(release)
+			}
+			if mode == "second-signal" {
+				signals <- os.Interrupt
+			}
+			code := <-done
+			body := <-clientDone
+			<-returned
+			if mode == "normal" {
+				if code != 0 || stderr.Len() != 0 || body != "done" {
+					t.Fatal("api.phase19-startup.shutdown.drain")
+				}
+			} else if code != 4 || stderr.String() != "P19_SHUTDOWN\n" || body != "failed" {
+				t.Fatal("api.phase19-startup.shutdown.forced")
+			}
+			if connection, err := net.DialTimeout("tcp4", listener.Addr().String(), time.Second); err == nil {
+				_ = connection.Close()
+				t.Fatal("api.phase19-startup.shutdown.no-listener")
+			}
+		})
+	}
+}
+
+func TestCICDManagementSignal(t *testing.T) {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		t.Skip("P19_CAPABILITY: native signal helper requires Linux amd64")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, "/proc/self/exe", "-test.run=^TestCICDManagementSignalHelper$")
+	command.Env = append(os.Environ(), "ADLAIRE_P19_SIGNAL_HELPER=1")
+	stdout, err := command.StdoutPipe()
+	if err != nil {
+		t.Fatal("api.phase19-startup.signal.pipe")
+	}
+	var stderr bytes.Buffer
+	command.Stderr = &stderr
+	if command.Start() != nil {
+		t.Fatal("api.phase19-startup.signal.start")
+	}
+	defer func() { _ = command.Process.Kill(); _ = command.Wait() }()
+	line, err := bufio.NewReader(stdout).ReadString('\n')
+	if err != nil || line != "READY\n" || command.Process.Signal(syscall.SIGTERM) != nil || command.Wait() != nil || stderr.Len() != 0 {
+		t.Fatal("api.phase19-startup.signal.exit")
+	}
+}
+
+func TestCICDManagementListenFailure(t *testing.T) {
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal("api.phase19-startup.listen.fixture")
+	}
+	defer listener.Close()
+	var stderr bytes.Buffer
+	if code := listenCICDManagement(&http.Server{Addr: listener.Addr().String()}, make(chan os.Signal), &stderr); code != 4 || stderr.String() != "P19_STORAGE\n" {
+		t.Fatal("api.phase19-startup.listen.bind-reject")
+	}
+	_ = listener.Close()
+	stderr.Reset()
+	if code := serveCICDManagement(&http.Server{}, listener, make(chan os.Signal), &stderr); code != 4 || stderr.String() != "P19_STORAGE\n" {
+		t.Fatal("api.phase19-startup.listen.serve-reject")
+	}
+}
+
+func TestCICDManagementSignalHelper(t *testing.T) {
+	if os.Getenv("ADLAIRE_P19_SIGNAL_HELPER") != "1" {
+		return
+	}
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		os.Exit(4)
+	}
+	signals := make(chan os.Signal, 2)
+	signal.Notify(signals, syscall.SIGTERM, os.Interrupt)
+	defer signal.Stop(signals)
+	_, _ = fmt.Fprintln(os.Stdout, "READY")
+	os.Exit(serveCICDManagement(&http.Server{Handler: http.NotFoundHandler()}, listener, signals, os.Stderr))
+}
+
+func TestCICDManagementMutations(t *testing.T) {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		t.Skip("P19_CAPABILITY: startup mutations require Linux amd64")
+	}
+	for _, mutation := range []struct{ id, path, old, new, reason string }{
+		{"shape", "setup/validate.go", "!cicdConfigShape(shape, reflect.TypeOf(cfg))", "false && !cicdConfigShape(shape, reflect.TypeOf(cfg))", "setup.phase19-config.missing.reject"},
+		{"file-mode", "setup/execute.go", "mode != 0 && info.Mode() != mode", "false && mode != 0 && info.Mode() != mode", "setup.phase19-config.read.reject"},
+		{"parent-mode", "setup/execute.go", "info.IsDir() && info.Mode() != os.ModeDir|0750", "false && info.IsDir() && info.Mode() != os.ModeDir|0750", "setup.phase19-config.read.reject"},
+		{"hardlink", "setup/execute.go", "stat.Nlink != 1", "false && stat.Nlink != 1", "setup.phase19-config.read.reject"},
+		{"account", "setup/execute.go", "!cicdConfigAccount(passwd, cfg, uid, gid)", "false && !cicdConfigAccount(passwd, cfg, uid, gid)", "setup.phase19-config.read.reject"},
+		{"filename", "setup/execute.go", "if filepath.Base(path) != cfg.Role+\"-\"+cfg.ID+\".json\" {", "if false && filepath.Base(path) != cfg.Role+\"-\"+cfg.ID+\".json\" {", "setup.phase19-config.read.reject"},
+		{"cli-duplicate", "api/execute.go", "if seen[arg] {", "if false && seen[arg] {", "api.phase19-startup.cli.reject-before-io"},
+		{"namespace", "api/execute.go", "if r.URL.Path == \"/api/cicd\" || strings.HasPrefix(r.URL.Path, \"/api/cicd/\") {", "if false {", "api.phase19-startup.routes.cicd-reject"},
+		{"profile", "api/execute.go", "!errors.Is(err, os.ErrNotExist) {\n\t\treturn nil, statefile.ErrCICDCorrupt", "false && !errors.Is(err, os.ErrNotExist) {\n\t\treturn nil, statefile.ErrCICDCorrupt", "api.phase19-startup.prepare.reject"},
+		{"drain", "api/execute.go", "done <- server.Shutdown(ctx)", "_ = ctx\n\t\tdone <- server.Close()", "api.phase19-startup.shutdown.drain"},
+	} {
+		t.Run(mutation.id, func(t *testing.T) {
+			copyDir := t.TempDir()
+			for _, owner := range []string{"api", "statefile", "security", "setup"} {
+				target := filepath.Join(copyDir, "components", owner)
+				if os.MkdirAll(target, 0700) != nil {
+					t.Fatal("api.phase19-startup.mutation.directory")
+				}
+				for _, name := range []string{owner + ".go", "model.go", "validate.go", "execute.go", owner + "_test.go"} {
+					data, err := os.ReadFile(filepath.Join("..", owner, name))
+					if err != nil {
+						t.Fatal("api.phase19-startup.mutation.source")
+					}
+					if owner+"/"+name == mutation.path {
+						if strings.Count(string(data), mutation.old) != 1 {
+							t.Fatal("api.phase19-startup.mutation.target")
+						}
+						data = []byte(strings.Replace(string(data), mutation.old, mutation.new, 1))
+					}
+					if os.WriteFile(filepath.Join(target, name), data, 0600) != nil {
+						t.Fatal("api.phase19-startup.mutation.copy")
+					}
+				}
+			}
+			if os.WriteFile(filepath.Join(copyDir, "go.mod"), []byte("module github.com/fqwink/build-scripts\n\ngo 1.22\n"), 0600) != nil {
+				t.Fatal("api.phase19-startup.mutation.module")
+			}
+			compile := exec.Command("go", "test", "-c", "-o", "mutation.test", "./components/api")
+			if strings.HasPrefix(mutation.path, "setup/") {
+				compile = exec.Command("go", "test", "-c", "-o", "mutation.test", "./components/setup")
+			}
+			compile.Dir = copyDir
+			compile.Env = append(os.Environ(), "GOENV=off", "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
+			if _, err := compile.CombinedOutput(); err != nil {
+				t.Fatal("api.phase19-startup.mutation.compile-invalid")
+			}
+			command := exec.Command("./mutation.test", "-test.run=^TestCICD(Config|ConfigNested|ConfigAccount|ConfigRead|ManagementCLI|ManagementRoutes|ManagementPreparation|ManagementShutdown)$")
+			command.Dir = copyDir
+			output, err := command.CombinedOutput()
+			if err == nil || !bytes.Contains(output, []byte(mutation.reason)) {
+				t.Fatal("api.phase19-startup.mutation.not-killed")
 			}
 		})
 	}

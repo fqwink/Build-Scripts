@@ -859,6 +859,8 @@ type apiCLIConfig struct {
 	StateDir        string
 	InitCredentials bool
 	AddrProvided    bool
+	CICDManagement  bool
+	CICDConfigPath  string
 }
 
 func RunAPI(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
@@ -874,6 +876,9 @@ func RunAPI(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 	if handled {
 		return 0
+	}
+	if cfg.CICDManagement {
+		return executeCICDManagement(cfg, stderr)
 	}
 	if cfg.InitCredentials {
 		return executeAPIInitCredentials(cfg, stdin, stdout, stderr)
@@ -893,6 +898,11 @@ func parseAPIArgs(args []string, stdout io.Writer) (apiCLIConfig, bool, error) {
 		if arg == "--version" {
 			fmt.Fprintf(stdout, "%s %s go=%s\n", apiBinaryName, apiBinaryVersion, runtime.Version())
 			return cfg, true, nil
+		}
+	}
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "--cicd") || arg == "--config" {
+			return parseCICDManagementArgs(args)
 		}
 	}
 	for _, arg := range args {
