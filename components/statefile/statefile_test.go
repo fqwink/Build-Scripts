@@ -150,12 +150,28 @@ func TestCICDIdentityConcurrency(t *testing.T) {
 	close(start)
 	group.Wait()
 	close(errs)
+	succeeded, busy := 0, 0
 	for err := range errs {
-		if err != nil {
+		switch err {
+		case nil:
+			succeeded++
+		case ErrCICDBusy:
+			busy++
+		default:
 			t.Fatal("statefile.phase19-identity.concurrent.result")
 		}
 	}
-	identity, _ := s.ReadIdentity("user", "alice")
+	identity, readErr := s.ReadIdentity("user", "alice")
+	_, concurrentHead, headErr := s.store.read()
+	if readErr != nil || headErr != nil || succeeded < 1 || succeeded+busy != 4 || identity.Credential.LoginCount != int64(succeeded) || concurrentHead.Generation != int64(2+succeeded) {
+		t.Fatal("statefile.phase19-identity.concurrent.busy-no-write")
+	}
+	for i := 0; i < busy; i++ {
+		if _, err := s.Login("alice", "Fixture-password-2026", cicdTestOperation, now, nil); err != nil {
+			t.Fatal("statefile.phase19-identity.concurrent.busy-retry")
+		}
+	}
+	identity, _ = s.ReadIdentity("user", "alice")
 	if identity.Credential.LoginCount != 4 {
 		t.Fatal("statefile.phase19-identity.concurrent.no-lost-update")
 	}
