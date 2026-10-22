@@ -132,6 +132,7 @@
 | 視覚仕様 | [`docs/DESIGN.md` デザイン責務 Phase 19 管理画面](DESIGN.md#phase-19-admin-visual-contract) |
 | 本番同等検証本文 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 19 検証](details/production-validation.md#phase-19-production-validation-contract) |
 | fixture 設計本文 | [`docs/details/fixture.md` fixture 証跡責務 Phase 19 検証策定契約](details/fixture.md#phase-19-cicd-evidence-contract) |
+| Phase 19 JSON/digest基礎実装・unit test | [`components/statefile/execute.go`](../components/statefile/execute.go)、[`components/statefile/validate.go`](../components/statefile/validate.go)、[`components/statefile/model.go`](../components/statefile/model.go)、[`components/statefile/statefile_test.go`](../components/statefile/statefile_test.go) に実在。証跡入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route)。Root adapterと製品機能全体の実装済みを意味しない。 |
 | Phase 19 正式 fixture root / manifest / expected / fake | `testdata/phase19/inhouse-cicd/manifest.json` とcase配下5種JSON（未作成）。[fixture証跡責務 layout](details/fixture.md#phase-19-fixture-layout)で将来配置を固定。 |
 | Phase 19 profile起動interface | [`docs/details/runner.md` 詳細本文責務 runner mode](details/runner.md#phase-19-runner-cli)、[`docs/details/api.md` 詳細本文責務 API mode](details/api.md#phase-19-api-cli)。実装は既存owner package内（未実装）。 |
 | Phase 19 sandbox broker / local状態の将来配置 | 専用追加実装fileは作らず既存runner/setup/statefile package内（未実装）。[setup詳細本文責務 broker](details/setup.md#phase-19-sandbox-broker)、[statefile詳細本文責務 保存path](details/statefile.md#phase-19-state-paths)を参照。 |

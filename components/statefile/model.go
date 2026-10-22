@@ -1,6 +1,11 @@
 package statefile
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+var ErrCICDSchema = errors.New("P19_SCHEMA")
 
 type ownerFileContract struct {
 	Owner string

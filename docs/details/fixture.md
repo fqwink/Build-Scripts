@@ -5,6 +5,11 @@
 
 本節はfixture証跡責務。機能の処理値はowner詳細本文を参照し、本節はoracle/入力生成/記録を所有する。仕様策定時のdocument検査と、将来の製品実装検証を混同しない。責務入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 DETAIL_INDEX](../DETAIL_INDEX.md#phase-19-owner-route)。
 
+<a id="phase-19-foundation-evidence"></a>
+**Phase 19 基礎検証：** [components/statefile/statefile_test.go](../../components/statefile/statefile_test.go) の `TestCICDCanonicalJSON` は [docs/details/statefile.md 詳細本文責務 canonical bytes](statefile.md#phase-19-state-contract) の独立した入力/期待byteを比較する。object順、配列順、整数の安全範囲、decimal/指数/負の0の拒否、keyのescape後重複、nested duplicate、UTF-8、不対surrogate、正しいpair、全control escape、HTML/slash/U+2028/U+2029、Unicode正規化なし、末尾token、入力byte不変、digestと失敗時空結果を検査する。control characterをcanonical化できることを、entity schemaの許可へ読み替えない。assertion IDは `statefile.phase19-canonical.<case>.bytes`、拒否は `.reject`、digestは `.digest`。失敗診断はIDと期待/実際の成功判定だけとし、入力や秘密値を転載しない。これはJSON/digest境界のunit検証であり、Root schema/transaction/全384 assertionや本番検証の代替ではない。
+
+[main_test.go](../../main_test.go) の `TestPlannedPhaseMaturityBoundary` は独立した最小ROADMAP入力で、active未設定+Phase19未実装、およびactive19+実装中の2正例を受理する。Phase20/21開始、active宣言重複/競合/欠落、activeと状態の不一致、Phase19の早期完了、後続Phaseの早期完了、依存先不一致を拒否する。assertion IDは `statefile.phase19-maturity.<case>.accept/reject`。Phase18 checkerはPhase18の完了状態を保持し、この共通境界へ接続する。承認判断そのものをcheckerへ代行させない。mutationはcanonical key sort/配列順/duplicate検査/整数境界/Unicode検査/control escape/HTML保持/digest入力/開始状態と後続Phase制限を対象に、隔離copyでcompileと検出reasonを分離する。
+
 <a id="phase-19-fixture-layout"></a>
 **正式root / artifact：** 実装時に `testdata/phase19/inhouse-cicd/` を作り、rootに `manifest.json`、各case IDのlowercase directory（例 `p19-plan/`）に `input.json`, `fake.json`, `expected.json`, `effects.json`, `security_expected.json` を配置する。これらは現時点で未作成、実在を索引へ偽記載しない。harnessは既存 `main_test.go`、owner testは既存 `components/<owner>/<owner>_test.go`、SDK/UI Deno test driverは既存root Go testからtemporaryへ抽出してDenoで実行する。owner package6個目のGo fileやPhase専用仕様書を作らない。
 
@@ -3503,7 +3508,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
     },
     {
       "path": "main_test.go",
-      "source_sha256": "3f548d3c35580e29d43c5349ad6ca05fe4c34295f7e221424983a198c474dceb",
+      "source_sha256": "eee27924260ffde87db634439e1bc76a91e514ea4a8052e99d58131683eae02d",
       "calls_sha256": "320c206285f66b1aaa54d822d76ba3b97c8490144e2345da22b400c5ca41317c",
       "call_count": 12,
       "review_basis": "native-fixture-only"

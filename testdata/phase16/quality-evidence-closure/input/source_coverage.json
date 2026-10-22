@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "4a5ba6a3117868e460071e7bf1d68239b7e7c39886fa48074902c4889aac9c21",
+  "source_group_sha256": "6535258b3d1fb20b45f55594ed9cf7432bdc83e60218829a815a008131e5fe5b",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -75,8 +75,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "3f548d3c35580e29d43c5349ad6ca05fe4c34295f7e221424983a198c474dceb",
-      "size_bytes": 554166,
+      "sha256": "eee27924260ffde87db634439e1bc76a91e514ea4a8052e99d58131683eae02d",
+      "size_bytes": 556479,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [
@@ -135,8 +135,8 @@
     {
       "path": "docs/ROADMAP.md",
       "source_exists": true,
-      "sha256": "e375d679b886e9ab19c9226c288a9148dee1f350273cf2c3a96f447a41c8b4fb",
-      "size_bytes": 67570,
+      "sha256": "b75cdcdd43f3659b59ffc456522b0bd2e2edfaa2806a5656e23fe2f81dd1885e",
+      "size_bytes": 67576,
       "owner_component": "runner",
       "area": "roadmap",
       "detected_terms": [
@@ -155,8 +155,8 @@
     {
       "path": "docs/DETAIL_INDEX.md",
       "source_exists": true,
-      "sha256": "211e061b89c8855e59ba55823736d5ae697202aae7b2c2088a6e89474fb36a8b",
-      "size_bytes": 183837,
+      "sha256": "c7f896556e60c275575443e1ac6d22469e9be717e6b5660815cf6d8b5c2d96b7",
+      "size_bytes": 184025,
       "owner_component": "runner",
       "area": "detail-index",
       "detected_terms": [
@@ -175,8 +175,8 @@
     {
       "path": "docs/DOCUMENT_INDEX.md",
       "source_exists": true,
-      "sha256": "edb6c02d9788325558d1e5794798614fcb5693e1f2e950feed5b7c42f635e028",
-      "size_bytes": 69690,
+      "sha256": "a507f4f22988ba7696305f8a97c68304809779cb36b52d5436dc60a3a59c41c1",
+      "size_bytes": 70274,
       "owner_component": "runner",
       "area": "document-index",
       "detected_terms": [
@@ -195,8 +195,8 @@
     {
       "path": "docs/details/fixture.md",
       "source_exists": true,
-      "sha256": "035fa2b2b497df7e994c3905e34118aa3e9da9b2fa5f3f2f01de8df6d64b4a18",
-      "size_bytes": 1344407,
+      "sha256": "9e8e284961d07192363b6ad9f8082bf5cc85542f2c7090c6fb82619ce1b13bce",
+      "size_bytes": 1346322,
       "owner_component": "runner",
       "area": "fixture-spec",
       "detected_terms": [

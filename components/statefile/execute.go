@@ -1,14 +1,178 @@
 package statefile
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
+
+func CanonicalCICDJSON(data []byte) ([]byte, error) {
+	if !validateCICDJSONBytes(data) {
+		return nil, ErrCICDSchema
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	value, err := readCICDJSONValue(decoder)
+	if err != nil {
+		return nil, ErrCICDSchema
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return nil, ErrCICDSchema
+	}
+	var out bytes.Buffer
+	writeCICDCanonical(&out, value)
+	return out.Bytes(), nil
+}
+
+func DigestCICDJSON(data []byte) (string, error) {
+	canonical, err := CanonicalCICDJSON(data)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(canonical)), nil
+}
+
+func readCICDJSONValue(decoder *json.Decoder) (any, error) {
+	token, err := decoder.Token()
+	if err != nil {
+		return nil, ErrCICDSchema
+	}
+	switch value := token.(type) {
+	case json.Delim:
+		switch value {
+		case '{':
+			object := make(map[string]any)
+			for decoder.More() {
+				keyToken, err := decoder.Token()
+				if err != nil {
+					return nil, ErrCICDSchema
+				}
+				key, ok := keyToken.(string)
+				if !ok {
+					return nil, ErrCICDSchema
+				}
+				if _, exists := object[key]; exists {
+					return nil, ErrCICDSchema
+				}
+				child, err := readCICDJSONValue(decoder)
+				if err != nil {
+					return nil, err
+				}
+				object[key] = child
+			}
+			if end, err := decoder.Token(); err != nil || end != json.Delim('}') {
+				return nil, ErrCICDSchema
+			}
+			return object, nil
+		case '[':
+			array := make([]any, 0)
+			for decoder.More() {
+				child, err := readCICDJSONValue(decoder)
+				if err != nil {
+					return nil, err
+				}
+				array = append(array, child)
+			}
+			if end, err := decoder.Token(); err != nil || end != json.Delim(']') {
+				return nil, ErrCICDSchema
+			}
+			return array, nil
+		default:
+			return nil, ErrCICDSchema
+		}
+	case json.Number:
+		if !validateCICDInteger(value) {
+			return nil, ErrCICDSchema
+		}
+		return value, nil
+	case string, bool, nil:
+		return value, nil
+	default:
+		return nil, ErrCICDSchema
+	}
+}
+
+func writeCICDCanonical(out *bytes.Buffer, value any) {
+	switch value := value.(type) {
+	case map[string]any:
+		keys := make([]string, 0, len(value))
+		for key := range value {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		out.WriteByte('{')
+		for i, key := range keys {
+			if i != 0 {
+				out.WriteByte(',')
+			}
+			writeCICDString(out, key)
+			out.WriteByte(':')
+			writeCICDCanonical(out, value[key])
+		}
+		out.WriteByte('}')
+	case []any:
+		out.WriteByte('[')
+		for i, item := range value {
+			if i != 0 {
+				out.WriteByte(',')
+			}
+			writeCICDCanonical(out, item)
+		}
+		out.WriteByte(']')
+	case string:
+		writeCICDString(out, value)
+	case json.Number:
+		out.WriteString(value.String())
+	case bool:
+		if value {
+			out.WriteString("true")
+		} else {
+			out.WriteString("false")
+		}
+	case nil:
+		out.WriteString("null")
+	}
+}
+
+func writeCICDString(out *bytes.Buffer, value string) {
+	const hex = "0123456789abcdef"
+	out.WriteByte('"')
+	for i := 0; i < len(value); i++ {
+		c := value[i]
+		switch c {
+		case '"', '\\':
+			out.WriteByte('\\')
+			out.WriteByte(c)
+		case '\b':
+			out.WriteString(`\b`)
+		case '\t':
+			out.WriteString(`\t`)
+		case '\n':
+			out.WriteString(`\n`)
+		case '\f':
+			out.WriteString(`\f`)
+		case '\r':
+			out.WriteString(`\r`)
+		default:
+			if c < 0x20 {
+				out.WriteString(`\u00`)
+				out.WriteByte(hex[c>>4])
+				out.WriteByte(hex[c&15])
+			} else {
+				out.WriteByte(c)
+			}
+		}
+	}
+	out.WriteByte('"')
+}
 
 func executeOwnerFileContract(contract ownerFileContract) bool {
 	return validateOwnerFileContract(contract)

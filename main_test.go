@@ -3605,16 +3605,60 @@ func TestAdditionalManagementInputVectors(t *testing.T) {
 }
 
 func plannedPhaseMaturityBoundary(roadmap string) error {
-	if !strings.Contains(roadmap, "現在の active Phase は設定しない。") || regexp.MustCompile("現在の active Phase は Phase (19|20|21)").MatchString(roadmap) {
+	inactive := strings.Count(roadmap, "現在の active Phase は設定しない。") == 1
+	phase19Active := strings.Count(roadmap, "現在の active Phase は Phase 19。") == 1
+	if inactive == phase19Active || strings.Count(roadmap, "現在の active Phase は") != 1 {
 		return fmt.Errorf("planned Phase activation boundary violated")
 	}
 	for phase := 19; phase <= 21; phase++ {
-		pattern := fmt.Sprintf("(?m)^\\| Phase %d \\| [^\\n]+ \\| 仕様化済み・未実装 \\| Phase %d \\|$", phase, phase-1)
+		status := "仕様化済み・未実装"
+		if phase == 19 && phase19Active {
+			status = "実装中・検証未完了"
+		}
+		pattern := fmt.Sprintf("(?m)^\\| Phase %d \\| [^\\n]+ \\| %s \\| Phase %d \\|$", phase, status, phase-1)
 		if len(regexp.MustCompile(pattern).FindAllString(roadmap, -1)) != 1 {
-			return fmt.Errorf("planned Phase %d must remain specified and unimplemented", phase)
+			return fmt.Errorf("planned Phase %d maturity boundary violated", phase)
 		}
 	}
 	return nil
+}
+
+func TestPlannedPhaseMaturityBoundary(t *testing.T) {
+	t.Parallel()
+	const inactive = "現在の active Phase は設定しない。\n" +
+		"| Phase 19 | scope | 仕様化済み・未実装 | Phase 18 |\n" +
+		"| Phase 20 | scope | 仕様化済み・未実装 | Phase 19 |\n" +
+		"| Phase 21 | scope | 仕様化済み・未実装 | Phase 20 |\n"
+	active := strings.Replace(inactive, "現在の active Phase は設定しない。", "現在の active Phase は Phase 19。", 1)
+	active = strings.Replace(active, "| Phase 19 | scope | 仕様化済み・未実装 |", "| Phase 19 | scope | 実装中・検証未完了 |", 1)
+	for _, test := range []struct {
+		id, input string
+		accept    bool
+	}{
+		{"inactive", inactive, true}, {"phase19-active", active, true},
+		{"missing-active", strings.Replace(active, "現在の active Phase は Phase 19。", "", 1), false},
+		{"duplicate-active", active + "現在の active Phase は Phase 19。", false},
+		{"conflicting-active", active + "現在の active Phase は設定しない。", false},
+		{"inactive-progress", strings.Replace(active, "現在の active Phase は Phase 19。", "現在の active Phase は設定しない。", 1), false},
+		{"active-unstarted", strings.Replace(inactive, "現在の active Phase は設定しない。", "現在の active Phase は Phase 19。", 1), false},
+		{"phase20-active", strings.Replace(active, "は Phase 19。", "は Phase 20。", 1), false},
+		{"phase21-active", strings.Replace(active, "は Phase 19。", "は Phase 21。", 1), false},
+		{"early-completion", strings.Replace(active, "実装中・検証未完了", "実装済み", 1), false},
+		{"phase20-implemented", strings.Replace(active, "| Phase 20 | scope | 仕様化済み・未実装", "| Phase 20 | scope | 実装済み", 1), false},
+		{"phase21-implemented", strings.Replace(active, "| Phase 21 | scope | 仕様化済み・未実装", "| Phase 21 | scope | 実装済み", 1), false},
+		{"wrong-dependency", strings.Replace(active, "| Phase 18 |", "| Phase 17 |", 1), false},
+	} {
+		t.Run(test.id, func(t *testing.T) {
+			err := plannedPhaseMaturityBoundary(test.input)
+			if (err == nil) != test.accept {
+				verdict := "reject"
+				if test.accept {
+					verdict = "accept"
+				}
+				t.Fatalf("statefile.phase19-maturity.%s.%s: maturity acceptance mismatch", test.id, verdict)
+			}
+		})
+	}
 }
 
 func TestPhase19SpecificationContracts(t *testing.T) {
@@ -3668,7 +3712,7 @@ func TestPhase19SpecificationContracts(t *testing.T) {
 		{"worker-toolchain-digest", "docs/details/statefile.md", "\"assignment_digest\": \"Digest\",\n      \"toolchain_digest\": \"Digest\"", "\"assignment_digest\": \"Digest\",\n      \"toolchain_digest\": \"Id\""},
 		{"roadmap-inventory-state", "docs/ROADMAP.md", "| 仕様化済み・未実装 | CI / CD | Phase 19", "| 改訂予定 | CI / CD | Phase 19"},
 		{"roadmap-phase20-implemented", "docs/ROADMAP.md", "| 仕様化済み・未実装 | Phase 19 |", "| 実装済み | Phase 19 |"},
-		{"roadmap-phase21-active", "docs/ROADMAP.md", "現在の active Phase は設定しない。", "現在の active Phase は Phase 21。"},
+		{"roadmap-phase21-active", "docs/ROADMAP.md", "現在の active Phase は Phase 19。", "現在の active Phase は Phase 21。"},
 		{"roadmap-phase21-missing", "docs/ROADMAP.md", "| Phase 21 |", "| Phase 99 |"},
 		{"unknown-type", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "MissingType"`},
 		{"missing-sdk", "docs/details/sdk.md", "| `runStart(params,body,options)` |", "| `missing(params,body,options)` |"},
@@ -9694,9 +9738,6 @@ func phase18RequireDocumentState(t *testing.T) {
 	phase18ImplementedStatus := "| 実装済み | Phase 17 |"
 	if !strings.Contains(roadmap, phase18Row) || !strings.Contains(roadmap, phase18ImplementedStatus) {
 		t.Fatalf("docs/ROADMAP.md must mark Phase 18 implemented after repository and live VPS completion evidence close the state-transition gate")
-	}
-	if !strings.Contains(roadmap, "現在の active Phase は設定しない。") {
-		t.Fatalf("docs/ROADMAP.md must leave active Phase unset after Phase 18 completion while Phase 19 awaits implementation approval")
 	}
 	if strings.Contains(roadmap, phase18InProgressStatus) || strings.Contains(roadmap, "現在の active Phase は Phase 18") || strings.Contains(roadmap, "Phase 18 は `仕様化済み・未実装`") {
 		t.Fatalf("docs/ROADMAP.md must not retain a stale Phase 18 active or incomplete state after the state-transition gate closes")
