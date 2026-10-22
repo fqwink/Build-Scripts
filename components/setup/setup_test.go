@@ -250,8 +250,11 @@ func TestCICDConfigAccount(t *testing.T) {
 	if cicdConfigAccount([]byte(line), cfg, 0, 1001) {
 		t.Fatal("setup.phase19-config.account.root-reject")
 	}
-	if cicdConfigAccount([]byte(strings.Replace(line, ":1001::", ":0::", 1)), cfg, 1001, 0) || cicdConfigAccount([]byte(line+"other:x:1002:1001::/other:/bin/sh\n"), cfg, 1001, 1001) {
-		t.Fatal("setup.phase19-config.account.shared-group-reject")
+	if cicdConfigAccount([]byte(strings.Replace(line, ":1001::", ":0::", 1)), cfg, 1001, 0) {
+		t.Fatal("setup.phase19-config.account.root-group-reject")
+	}
+	if !cicdConfigAccount([]byte(line+"other:x:1002:1001::/other:/bin/sh\n"), cfg, 1001, 1001) {
+		t.Fatal("setup.phase19-config.account.read-group-share")
 	}
 }
 
@@ -262,7 +265,7 @@ func TestCICDConfigRead(t *testing.T) {
 		}
 		t.Skip("P19_CAPABILITY: FD config fixture requires Linux amd64")
 	}
-	for _, fault := range []string{"none", "file-mode", "parent-mode", "parent-readable", "symlink", "parent-symlink", "hardlink", "directory", "oversize", "account", "filename", "owner", "group"} {
+	for _, fault := range []string{"none", "supplementary", "shared", "no-membership", "file-mode", "parent-mode", "parent-readable", "symlink", "parent-symlink", "hardlink", "directory", "oversize", "account", "filename", "owner", "group"} {
 		t.Run(fault, func(t *testing.T) {
 			root := t.TempDir()
 			for _, path := range []string{"etc", "etc/adlaire-ci", "etc/adlaire-ci/cicd"} {
@@ -282,11 +285,23 @@ func TestCICDConfigRead(t *testing.T) {
 			if gid == 0 {
 				gid = 1001
 			}
+			configGroup := gid
+			var memberships []uint32
+			if fault == "supplementary" {
+				memberships = []uint32{gid}
+				gid++
+			}
+			if fault == "no-membership" {
+				gid++
+			}
 			serviceUID := uid
 			if serviceUID == 0 {
 				serviceUID = 1001
 			}
 			passwd := "adlaire-cicd:x:" + strconv.FormatUint(uint64(serviceUID), 10) + ":" + strconv.FormatUint(uint64(gid), 10) + "::" + input["state_dir"].(string) + ":/usr/sbin/nologin\n"
+			if fault == "shared" {
+				passwd += "other:x:" + strconv.FormatUint(uint64(serviceUID+1), 10) + ":" + strconv.FormatUint(uint64(gid), 10) + "::/other:/bin/sh\n"
+			}
 			if fault == "account" {
 				passwd = strings.Replace(passwd, "nologin", "shell", 1)
 			}
@@ -298,7 +313,7 @@ func TestCICDConfigRead(t *testing.T) {
 			}
 			if os.Getegid() == 0 {
 				for _, name := range []string{"etc/adlaire-ci", "etc/adlaire-ci/cicd", "etc/adlaire-ci/cicd/coordinator-test.json"} {
-					if os.Chown(filepath.Join(root, name), int(uid), int(gid)) != nil {
+					if os.Chown(filepath.Join(root, name), int(uid), int(configGroup)) != nil {
 						t.Fatal("setup.phase19-config.read.fixture-group")
 					}
 				}
@@ -329,8 +344,8 @@ func TestCICDConfigRead(t *testing.T) {
 			case "group":
 				gid++
 			}
-			cfg, err := readCICDConfigAt(root, path, uid, serviceUID, gid)
-			if fault == "none" {
+			cfg, err := readCICDConfigAt(root, path, uid, serviceUID, gid, memberships...)
+			if fault == "none" || fault == "supplementary" || fault == "shared" {
 				if err != nil || cfg.ID != "test" {
 					t.Fatalf("setup.phase19-config.read.accept: %v", err)
 				}

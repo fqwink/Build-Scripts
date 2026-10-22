@@ -21,10 +21,18 @@ func ReadCICDConfig(path string) (CICDConfig, error) {
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
 		return CICDConfig{}, cicdConfigCapability
 	}
-	return readCICDConfigAt("/", path, 0, uint32(os.Geteuid()), uint32(os.Getegid()))
+	groups, err := os.Getgroups()
+	if err != nil {
+		return CICDConfig{}, cicdConfigCapability
+	}
+	var memberships []uint32
+	for _, group := range groups {
+		memberships = append(memberships, uint32(group))
+	}
+	return readCICDConfigAt("/", path, 0, uint32(os.Geteuid()), uint32(os.Getegid()), memberships...)
 }
 
-func readCICDConfigAt(rootPath, path string, rootUID, uid, gid uint32) (CICDConfig, error) {
+func readCICDConfigAt(rootPath, path string, rootUID, uid, gid uint32, groups ...uint32) (CICDConfig, error) {
 	empty := CICDConfig{}
 	if !cicdConfigPath(path) || filepath.Dir(path) != "/etc/adlaire-ci/cicd" {
 		return empty, cicdConfigSchema
@@ -45,9 +53,17 @@ func readCICDConfigAt(rootPath, path string, rootUID, uid, gid uint32) (CICDConf
 	if filepath.Base(path) != cfg.Role+"-"+cfg.ID+".json" {
 		return empty, cicdConfigSchema
 	}
+	configGroup := before[len(before)-1].Sys().(*syscall.Stat_t).Gid
+	member := configGroup == gid
+	for _, group := range groups {
+		member = member || configGroup == group
+	}
+	if configGroup == 0 || !member {
+		return empty, cicdConfigCapability
+	}
 	for _, info := range before[len(before)-3:] {
 		stat := info.Sys().(*syscall.Stat_t)
-		if stat.Gid != gid || info.IsDir() && info.Mode() != os.ModeDir|0750 {
+		if stat.Gid != configGroup || info.IsDir() && info.Mode() != os.ModeDir|0750 {
 			return empty, cicdConfigCapability
 		}
 	}
@@ -71,7 +87,7 @@ func cicdConfigAccount(passwd []byte, cfg CICDConfig, uid, gid uint32) bool {
 	if uid == 0 || gid == 0 || len(passwd) > 1048576 || !utf8.Valid(passwd) || strings.ContainsRune(string(passwd), '\x00') {
 		return false
 	}
-	names, uids, groups, homes, matches := 0, 0, 0, 0, 0
+	names, uids, homes, matches := 0, 0, 0, 0
 	for _, line := range strings.Split(string(passwd), "\n") {
 		if line == "" {
 			continue
@@ -91,9 +107,6 @@ func cicdConfigAccount(passwd []byte, cfg CICDConfig, uid, gid uint32) bool {
 		if userID == uint64(uid) {
 			uids++
 		}
-		if groupID == uint64(gid) {
-			groups++
-		}
 		if fields[5] == cfg.StateDir {
 			homes++
 		}
@@ -105,7 +118,7 @@ func cicdConfigAccount(passwd []byte, cfg CICDConfig, uid, gid uint32) bool {
 			matches++
 		}
 	}
-	return names == 1 && uids == 1 && groups == 1 && homes == 1 && matches == 1
+	return names == 1 && uids == 1 && homes == 1 && matches == 1
 }
 
 // Keep all resolution under a held root FD; never follow a path component.

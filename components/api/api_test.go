@@ -923,6 +923,7 @@ func TestCICDManagementMutations(t *testing.T) {
 		{"file-mode", "setup/execute.go", "mode != 0 && info.Mode() != mode", "false && mode != 0 && info.Mode() != mode", "setup.phase19-config.read.reject"},
 		{"parent-mode", "setup/execute.go", "info.IsDir() && info.Mode() != os.ModeDir|0750", "false && info.IsDir() && info.Mode() != os.ModeDir|0750", "setup.phase19-config.read.reject"},
 		{"hardlink", "setup/execute.go", "stat.Nlink != 1", "false && stat.Nlink != 1", "setup.phase19-config.read.reject"},
+		{"membership", "setup/execute.go", "if configGroup == 0 || !member {", "if false && (configGroup == 0 || !member) {", "setup.phase19-config.read.reject"},
 		{"account", "setup/execute.go", "!cicdConfigAccount(passwd, cfg, uid, gid)", "false && !cicdConfigAccount(passwd, cfg, uid, gid)", "setup.phase19-config.read.reject"},
 		{"filename", "setup/execute.go", "if filepath.Base(path) != cfg.Role+\"-\"+cfg.ID+\".json\" {", "if false && filepath.Base(path) != cfg.Role+\"-\"+cfg.ID+\".json\" {", "setup.phase19-config.read.reject"},
 		{"cli-duplicate", "api/execute.go", "if seen[arg] {", "if false && seen[arg] {", "api.phase19-startup.cli.reject-before-io"},
