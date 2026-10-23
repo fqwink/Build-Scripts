@@ -44,6 +44,9 @@ assertion IDは `statefile.phase19-schema.<case>.<result>`、`statefile.phase19-
 
 `TestCICDManagementMutations` は既存api/setup/statefile/security packageの隔離copyでcompile後に正本と結び付いたassertion失敗を要求する。選択11件は必須shape、file mode、専用親mode、hardlink、group membership、account、filename、CLI重複、namespace分離、profile混在、drain。compile失敗をkillへ算入しない。既存認証mutationもsetup依存をcopyし、製品commandや外部runtimeを追加しない。Go/race/Linux Actionsを実行入口とし、正式root384 assertion・18 record closure・全53操作/SDK/UI・実cohort導入・最低1GB minimum-liveのopen itemは本検証でclosedにしない。
 
+<a id="phase-19-api-fixture-isolation-evidence"></a>
+**正式回帰のAPI認証fixture：** [components/api/api_test.go](../../components/api/api_test.go) の `newAPIState` は、固定のtest password/時刻を使う既存credentialの初期bytesだけをsync.Onceで1回生成し、各test専用temporaryの0600 fileへ複製する。可変credential object、state directory、login/session/rate stateは共有しない。実InitCredentialsのCLI検証と全login/KDF検証は従来の製品処理へ接続し、algorithm/iteration/製品timeout/test timeoutを緩和しない。`TestAPIStateFixtureIsolation` は並行作成・mode・初期fieldと、別stateを書き換えても新旧の他fixtureが変わらないことを照合する。暗号検証や実初期化の代替oracleではなく、無関係な各endpoint検証前の同一fixture再生成だけを省く。正式入口は通常Go/race/開発Actions。secret実値や実credentialをcacheへ投入しない。
+
 <a id="phase-19-plan-runtime-evidence"></a>
 **計画エンジンの実行検証：** [runner計画Go境界](runner.md#phase-19-plan-go-boundary) と [statefile未展開job値の境界](statefile.md#phase-19-deferred-task-shape) を参照する。[components/runner/runner_test.go](../../components/runner/runner_test.go) の `TestCICDPlan` / `Inputs` / `Matrix` / `DAG` / `Glob` / `TemplateAndSubstitution` / `Selection` / `Prerequisites` / `Deploy` / `Source` / `Wire` / `DeferredSchema` / `TaskSyntax` は製品Prepare/Resolveを呼び、独立した完全JSON期待値と標準SHA256でPlan全bytes/digestを比較する。型と未指定/null/default、UTF-8 byte長、template revision/prefix/scope、置換後の型・再走査0、axis/tuple順・除外/再追加・256/257境界、循環/自己/重複/生成ID衝突、Kahn同順位、Unicode globとDP上限、ref/path/input AND・依存への非選択伝播を確認する。
 

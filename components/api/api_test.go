@@ -4233,12 +4233,65 @@ func TestAPIDiagnosticsContract(t *testing.T) {
 	}
 }
 
+var apiCredentialFixture struct {
+	once sync.Once
+	data []byte
+	err  error
+}
+
+func TestAPIStateFixtureIsolation(t *testing.T) {
+	states := make([]string, 4)
+	var group sync.WaitGroup
+	for i := range states {
+		i := i
+		group.Add(1)
+		go func() { defer group.Done(); states[i] = newAPIState(t) }()
+	}
+	group.Wait()
+	var expected []byte
+	for _, state := range states {
+		path := filepath.Join(state, ".admin_credentials")
+		data, err := os.ReadFile(path)
+		info, statErr := os.Stat(path)
+		var credential apiCredentials
+		if err != nil || statErr != nil || info.Mode().Perm() != 0600 || json.Unmarshal(data, &credential) != nil {
+			t.Fatal("api.fixture.credentials.read")
+		}
+		if credential.Algorithm != security.CredentialAlgorithmPBKDF2HMACSHA256V1 || credential.Iterations != security.CredentialIterations || !credential.MustChange || credential.LoginCount != 0 || credential.LastLoginAt != nil || credential.UpdatedAt != "2026-09-17T01:00:00Z" {
+			t.Fatal("api.fixture.credentials.initial")
+		}
+		if expected != nil && !bytes.Equal(expected, data) {
+			t.Fatal("api.fixture.credentials.same-input")
+		}
+		expected = data
+	}
+	if err := os.WriteFile(filepath.Join(states[0], ".admin_credentials"), []byte("changed"), 0600); err != nil {
+		t.Fatal("api.fixture.credentials.change")
+	}
+	states = append(states, newAPIState(t))
+	for _, state := range states[1:] {
+		data, err := os.ReadFile(filepath.Join(state, ".admin_credentials"))
+		if err != nil || !bytes.Equal(expected, data) {
+			t.Fatal("api.fixture.credentials.isolation")
+		}
+	}
+}
+
 func newAPIState(t *testing.T) string {
 	t.Helper()
 	state := t.TempDir()
-	now := time.Date(2026, 9, 17, 1, 0, 0, 0, time.UTC)
-	if err := InitCredentials(state, "password123", now); err != nil {
-		t.Fatal(err)
+	apiCredentialFixture.once.Do(func() {
+		now := time.Date(2026, 9, 17, 1, 0, 0, 0, time.UTC)
+		apiCredentialFixture.err = InitCredentials(state, "password123", now)
+		if apiCredentialFixture.err == nil {
+			apiCredentialFixture.data, apiCredentialFixture.err = os.ReadFile(filepath.Join(state, ".admin_credentials"))
+		}
+	})
+	if apiCredentialFixture.err != nil {
+		t.Fatal("api.fixture.credentials.prepare")
+	}
+	if err := os.WriteFile(filepath.Join(state, ".admin_credentials"), apiCredentialFixture.data, 0600); err != nil {
+		t.Fatal("api.fixture.credentials.copy")
 	}
 	return state
 }
