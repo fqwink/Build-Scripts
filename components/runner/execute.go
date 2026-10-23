@@ -182,6 +182,50 @@ func (snapshot *CICDSourceSnapshot) ReadFile(path string) ([]byte, error) {
 	return append([]byte{}, data...), nil
 }
 
+func StartCICDRun(store CICDRunAdmissionStore, request statefile.CICDRunRequest, values json.RawMessage, acquire func(statefile.CICDPlanSnapshot) (*CICDSourceSnapshot, error)) (statefile.CICDRunReply, error) {
+	if store == nil || acquire == nil {
+		return statefile.CICDRunReply{}, ErrCICDSchema
+	}
+	snapshot, replay, err := store.CheckRunStart(request)
+	if err != nil || replay.Replayed {
+		return replay, err
+	}
+	project, err := cicdPlanObject("Project", snapshot.Project)
+	if err != nil {
+		return statefile.CICDRunReply{}, err
+	}
+	revision, _ := project["revision"].(json.Number).Int64()
+	reject := func(cause error) (statefile.CICDRunReply, error) {
+		return store.StartRun(request, revision, func(statefile.CICDPlanSnapshot) (json.RawMessage, error) { return nil, cause })
+	}
+	values = bytes.Clone(values)
+	draft, err := PrepareCICDPlan(snapshot.Project, snapshot.Definition, values, snapshot.Templates)
+	if err != nil {
+		return reject(err)
+	}
+	source, err := acquire(snapshot)
+	if err != nil {
+		return reject(err)
+	}
+	metadata := source.Metadata()
+	resolve := func(current statefile.CICDPlanSnapshot) (json.RawMessage, error) {
+		latest, err := PrepareCICDPlan(current.Project, current.Definition, values, current.Templates)
+		if err != nil {
+			return nil, err
+		}
+		return latest.Resolve(metadata, nil, CICDPlanContext{Workers: current.Workers, Secrets: current.Secrets, Artifacts: current.Artifacts, Environments: current.Environments})
+	}
+	plan, err := draft.Resolve(metadata, nil, CICDPlanContext{Workers: snapshot.Workers, Secrets: snapshot.Secrets, Artifacts: snapshot.Artifacts, Environments: snapshot.Environments})
+	if err != nil {
+		return reject(err)
+	}
+	parsed, err := cicdPlanObject("Plan", plan)
+	if err != nil || parsed["digest"] != request.PlanDigest {
+		return reject(statefile.ErrCICDStale)
+	}
+	return store.StartRun(request, revision, resolve)
+}
+
 func PrepareCICDPlan(project, definition, values json.RawMessage, templates []json.RawMessage) (*CICDPlanDraft, error) {
 	size := int64(len(project)) + int64(len(definition)) + int64(len(values))
 	for _, raw := range templates {

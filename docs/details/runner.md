@@ -42,6 +42,11 @@ Resolveは有効Projectとsource owner/repo一致、path順/容量/tree_digest�
 
 Go境界へのproject/definition/values/templatesの合計、およびResolveのcontext投影の合計は、それぞれRoot上限と同じ32 MiB以下とし、超過はP19_BODY。watch/scheduleのIDは各配列内で一意とする。自動triggerとrequired inputの保存条件は [自動triggerの入力](#phase-19-trigger-admission) を参照する。
 
+<a id="phase-19-run-admission-go-boundary"></a>
+**手動Run受付のGo接続：** `StartCICDRun(store,request,values,acquire)` は [statefile詳細本文責務 Run専用adapter](statefile.md#phase-19-run-store-boundary) へ接続する。storeはCheckRunStart/StartRunの専用interfaceだけを受け、任意Root書込を受けない。acquireはrunnerの検証済みCICDSourceSnapshotを返すsource adapterとし、HTTP入力からcallbackを生成しない。固定refの解決・取得を行う実adapterの登録は、取得正本へ適合してから行う。nil callback/store、壊れたsnapshot/valuesはP19_SCHEMA、取得時の固定errorはcallerへ伝播する。source callbackはCheckRunStartが新規を返し、型付き入力のPrepareが成功した後だけ1回呼ぶ。再送ではPlan再計算・acquire・entropy・予約を行わず現在Operationを返す。
+
+新規ではvaluesを独立copyにし、読取snapshotのProject revisionを保持する。Root guard外でPrepare→acquire→Resolveを行い、要求PlanDigestと一致しない場合はP19_STALEとし、計画の差替えを禁止する。Prepare/取得/Resolve/一致検査の失敗もStartRunへ固定errorを返す純粋callbackとして戻し、最新認可・再送照合と拒否監査を省略しない。取得中に同keyが別要求で受付済みになった場合はその最新Operationだけを返す。受付lock下の成功経路の再計算は同一の検証済みSource metadataとvaluesを最新CICDPlanSnapshotのProject/Definition/Templates/contextへ渡すPrepare/Resolveだけとする。source再取得、clock取得、外部call、Root再入をしない。latest secret版/worker能力/artifact/enabled等の変化は既存Plan意味検査で拒否し、再計算digest変更は保存層の一致検査へ伝播する。保存・初期JobResult・pin/通知/監査・quotaと拒否の原子性はstatefile正本に従う。本接続だけでHTTP/SDK/UI、scheduler、executorが登録済みと扱わない。検証入口は [docs/DETAIL_INDEX.md 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
+
 <a id="phase-19-source-go-boundary"></a>
 **固定sourceの取得境界：** `FetchCICDSource(ctx context.Context,request CICDSourceRequest,token string) (*CICDSourceSnapshot,error)` は解決済みcommit SHAだけを入力とし、requestのOwner/Repo/RefKind/Ref/SHAをSourceの対応fieldへ保存する。owner/repoは [docs/details/statefile.md 詳細本文責務 repository識別子](statefile.md#repo-config-schema)、残りは [同責務 Source registry](statefile.md#phase-19-schema-registry) に適合させ、tokenは既存PAT読取後の非空・4096 bytes以下・ASCII可視文字だけを受ける。nil context、不正入力はP19_SCHEMAでHTTP前に拒否する。ref先端の解決、token fileの読取、実行用source admission、Root更新はこの境界に含めない。
 
@@ -88,7 +93,7 @@ executorへ位置引数として渡すgo-test/go-vetのpackages、go-buildのpac
 
 coordinatorは250ms tick、同一state-dirで1processだけ（起動lock保持）、shutdownは新受付・割当を止め実行jobをcancelし最大30秒で終了する。watchはintervalごとに固定refを解決し、TriggerCursor.last_shaと違う時だけeventを作る。scheduleのdueはanchor+k*every_seconds（k>=0）。停止中dueはcatch_up=skipで破棄、latestで最後のdue1件だけ生成する。future anchorは待機。予定時刻はUTC、backward clockではlast_due以前を再生成しない。
 
-event_keyはcanonical `{project_id,definition_id,definition_revision,kind,trigger_id,source_sha,due}` のSHA256。manual/retry/resumeではtrigger_idに要求ID、due=null。watchはdue=null。last_sha / last_due更新と受付を同じtransactionでcommitする。取得失敗はcursorを進めず、1/2/4/8/16/30秒のbackoffで次回へ回す。watchの新SHA受付時、同一project/definition/revision/refの未割当queued runだけをcancelledに集約する。既にassigned以上のrunは残す。queueがproject上限ならP19_QUOTAでcursor不変。
+event_keyはcanonical `{project_id,definition_id,definition_revision,kind,trigger_id,source_sha,due}` のSHA256。manual/retry/resumeではtrigger_idに当該Idempotency-KeyのOperation.idを用い、server request_idと混同しない。due=null。watchはdue=null。last_sha / last_due更新と受付を同じtransactionでcommitする。取得失敗はcursorを進めず、1/2/4/8/16/30秒のbackoffで次回へ回す。watchの新SHA受付時、同一project/definition/revision/refの未割当queued runだけをcancelledに集約する。既にassigned以上のrunは残す。queueがproject上限ならP19_QUOTAでcursor不変。
 
 queue順はcreated_at,run.id,attempt。ready jobは上記topological順。project同時実行数はQuota.parallel、global64、active run16。workerはcapability / project /toolchain digestと [メモリ受付](#phase-19-memory-admission) を満たし、worker.id昇順にround-robin（最後の割当IDの次、末尾で先頭）する。deployはenvironment排他でcoordinatorが処理する。
 
@@ -203,6 +208,7 @@ mask確定byteをUTF-8へ逐次decodeする。末尾の未完了scalarだけ最�
 
 各streamはmask/UTF-8変換後の最新1048576 bytes以下を保持する。超過時は必要な最小prefixを完全scalar境界まで落とし、絶対byte offsetを進める。run attempt内の同jobのtry間でoffsetを連続させ、末尾切捨てや文字数による容量判定をしない。200msまたは前回保存から確定byte65536以上でsnapshotをatomic保存し、pending/carryを含めない。childのstage/try終了時はmask/carryだけをEOF確定してoffsetへ追加し、後続stageまたは許可retryがある間はterminal=falseを維持する。全stage/try終了・停止後のdrain・最終flushが成功し、追加出力を受け付けない状態でだけterminal=trueを保存し、その後JobResultを終端commitする。必須保存失敗はP19_STORAGEでjob停止、workerをdrainし、保存済みterminalや既存byteを推測更新しない。欠落はLog.gapとJobResult.log_gapへORで保持しtrueからfalseへ戻さない。保存invariantは [docs/details/statefile.md 詳細本文責務 log整合](statefile.md#phase-19-log-invariants)、取得は [docs/details/api.md 詳細本文責務 log page](api.md#phase-19-log-page-contract) を参照する。
 
+<a id="phase-19-notification-metrics"></a>
 Notificationはqueue/start/terminal/approval待ち/配備停止の各遷移と同じtransactionで1件生成する。既存通知設定の検証済みHTTP/SMTP adapterだけを利用し、bodyは `{event_id,project_id,target_id,event,at,code}`（secret/logなし）。HTTPはContent-Type application/json、timeout10秒、2xx成功、redirect禁止。SMTPは既存TLS境界。通知retryは1秒/4秒後、最大3回、再送event_id不変。失敗はnotification.failedでありrun結果を反転しない。
 
 metricsは直近24時間の終端run（attempt単位）からsuccess/failed/cancelled/recovery_required/skipped_jobs/retried_jobsを別count。success_rateはsuccess/(success+failed)、母数0はnull、表示用basis_points整数0〜10000。待機/実行時間は非負ms、平均は整数切捨て、p95は昇順ceil(0.95*n)-1、母数0はnull。queue/worker health/環境blockedは現在snapshotから計算する。秘密・任意label・利用者IPをdimensionにしない。

@@ -60,6 +60,15 @@ truncated/必須key/null、unsafe/重複/親欠落/file祖先path、symlink/subm
 
 既存 `TestCICDPlanMutations` の隔離compileを再利用し、sourceのtruncated/file数/合計容量/親directory/SHA1/blob size/base64 pad bits/応答容量/metadata copy/file copy/接続再利用の11制御を追加する。既存計画14件と計25件を個別にcompileし、compile成功後の所定assertion失敗だけをkillとする。base64負例のblob SHA1は正規形の正例と共通とし、別のhash拒否でpad-bit検査の欠落を隠さない。HTTP transportのproxy/再利用/HTTP2/圧縮/期限を検査し、実loopback serverが2回目の応答前にconnectionを閉じても要求2回だけで再送しないことを確認する。新たなprocess callは追加せず、固定mutation test選択の変更を [Go process review入力](#development-actions-go-process-review-input) へ反映する。ref先端解決/実行用source admission/受付transaction/worker転送、正式384 assertion/18 record closure/最低1GB実働はこの検証でclosedにしない。
 
+<a id="phase-19-run-admission-runtime-evidence"></a>
+**手動Run受付の実行検証：** [docs/details/statefile.md 詳細本文責務 Run adapter](statefile.md#phase-19-run-store-boundary) と [docs/details/runner.md 詳細本文責務 受付接続](runner.md#phase-19-run-admission-go-boundary) に対し、[components/statefile/statefile_test.go](../../components/statefile/statefile_test.go) の `TestCICDRunAdmission/Rejection/Pins/ReadScope/Concurrency/Capacity/Faults` は専用のLinux amd64 snapshotで実行する。独立した完全JobResult期待値、標準SHA256によるevent/通知ID、固定clock/entropyで保存済みPlan全bytes・target attempt・Run/Operation/通知/監査/pinの同時commitを確認する。read-only projectionのscope、copy、manual=falseのpreviewと開始拒否、再送のrevision/計画/entropy前優先、権限/identity失効時結果0を照合する。
+
+拒否系はproject revision、preview digest、Plan hash/schema/scope、再計算error、manual、queue、entropy、認証/認可、要求key形式を変える。Run/Operation/通知/artifact不変と、許可後の拒否だけserver request_idの監査1行を比較する。artifactの選択/非選択、同digest複数jobのpin1件、不在/deletingの拒否、未終端Run16件一致/17件目拒否も確認する。8同時同keyは新規1件・再計算1回・保存1世代、BUSYを成功再送へ算入しない。snapshot/headのcreate/write/sync/publish障害とHead directory fsync不確定を注入し、再open後に全業務差分が旧世代またはcommit済み新世代の一方へ揃うことを確認する。assertion IDは `statefile.phase19-run.*`。
+
+[components/runner/runner_test.go](../../components/runner/runner_test.go) の `TestCICDRunStart` はsource取得前のPrepare、取得1回、値copy、現在Worker/Definitionでの再計算、stale拒否、取得/入力失敗の保存層への拒否接続、再送/認可失敗時の取得/受付0を独立fakeで比較する。`TestCICDRunRealStore` はLinux amd64で実OpenCICDRunStoreと製品Prepare/Resolveを接続し、durable受付→再open→同Operation再送→認証失効拒否を行う。assertion IDは `runner.phase19-run.*`。実GitHub、worker起動、HTTP/SDK/UI登録、正式384 assertion、18 record closure、最低1GB実働の証明には流用しない。Macのfilesystem skipは正式成功へ置換せずLinux Actions結果へ接続する。
+
+既存native Go変異harnessに、statefileのproject revision/PlanDigest/現在identity/queue/global limit/pin/entropyの7制御（既存26件と計33件）、runnerのvalues copy/replayの2制御（既存25件と計27件）を追加する。compile成功後の固定assertion失敗だけをkillとし、実process callを増やさない。実行入口は通常Go/race/既存開発Actions、process入力指紋は [Go process review固定入力](#development-actions-go-process-review-input) を参照する。
+
 <a id="phase-19-memory-evidence"></a>
 **最低実働メモリの単体検証と実測証跡：** [components/runner/runner_test.go](../../components/runner/runner_test.go) の `TestCICDResources` / `TestCICDMemoryAdmission` / `TestCICDHostMemoryParser` / `TestCICDMemorySpecification` は [docs/details/statefile.md 詳細本文責務 Resources](statefile.md#phase-19-schema-registry)、[docs/details/setup.md 詳細本文責務 host観測](setup.md#phase-19-memory-profile)、[docs/details/runner.md 詳細本文責務 メモリ受付](runner.md#phase-19-memory-admission) を独立期待値で検査する。入力には実測896/960/1024 MiB、Available319/320、単独budget384/385、slot境界1535/1536、既存claim合計1536/1537、4slot満杯、不正claim/overflow/順序優先、meminfoのKiB丸め前超過・単位・重複・I/O失敗・65536/65537 bytesを含む。小メモリの2job目はP19_BUSY、単独で成立しない旧既定jobはP19_CAPABILITY、入力値/claim配列不変、エラーの秘密文字列漏えい0とする。schema/default/複合制約をmemory copyで変更する5negative controlを拒否する。assertion IDは `runner.phase19-memory.<case>.value/parse/admit/reject`。これらはbudget計算/読取/資源境界の検証であり、未実装のcoordinator/broker接続・OOM回収や1GB実働成功を証明しない。
 
@@ -3552,8 +3561,8 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
     },
     {
       "path": "components/runner/runner_test.go",
-      "source_sha256": "69b74d2ea49da4275e4f3affe742d115b3e7d427f5d42a22d6a54a32ae4a3362",
-      "calls_sha256": "2308d236dc399c5f874b3246cd1088ccdb1fa71bab4fb2c58f6b3e4463236369",
+      "source_sha256": "dc1e34e20728c4be349747e0b248e9eca20dfbc152cf3f5dcfb7486f4b3ac86d",
+      "calls_sha256": "3cba22f144ddbd1c1e66edd375e1e66debcdf18dd37e7f37d4772e4301d17685",
       "call_count": 3,
       "review_basis": "native-fixture-only"
     },

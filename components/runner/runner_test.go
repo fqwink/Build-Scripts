@@ -28,8 +28,174 @@ import (
 	"testing/iotest"
 	"time"
 
+	"github.com/fqwink/build-scripts/components/security"
 	"github.com/fqwink/build-scripts/components/statefile"
 )
+
+type cicdRunTestStore struct {
+	snapshot statefile.CICDPlanSnapshot
+	check    func() (statefile.CICDRunReply, error)
+	commit   func(statefile.CICDRunRequest, int64, func(statefile.CICDPlanSnapshot) (json.RawMessage, error)) (statefile.CICDRunReply, error)
+}
+
+func (s *cicdRunTestStore) CheckRunStart(statefile.CICDRunRequest) (statefile.CICDPlanSnapshot, statefile.CICDRunReply, error) {
+	if s.check != nil {
+		reply, err := s.check()
+		return s.snapshot, reply, err
+	}
+	return s.snapshot, statefile.CICDRunReply{}, nil
+}
+
+func (s *cicdRunTestStore) StartRun(request statefile.CICDRunRequest, revision int64, resolve func(statefile.CICDPlanSnapshot) (json.RawMessage, error)) (statefile.CICDRunReply, error) {
+	return s.commit(request, revision, resolve)
+}
+
+func TestCICDRunStart(t *testing.T) {
+	for _, name := range []string{"accepted", "replay", "denied", "source-error", "nil-source", "invalid-values", "stale-preview", "latest-worker", "latest-template", "values-copy"} {
+		t.Run(name, func(t *testing.T) {
+			p, d, source, context := cicdPlanTestFixture(t)
+			snapshot := statefile.CICDPlanSnapshot{Generation: 1, Project: cicdPlanTestRaw(t, p), Definition: cicdPlanTestRaw(t, d), Workers: context.Workers}
+			draft := cicdPlanTestDraft(t, p, d, `{}`)
+			plan, err := draft.Resolve(cicdPlanTestRaw(t, source), nil, context)
+			if err != nil {
+				t.Fatal("runner.phase19-run.fixture.plan")
+			}
+			object := cicdPlanTestObject(t, string(plan))
+			request := statefile.CICDRunRequest{ProjectID: "p", DefinitionID: "d", DefinitionRevision: 1, PlanDigest: object["digest"].(string)}
+			store := &cicdRunTestStore{snapshot: snapshot}
+			fetches, commits, resolutions := 0, 0, 0
+			values := json.RawMessage(`{}`)
+			var wantError error
+			switch name {
+			case "replay":
+				store.check = func() (statefile.CICDRunReply, error) {
+					return statefile.CICDRunReply{Replayed: true, Operation: json.RawMessage(`{"state":"accepted"}`)}, nil
+				}
+			case "denied":
+				wantError = security.ErrCICDForbidden
+				store.check = func() (statefile.CICDRunReply, error) { return statefile.CICDRunReply{}, wantError }
+			case "source-error":
+				wantError = ErrCICDSource
+			case "nil-source", "invalid-values":
+				wantError = ErrCICDSchema
+				if name == "invalid-values" {
+					values = json.RawMessage(`{"unknown":true}`)
+				}
+			case "stale-preview":
+				request.PlanDigest, wantError = strings.Repeat("f", 64), statefile.ErrCICDStale
+			case "latest-worker":
+				wantError = ErrCICDCapability
+			case "latest-template":
+				wantError = ErrCICDSchema
+			}
+			store.commit = func(actual statefile.CICDRunRequest, revision int64, resolve func(statefile.CICDPlanSnapshot) (json.RawMessage, error)) (statefile.CICDRunReply, error) {
+				commits++
+				if actual.PlanDigest != request.PlanDigest || revision != 1 {
+					t.Fatal("runner.phase19-run.commit.request")
+				}
+				current := snapshot
+				if name == "latest-worker" {
+					worker := cicdPlanTestObject(t, string(context.Workers[0]))
+					worker["enabled"] = false
+					current.Workers = []json.RawMessage{cicdPlanTestRaw(t, worker)}
+				} else if name == "latest-template" {
+					current.Definition = json.RawMessage(`{}`)
+				}
+				resolutions++
+				got, err := resolve(current)
+				if err != nil {
+					return statefile.CICDRunReply{}, err
+				}
+				if !bytes.Equal(got, plan) {
+					t.Fatal("runner.phase19-run.commit.frozen-plan")
+				}
+				return statefile.CICDRunReply{Generation: 2, Operation: json.RawMessage(`{"state":"accepted"}`)}, nil
+			}
+			got, err := StartCICDRun(store, request, values, func(actual statefile.CICDPlanSnapshot) (*CICDSourceSnapshot, error) {
+				fetches++
+				if commits != 0 || !bytes.Equal(actual.Project, snapshot.Project) {
+					t.Fatal("runner.phase19-run.source.order")
+				}
+				if name == "source-error" {
+					return nil, wantError
+				}
+				if name == "nil-source" {
+					return nil, nil
+				}
+				if name == "values-copy" {
+					values[0] = '!'
+				}
+				return &CICDSourceSnapshot{metadata: cicdPlanTestRaw(t, source), files: map[string][]byte{}}, nil
+			})
+			if err != wantError || name == "replay" && !got.Replayed || wantError != nil && got.Operation != nil {
+				t.Fatal("runner.phase19-run.start.result", err)
+			}
+			if name == "replay" || name == "denied" {
+				if fetches != 0 || commits != 0 || resolutions != 0 {
+					t.Fatal("runner.phase19-run.replay.no-effects")
+				}
+			} else if commits != 1 || resolutions != 1 || name == "invalid-values" && fetches != 0 || name != "invalid-values" && fetches != 1 {
+				t.Fatal("runner.phase19-run.start.call-count")
+			}
+		})
+	}
+}
+
+func TestCICDRunRealStore(t *testing.T) {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		t.Skip("P19_CAPABILITY: run admission filesystem requires Linux amd64")
+	}
+	p, d, source, context := cicdPlanTestFixture(t)
+	root := cicdPlanTestObject(t, `{"schema_version":1,"generation":1,"projects":[],"definitions":[],"templates":[],"environments":[],"users":[{"id":"admin","name":"Administrator","revision":1,"enabled":true,"credential":null,"totp":null,"created_at":"2026-10-22T00:00:00Z"}],"services":[],"secrets":[],"grants":[{"subject_kind":"user","subject_id":"admin","project_id":null,"environment_id":null,"role":"platform-admin","enabled":true,"expires_at":null},{"subject_kind":"user","subject_id":"admin","project_id":"p","environment_id":null,"role":"operator","enabled":true,"expires_at":null}],"workers":[],"runs":[],"deployments":[],"artifacts":[],"caches":[],"operations":[],"audits":[],"targets":[],"environment_states":[],"notifications":[],"trigger_cursors":[],"status_deliveries":[]}`)
+	root["projects"], root["definitions"], root["workers"] = []any{p}, []any{d}, []any{cicdPlanTestObject(t, string(context.Workers[0]))}
+	state := t.TempDir()
+	if os.Chmod(state, 0700) != nil || os.MkdirAll(filepath.Join(state, "cicd", "snapshots"), 0700) != nil {
+		t.Fatal("runner.phase19-run.real.directory")
+	}
+	rootBytes := cicdPlanTestRaw(t, root)
+	head := cicdPlanTestRaw(t, map[string]any{"schema_version": 1, "generation": 1, "sha256": fmt.Sprintf("%x", sha256.Sum256(rootBytes))})
+	for name, data := range map[string][]byte{"snapshots/g-1.json": rootBytes, "head.json": head, "state.lock": {}} {
+		if os.WriteFile(filepath.Join(state, "cicd", name), data, 0600) != nil {
+			t.Fatal("runner.phase19-run.real.fixture")
+		}
+	}
+	store, err := statefile.OpenCICDRunStore(state)
+	if err != nil {
+		t.Fatal("runner.phase19-run.real.open", err)
+	}
+	plan, err := cicdPlanTestDraft(t, p, d, `{}`).Resolve(cicdPlanTestRaw(t, source), nil, context)
+	if err != nil {
+		t.Fatal("runner.phase19-run.real.preview")
+	}
+	request := statefile.CICDRunRequest{Principal: security.CICDPrincipal{Kind: "user", ID: "admin", ExpiresAt: time.Now().Add(time.Hour), MustChange: "none"}, ProjectID: "p", DefinitionID: "d", DefinitionRevision: 1, OperationID: "o-" + strings.Repeat("a", 32), RequestID: "o-" + strings.Repeat("b", 32), RequestDigest: strings.Repeat("c", 64), PlanDigest: cicdPlanTestObject(t, string(plan))["digest"].(string), Check: func(current statefile.CICDIdentity) error {
+		if current.ID != "admin" || current.Revision != 1 {
+			return security.ErrCICDAuth
+		}
+		return nil
+	}}
+	fetches := 0
+	acquire := func(statefile.CICDPlanSnapshot) (*CICDSourceSnapshot, error) {
+		fetches++
+		return &CICDSourceSnapshot{metadata: cicdPlanTestRaw(t, source), files: map[string][]byte{}}, nil
+	}
+	first, err := StartCICDRun(store, request, json.RawMessage(`{}`), acquire)
+	if err != nil || first.Replayed || first.Generation != 2 || fetches != 1 {
+		t.Fatal("runner.phase19-run.real.accept", err)
+	}
+	reopened, err := statefile.OpenCICDRunStore(state)
+	if err != nil {
+		t.Fatal("runner.phase19-run.real.reopen", err)
+	}
+	replay, err := StartCICDRun(reopened, request, json.RawMessage(`{}`), acquire)
+	if err != nil || !replay.Replayed || !bytes.Equal(first.Operation, replay.Operation) || replay.Generation != 2 || fetches != 1 {
+		t.Fatal("runner.phase19-run.real.replay", err)
+	}
+	request.Check = func(statefile.CICDIdentity) error { return security.ErrCICDAuth }
+	denied, err := StartCICDRun(reopened, request, json.RawMessage(`{}`), acquire)
+	if err != security.ErrCICDAuth || denied.Operation != nil || fetches != 1 {
+		t.Fatal("runner.phase19-run.real.revoked", err)
+	}
+}
 
 type cicdSourceTestTransport func(*http.Request) (*http.Response, error)
 
@@ -1183,6 +1349,8 @@ func TestCICDPlanMutations(t *testing.T) {
 		{"source-metadata-copy", "runner/execute.go", "return append(json.RawMessage(nil), snapshot.metadata...)", "return snapshot.metadata", "runner.phase19-source.metadata.alias"},
 		{"source-file-copy", "runner/execute.go", "return append([]byte{}, data...), nil", "return data, nil", "runner.phase19-source.file.alias"},
 		{"source-no-reuse", "runner/execute.go", "DisableKeepAlives: true", "DisableKeepAlives: false", "runner.phase19-source.http.transport-profile"},
+		{"run-values-copy", "runner/execute.go", "values = bytes.Clone(values)", "values = values[:]", "runner.phase19-run.start.result"},
+		{"run-replay", "runner/execute.go", "if err != nil || replay.Replayed {", "if err != nil {", "runner.phase19-run.start.result"},
 	} {
 		t.Run(mutation.id, func(t *testing.T) {
 			root := t.TempDir()
@@ -1220,7 +1388,7 @@ func TestCICDPlanMutations(t *testing.T) {
 			if _, err := compile.CombinedOutput(); err != nil {
 				t.Fatal("runner.phase19-plan-unit.mutation.compile-invalid")
 			}
-			command := exec.Command(filepath.Join(root, "mutation.test"), "-test.run=^TestCICD(Plan(Inputs|Matrix|DAG|Selection|Prerequisites|Source|Deploy|TemplateAndSubstitution|TaskSyntax)|Source(Input|Tree|Blob|HTTP)?)$")
+			command := exec.Command(filepath.Join(root, "mutation.test"), "-test.run=^TestCICD(RunStart|Plan(Inputs|Matrix|DAG|Selection|Prerequisites|Source|Deploy|TemplateAndSubstitution|TaskSyntax)|Source(Input|Tree|Blob|HTTP)?)$")
 			command.Dir = root
 			output, err := command.CombinedOutput()
 			if err == nil || !bytes.Contains(output, []byte(mutation.reason)) {

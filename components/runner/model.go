@@ -3,6 +3,8 @@ package runner
 import (
 	"encoding/json"
 	"errors"
+
+	"github.com/fqwink/build-scripts/components/statefile"
 )
 
 var (
@@ -24,6 +26,11 @@ var (
 
 type CICDSourceRequest struct {
 	Owner, Repo, RefKind, Ref, SHA string
+}
+
+type CICDRunAdmissionStore interface {
+	CheckRunStart(statefile.CICDRunRequest) (statefile.CICDPlanSnapshot, statefile.CICDRunReply, error)
+	StartRun(statefile.CICDRunRequest, int64, func(statefile.CICDPlanSnapshot) (json.RawMessage, error)) (statefile.CICDRunReply, error)
 }
 
 type CICDSourceSnapshot struct {

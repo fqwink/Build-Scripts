@@ -443,6 +443,14 @@ func cicdTerminal(state any) bool {
 	return state == "succeeded" || state == "failed" || state == "cancelled" || state == "skipped" || state == "rolled_back"
 }
 
+func validCICDPlanRead(request CICDRunRequest) bool {
+	return ValidateCICDValue("Id", cicdValueBytes(request.ProjectID)) == nil && ValidateCICDValue("Id", cicdValueBytes(request.DefinitionID)) == nil && request.DefinitionRevision >= 1 && request.DefinitionRevision <= 2147483647 && request.Check != nil
+}
+
+func validCICDRunRequest(request CICDRunRequest) bool {
+	return validCICDPlanRead(request) && validCICDEntityID(request.OperationID, "o-") && validCICDEntityID(request.RequestID, "o-") && request.OperationID != request.RequestID && cicdLowerHex(request.RequestDigest, 64) && cicdLowerHex(request.PlanDigest, 64)
+}
+
 func validateCICDRoot(root map[string]any) bool {
 	if !validateCICDType("Root", root, "", 0) {
 		return false

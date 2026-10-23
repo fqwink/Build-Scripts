@@ -3,6 +3,7 @@ package statefile
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"sync"
 	"time"
 
@@ -12,6 +13,32 @@ import (
 var ErrCICDSchema = errors.New("P19_SCHEMA")
 
 type CICDIdentityStore struct{ store *cicdSnapshotStore }
+
+type CICDRunStore struct {
+	store   *cicdSnapshotStore
+	entropy io.Reader
+}
+
+type CICDRunRequest struct {
+	Principal                                         security.CICDPrincipal
+	ProjectID, DefinitionID                           string
+	DefinitionRevision                                int64
+	OperationID, RequestID, RequestDigest, PlanDigest string
+	Check                                             func(CICDIdentity) error
+}
+
+type CICDPlanSnapshot struct {
+	Generation                  int64
+	Project, Definition         json.RawMessage
+	Templates, Workers, Secrets []json.RawMessage
+	Artifacts, Environments     []json.RawMessage
+}
+
+type CICDRunReply struct {
+	Operation  json.RawMessage
+	Generation int64
+	Replayed   bool
+}
 
 type CICDIdentity struct {
 	Kind, ID    string
@@ -47,6 +74,7 @@ type cicdOperationRequest struct {
 	principal             security.CICDPrincipal
 	access                security.CICDAccess
 	check                 func() error
+	checkCurrent          func(CICDIdentity) error
 }
 
 type cicdOperationMutation struct {

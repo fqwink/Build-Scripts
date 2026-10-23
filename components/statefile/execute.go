@@ -2,6 +2,7 @@ package statefile
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/json"
@@ -208,6 +209,246 @@ func (s *CICDIdentityStore) Authorize(principal security.CICDPrincipal, access s
 		return security.CICDAuthorization{}, err
 	}
 	return authorizeCICDRoot(root, principal, access, now)
+}
+
+func OpenCICDRunStore(path string) (*CICDRunStore, error) {
+	store, err := newCICDSnapshotStore(path)
+	if err != nil {
+		return nil, err
+	}
+	if _, _, err := store.read(); err != nil {
+		return nil, err
+	}
+	return &CICDRunStore{store: store}, nil
+}
+
+func (s *CICDRunStore) ReadPlan(principal security.CICDPrincipal, project, definition string, revision int64, check func(CICDIdentity) error) (CICDPlanSnapshot, error) {
+	snapshot, _, err := s.readPlan(CICDRunRequest{Principal: principal, ProjectID: project, DefinitionID: definition, DefinitionRevision: revision, Check: check}, false)
+	return snapshot, err
+}
+
+func (s *CICDRunStore) CheckRunStart(request CICDRunRequest) (CICDPlanSnapshot, CICDRunReply, error) {
+	return s.readPlan(request, true)
+}
+
+func (s *CICDRunStore) readPlan(request CICDRunRequest, start bool) (CICDPlanSnapshot, CICDRunReply, error) {
+	var snapshot CICDPlanSnapshot
+	var reply CICDRunReply
+	if s == nil || s.store == nil {
+		return snapshot, reply, ErrCICDCorrupt
+	}
+	if !validCICDPlanRead(request) || start && !validCICDRunRequest(request) {
+		return snapshot, reply, ErrCICDSchema
+	}
+	dir, snapshots, unlock, err := s.store.lock(false)
+	if err != nil {
+		return snapshot, reply, err
+	}
+	defer unlock()
+	root, head, err := s.store.readFrom(dir, snapshots)
+	if err != nil {
+		return snapshot, reply, err
+	}
+	identity, err := cicdIdentity(root, request.Principal.Kind, request.Principal.ID)
+	if err != nil || request.Check == nil || request.Check(identity) != nil {
+		return snapshot, reply, security.ErrCICDAuth
+	}
+	now, err := s.store.operationNow()
+	if err != nil {
+		return snapshot, reply, err
+	}
+	operation := "plan"
+	if start {
+		operation = "runStart"
+	}
+	if _, err = authorizeCICDRoot(root, request.Principal, security.CICDAccess{Operation: operation, ProjectID: request.ProjectID}, now); err != nil {
+		return snapshot, reply, err
+	}
+	if start {
+		if existing := findCICDOperation(root, request.OperationID); existing != nil {
+			if existing["subject"] != request.Principal.ID || existing["kind"] != "runStart" || existing["request_digest"] != request.RequestDigest || existing["project_id"] != request.ProjectID {
+				return snapshot, reply, ErrCICDIdempotency
+			}
+			return snapshot, CICDRunReply{Operation: cicdValueBytes(existing), Generation: head.Generation, Replayed: true}, nil
+		}
+		for _, value := range cicdList(root["audits"]) {
+			if cicdObject(value)["operation_id"] == request.OperationID {
+				return snapshot, reply, ErrCICDIdempotency
+			}
+		}
+	}
+	snapshot, err = cicdPlanProjection(root, request, start)
+	return snapshot, reply, err
+}
+
+func cicdPlanProjection(root map[string]any, request CICDRunRequest, start bool) (CICDPlanSnapshot, error) {
+	var snapshot CICDPlanSnapshot
+	snapshot.Generation = cicdInt(root["generation"])
+	for _, value := range cicdList(root["projects"]) {
+		object := cicdObject(value)
+		if object["id"] == request.ProjectID {
+			snapshot.Project = cicdValueBytes(object)
+		}
+	}
+	var definition map[string]any
+	for _, value := range cicdList(root["definitions"]) {
+		object := cicdObject(value)
+		if object["project_id"] == request.ProjectID && object["id"] == request.DefinitionID && cicdInt(object["revision"]) == request.DefinitionRevision {
+			definition = object
+		}
+	}
+	if snapshot.Project == nil || definition == nil {
+		return CICDPlanSnapshot{}, ErrCICDNotFound
+	}
+	if start && definition["manual"] != true {
+		return CICDPlanSnapshot{}, security.ErrCICDForbidden
+	}
+	snapshot.Definition = cicdValueBytes(definition)
+	for _, use := range cicdList(definition["templates"]) {
+		object := cicdObject(use)
+		for _, value := range cicdList(root["templates"]) {
+			template := cicdObject(value)
+			if template["project_id"] == request.ProjectID && template["id"] == object["id"] && template["revision"] == object["revision"] {
+				encoded := cicdValueBytes(template)
+				duplicate := false
+				for _, previous := range snapshot.Templates {
+					duplicate = duplicate || bytes.Equal(previous, encoded)
+				}
+				if !duplicate {
+					snapshot.Templates = append(snapshot.Templates, encoded)
+				}
+			}
+		}
+	}
+	for collection, target := range map[string]*[]json.RawMessage{"secrets": &snapshot.Secrets, "artifacts": &snapshot.Artifacts, "environments": &snapshot.Environments} {
+		for _, value := range cicdList(root[collection]) {
+			if cicdObject(value)["project_id"] == request.ProjectID {
+				*target = append(*target, cicdValueBytes(value))
+			}
+		}
+	}
+	for _, value := range cicdList(root["workers"]) {
+		for _, project := range cicdList(cicdObject(value)["allowed_projects"]) {
+			if project == request.ProjectID {
+				snapshot.Workers = append(snapshot.Workers, cicdValueBytes(value))
+				break
+			}
+		}
+	}
+	return snapshot, nil
+}
+
+func (s *CICDRunStore) StartRun(request CICDRunRequest, expectedProjectRevision int64, resolve func(CICDPlanSnapshot) (json.RawMessage, error)) (CICDRunReply, error) {
+	if s == nil || s.store == nil {
+		return CICDRunReply{}, ErrCICDCorrupt
+	}
+	if !validCICDRunRequest(request) || expectedProjectRevision < 1 || expectedProjectRevision > 2147483647 || resolve == nil {
+		return CICDRunReply{}, ErrCICDSchema
+	}
+	internal := cicdOperationRequest{id: request.OperationID, requestID: request.RequestID, digest: request.RequestDigest, principal: request.Principal, access: security.CICDAccess{Operation: "runStart", ProjectID: request.ProjectID}, checkCurrent: request.Check}
+	reply, err := s.store.updateCICDAt(internal, func(root map[string]any, now time.Time) (cicdOperationMutation, error) {
+		snapshot, err := cicdPlanProjection(root, request, true)
+		if err != nil {
+			return cicdOperationMutation{}, err
+		}
+		projectValue, _ := decodeCICDValue(snapshot.Project)
+		project := cicdObject(projectValue)
+		if cicdInt(project["revision"]) != expectedProjectRevision {
+			return cicdOperationMutation{}, ErrCICDStale
+		}
+		encoded, err := resolve(snapshot)
+		if err != nil {
+			return cicdOperationMutation{}, err
+		}
+		planValue, err := decodeCICDValue(encoded)
+		if err != nil || !validateCICDType("Plan", planValue, "", 0) {
+			return cicdOperationMutation{}, ErrCICDSchema
+		}
+		plan := cicdObject(planValue)
+		data := cicdObject(plan["data"])
+		source := cicdObject(data["source"])
+		if cicdValueDigest(data) != plan["digest"] || data["project_id"] != request.ProjectID || data["definition_id"] != request.DefinitionID || cicdInt(data["definition_revision"]) != request.DefinitionRevision || data["toolchain_digest"] != project["toolchain_digest"] || source["owner"] != project["source_owner"] || source["repo"] != project["source_repo"] {
+			return cicdOperationMutation{}, ErrCICDSchema
+		}
+		if plan["digest"] != request.PlanDigest {
+			return cicdOperationMutation{}, ErrCICDStale
+		}
+		active, queued := 0, int64(0)
+		for _, value := range cicdList(root["runs"]) {
+			run := cicdObject(value)
+			if !cicdTerminal(run["state"]) {
+				active++
+			}
+			if run["project_id"] == request.ProjectID && run["state"] == "queued" {
+				queued++
+			}
+		}
+		if active >= 16 || queued >= cicdInt(cicdObject(project["quota"])["queue"]) || len(cicdList(root["runs"])) >= 512 || len(cicdList(root["notifications"])) >= 10000 {
+			return cicdOperationMutation{}, errors.New("P19_QUOTA")
+		}
+		reader := s.entropy
+		if reader == nil {
+			reader = rand.Reader
+		}
+		var entropy [16]byte
+		if _, err := io.ReadFull(reader, entropy[:]); err != nil {
+			return cicdOperationMutation{}, errors.New("P19_ENTROPY")
+		}
+		id := fmt.Sprintf("r-%x", entropy)
+		for collection, field := range map[string]string{"runs": "id", "artifacts": "run_id", "operations": "target_id"} {
+			for _, value := range cicdList(root[collection]) {
+				if cicdObject(value)[field] == id {
+					return cicdOperationMutation{}, errors.New("P19_ENTROPY")
+				}
+			}
+		}
+		at := now.Format(time.RFC3339)
+		jobs := make([]any, 0, len(cicdList(data["jobs"])))
+		for _, value := range cicdList(data["jobs"]) {
+			planned := cicdObject(value)
+			job := map[string]any{"id": planned["id"], "execution_id": nil, "state": "queued", "try_number": json.Number("0"), "worker_id": nil, "lease_generation": json.Number("0"), "started_at": nil, "finished_at": nil, "duration_ms": nil, "code": nil, "artifact": nil, "reused_from_attempt": nil, "log_gap": false}
+			if planned["selected"] == false {
+				job["state"], job["finished_at"], job["duration_ms"] = "skipped", at, json.Number("0")
+			} else if task := cicdObject(planned["task"]); task["kind"] == "artifact-verify" {
+				found := false
+				for _, artifactValue := range cicdList(root["artifacts"]) {
+					artifact := cicdObject(artifactValue)
+					if artifact["project_id"] != request.ProjectID || artifact["digest"] != task["artifact"] || artifact["deleting"] == true {
+						continue
+					}
+					found = true
+					pins := cicdList(artifact["pins"])
+					pinned := false
+					for _, pin := range pins {
+						pinned = pinned || pin == id
+					}
+					if !pinned {
+						if len(pins) >= 1024 {
+							return cicdOperationMutation{}, errors.New("P19_QUOTA")
+						}
+						artifact["pins"] = append(pins, id)
+					}
+				}
+				if !found {
+					return cicdOperationMutation{}, ErrCICDNotFound
+				}
+			}
+			jobs = append(jobs, job)
+		}
+		event := map[string]any{"project_id": request.ProjectID, "definition_id": request.DefinitionID, "definition_revision": data["definition_revision"], "kind": "manual", "trigger_id": request.OperationID, "source_sha": source["sha"], "due": nil}
+		run := map[string]any{"project_id": request.ProjectID, "id": id, "revision": json.Number("1"), "attempt": json.Number("1"), "event_key": cicdValueDigest(event), "requester": request.Principal.ID, "plan": plan, "state": "queued", "created_at": at, "started_at": nil, "finished_at": nil, "jobs": jobs, "cancel_requested": false, "trigger": "manual"}
+		if !validateCICDRun(run) {
+			return cicdOperationMutation{}, ErrCICDSchema
+		}
+		root["runs"] = append(cicdList(root["runs"]), run)
+		notificationKey := map[string]any{"project_id": request.ProjectID, "target_id": id, "target_attempt": json.Number("1"), "source_revision": json.Number("1"), "event": "queued"}
+		root["notifications"] = append(cicdList(root["notifications"]), map[string]any{"id": "n" + cicdValueDigest(notificationKey)[:63], "project_id": request.ProjectID, "event": "queued", "target_id": id, "target_attempt": json.Number("1"), "source_revision": json.Number("1"), "attempt": json.Number("1"), "state": "queued", "next_at": at, "code": nil, "at": at})
+		return cicdOperationMutation{targetID: id, targetAttempt: 1}, nil
+	})
+	if err != nil {
+		return CICDRunReply{}, err
+	}
+	return CICDRunReply{Operation: cicdValueBytes(reply.operation), Generation: reply.generation, Replayed: reply.replayed}, nil
 }
 
 func newCICDSnapshotStore(path string) (*cicdSnapshotStore, error) {
@@ -570,6 +811,15 @@ func (s *cicdSnapshotStore) operationNow() (time.Time, error) {
 }
 
 func (s *cicdSnapshotStore) updateCICD(request cicdOperationRequest, mutate func(map[string]any) (cicdOperationMutation, error)) (cicdOperationReply, error) {
+	return s.updateCICDAt(request, func(root map[string]any, _ time.Time) (cicdOperationMutation, error) {
+		if mutate == nil {
+			return cicdOperationMutation{}, ErrCICDInternal
+		}
+		return mutate(root)
+	})
+}
+
+func (s *cicdSnapshotStore) updateCICDAt(request cicdOperationRequest, mutate func(map[string]any, time.Time) (cicdOperationMutation, error)) (cicdOperationReply, error) {
 	var reply cicdOperationReply
 	if !validCICDEntityID(request.id, "o-") || !cicdLowerHex(request.digest, 64) || !validCICDEntityID(request.requestID, "o-") || request.id == request.requestID {
 		return reply, ErrCICDSchema
@@ -583,7 +833,12 @@ func (s *cicdSnapshotStore) updateCICD(request cicdOperationRequest, mutate func
 		if err != nil {
 			return err
 		}
-		if request.check == nil || request.check() != nil {
+		if request.checkCurrent != nil {
+			identity, identityErr := cicdIdentity(root, request.principal.Kind, request.principal.ID)
+			if identityErr != nil || request.checkCurrent(identity) != nil {
+				return security.ErrCICDAuth
+			}
+		} else if request.check == nil || request.check() != nil {
 			return security.ErrCICDAuth
 		}
 		_, err = authorizeCICDRoot(root, request.principal, request.access, now)
@@ -625,7 +880,7 @@ func (s *cicdSnapshotStore) updateCICD(request cicdOperationRequest, mutate func
 		if mutate == nil {
 			err = ErrCICDInternal
 		} else {
-			result, err = mutate(root)
+			result, err = mutate(root, now)
 		}
 		if err == nil && (!bytes.Equal(bookkeeping, cicdOperationBookkeeping(root)) || !validCICDMutationReply(request.access.Operation, result)) {
 			err = ErrCICDCorrupt
