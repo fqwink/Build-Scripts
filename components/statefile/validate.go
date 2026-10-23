@@ -21,6 +21,50 @@ import (
 var cicdIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 var cicdEnvPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,63}$`)
 
+func ValidateCICDLog(data []byte) error {
+	_, err := decodeCICDLog(data)
+	return err
+}
+
+func decodeCICDLog(data []byte) (map[string]any, error) {
+	if len(data) > cicdLogLimit {
+		return nil, ErrCICDSchema
+	}
+	value, err := decodeCICDValue(data)
+	log, ok := value.(map[string]any)
+	if err != nil || !ok || !validateCICDType("Log", log, "", 0) || !validCICDEntityID(log["run_id"].(string), "r-") {
+		return nil, ErrCICDSchema
+	}
+	first, next := cicdInt(log["first_offset"]), cicdInt(log["next_offset"])
+	if first > next || next-first != int64(len(log["data"].(string))) || log["truncated"] != (first > 0) {
+		return nil, ErrCICDSchema
+	}
+	return log, nil
+}
+
+func cicdLogIdentity(log map[string]any) CICDLogIdentity {
+	return CICDLogIdentity{ProjectID: log["project_id"].(string), RunID: log["run_id"].(string), JobID: log["job_id"].(string), Stream: log["stream"].(string), Attempt: int(cicdInt(log["attempt"]))}
+}
+
+func validCICDLogIdentity(id CICDLogIdentity) bool {
+	return cicdIDPattern.MatchString(id.ProjectID) && validCICDEntityID(id.RunID, "r-") && cicdIDPattern.MatchString(id.JobID) && id.Attempt >= 1 && id.Attempt <= 100 && (id.Stream == "stdout" || id.Stream == "stderr")
+}
+
+func validCICDLogProgress(old, next map[string]any) bool {
+	if old["terminal"] == true {
+		return bytes.Equal(cicdValueBytes(old), cicdValueBytes(next))
+	}
+	if cicdInt(next["first_offset"]) < cicdInt(old["first_offset"]) || cicdInt(next["next_offset"]) < cicdInt(old["next_offset"]) || old["gap"] == true && next["gap"] != true {
+		return false
+	}
+	start, end := cicdInt(next["first_offset"]), cicdInt(old["next_offset"])
+	if start >= end {
+		return true
+	}
+	a, b := old["data"].(string), next["data"].(string)
+	return a[start-cicdInt(old["first_offset"]):end-cicdInt(old["first_offset"])] == b[:end-start]
+}
+
 // ValidateCICDValue checks storage shape and primitive grammar, not owner policy.
 func ValidateCICDValue(typeName string, data []byte) error {
 	value, err := decodeCICDValue(data)

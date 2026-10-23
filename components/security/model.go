@@ -8,6 +8,7 @@ import (
 var ErrCICDAuth = errors.New("P19_AUTH")
 var ErrCICDForbidden = errors.New("P19_FORBIDDEN")
 var ErrCICDQuota = errors.New("P19_QUOTA")
+var ErrCICDSecret = errors.New("P19_SECRET")
 
 // CICDCredential is an internal identity-store value, never an HTTP projection.
 type CICDCredential struct {

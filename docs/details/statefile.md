@@ -774,6 +774,13 @@ Runの初期fieldは [保存済み計画の整合](#phase-19-plan-state-invarian
 
 **adapter interface：** `ReadCICD() (Root,Head,error)`、[operation lifecycleの受付/内部進行interface](#phase-19-operation-lifecycle)、`WriteCICDLog(Log) error`、`ReadCICDLog(identity) (Log,error)`。mutateは既に検証した入力を用いる純粋なRoot更新だけで、I/Oを呼ばない。ログ単体は同directoryのO_EXCL temporary → write / fsync / close → rename / directory fsyncで更新する。caller固有の直接書込は許可しない。全error codeの公開対応は [`docs/details/api.md` 詳細本文責務 Phase 19 error](api.md#phase-19-error-catalog)、検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
 
+<a id="phase-19-log-store-boundary"></a>
+**Log専用Go adapter：** `OpenCICDLogStore(stateDir)` は既存Rootを検査するだけで初期化/修復しない。`CICDLogIdentity` はProjectID/RunID/Attempt/JobID/Streamを持ち、`ReadLog(identity)` / `WriteLog(data)` は [Log保存整合](#phase-19-log-invariants) と [保存path](#phase-19-state-paths) に従う。`ValidateCICDLog(data)` は同正本の検査を公開し、不正入力はP19_SCHEMA、保存済み不正値はP19_STATE_CORRUPT。返却値はcanonical Logの独立copy。一般Root書込やHTTPからのlog投入を公開せず、WriteLogは検証済みcoordinator/worker保存経路だけが使う。
+
+全read/writeで既存state.lockのguard下に最新Rootから同project/run/attempt/jobを確認する。不在はP19_NOT_FOUND、writeで非選択jobまたは保存整合に反する進行はP19_STALE。terminal Runでは既存terminal Logの完全同一再送だけを許す。保存されたLogのidentityと所在不一致はP19_STATE_CORRUPT。readでdirectory/file不在はP19_NOT_FOUND、create/repair/GC/世代/監査更新は行わない。
+
+writeは登録済みidentityの各親を保持中FDから0700で作成し親fsync、各parent/通常fileの所有者/mode/link数を [snapshot Go境界](#phase-19-snapshot-go-boundary) と同じprimitiveで検査する。既存fileをno-followで読んで整合検査し、差分がない場合はwrite/fsync/entropyを行わない。新規初期値または正当な進行だけ、16 random bytesをlowercase hexへ変換した同directoryの `.log-{hex}.tmp` を使い既存atomic primitiveのlog stageで保存する。serialized上限は保存path表を適用し、create/write/chmod/sync/close/publish障害はP19_STORAGE、rename後の親fsync失敗はP19_STATE_UNCERTAINで未書込を断言しない。全returnでguard/FDを解放する。Root/head/Operation/Auditはlog保存で増やさず、worker/jobの終端保存との一括atomic性を主張しない。必須log保存後にだけJobResultを終端化する順序はrunner正本に残す。
+
 **canonical bytes：** digest対象JSONはobject keyをUTF-8 byte昇順、配列順維持、空白なし、整数10進、stringはquotation/backslashをそれぞれbackslashでescapeし、U+0008/U+0009/U+000A/U+000C/U+000Dは順に `\b` / `\t` / `\n` / `\f` / `\r`、その他U+0000〜001Fはlowercase hex4桁の `\u00xx` とする（入力で禁止されたcodepointの許可にはならない）。それ以外は元のUTF-8 byteを維持し、HTML escapeなし、slash非escape、Unicode正規化なし、末尾LFなし、UTF-8でencodeする。浮動小数は全schemaで不使用。HTTP送受信bytesとcanonical bytesを混同しない。\u2028/\u2029はUTF-8のままとする。
 
 ---

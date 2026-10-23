@@ -1,6 +1,7 @@
 package security
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -9,8 +10,43 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"net/url"
+	"sort"
 	"time"
+	"unicode/utf8"
 )
+
+func CICDMaskPatterns(secrets [][]byte) ([][]byte, error) {
+	if len(secrets) > 16 {
+		return nil, ErrCICDSecret
+	}
+	patterns := make(map[string]bool)
+	total := 0
+	for _, secret := range secrets {
+		if len(secret) < 1 || len(secret) > 4096 || !utf8.Valid(secret) || bytes.ContainsAny(secret, "\x00\r\n") {
+			return nil, ErrCICDSecret
+		}
+		total += len(secret)
+		if total > 16384 {
+			return nil, ErrCICDSecret
+		}
+		value := string(secret)
+		for _, pattern := range []string{value, base64.StdEncoding.EncodeToString(secret), base64.URLEncoding.EncodeToString(secret), base64.RawURLEncoding.EncodeToString(secret), url.QueryEscape(value), url.PathEscape(value)} {
+			patterns[pattern] = true
+		}
+	}
+	result := make([][]byte, 0, len(patterns))
+	for pattern := range patterns {
+		result = append(result, []byte(pattern))
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if len(result[i]) != len(result[j]) {
+			return len(result[i]) > len(result[j])
+		}
+		return bytes.Compare(result[i], result[j]) < 0
+	})
+	return result, nil
+}
 
 func VerifyCICDPassword(credential CICDCredential, password string) bool {
 	ok, err := VerifyPassword(PasswordRecord{PasswordHash: credential.PasswordHash, Salt: credential.Salt, Algorithm: credential.Algorithm, Iterations: credential.Iterations}, password)

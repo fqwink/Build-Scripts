@@ -71,6 +71,20 @@ truncated/必須key/null、unsafe/重複/親欠落/file祖先path、symlink/subm
 
 既存native Go変異harnessに、statefileのproject revision/PlanDigest/現在identity/queue/global limit/pin/entropy/server request_idの8制御（既存26件と計34件）、runnerのvalues copy/replayの2制御（既存25件と計27件）を追加する。compile成功後の固定assertion失敗だけをkillとし、実process callを増やさない。実行入口は通常Go/race/既存開発Actions、process入力指紋は [Go process review固定入力](#development-actions-go-process-review-input) を参照する。
 
+<a id="phase-19-ref-runtime-evidence"></a>
+**refから受付への実行検証：** [docs/details/runner.md 詳細本文責務 ref境界](runner.md#phase-19-ref-source-go-boundary) に対し、`TestCICDRefSource/Input/Run` は独立したref/tag応答を製品HTTP adapterへ接続し、branch、lightweight/annotated tag、深さ境界、循環、要求ref/返却tag SHA、未知type、必須shape、応答容量、取消、slash/Unicode/query記号のpath encodingと副作用0を照合する。検証済みcommitだけを既存source取得へ渡し、Plan全bytesとlazy PAT呼出回数を比較する。HTTPは固定RoundTripper fakeであり、実GitHub権限・PAT配置の受入ではない。
+
+`TestCICDRunRealStore` はLinux amd64で実ref/source/Prepare/Resolve/Run保存adapterを接続し、再open後の同Operation再送と認証失効拒否でPAT/HTTP再取得0を確認する。assertionは `runner.phase19-ref.*` / `runner.phase19-ref-run.*` / `runner.phase19-run.real.*`。既存runner変異harnessへref完全一致/深さ/循環/tag identityの4制御を追加し、compile成功後の固定assertion失敗だけをkillとする。実行source admission、HTTP/SDK/UI登録、worker実働をこの証跡でclosedにしない。
+
+<a id="phase-19-log-runtime-evidence"></a>
+**mask・logの実行検証：** [docs/details/security.md 詳細本文責務 mask](security.md#phase-19-mask-go-boundary)、[docs/details/runner.md 詳細本文責務 collector](runner.md#phase-19-log-go-boundary)、[docs/details/statefile.md 詳細本文責務 Log adapter](statefile.md#phase-19-log-store-boundary) を参照する。`TestCICDMaskPatterns` は固定の全encoding期待値、順位、重複、copy、個数/値長/総量境界、UTF-8/改行/NULを比較する。`TestCICDJobLogMask/UTF8/Lifecycle/Concurrency` は全2分割位置・1byte chunk、最長一致、再走査0、EOF部分一致、無効UTF-8のchunk分割不変、scalar境界window、raw合算、一致/超過prefix、stage/try/seal、gap、snapshot copy、stdout/stderr同時処理を比較する。出力上限超過のretry拒否を正本どおり要求する。
+
+`TestCICDLogSchema/Store/Rejection/Faults/Corruption` は閉schemaと最大NUL payload、offset/window/byte、最新Rootのidentity/選択/終端、初期値、重なる保存byteの不変、gap/terminal、再open/copy/無変更再送、Root/head/Operation/Audit不変を検査する。Linux FD fixtureはsymlink/hardlink/mode/所在identity/破損/容量を拒否し、log保存のcreate/write/chmod/sync/close/publish/親fsync障害を注入して旧値またはpublish済み新値・一時file残留0を比較する。`TestCICDRunRealStore` は同じRun identityのcollector→両stream初期保存→mask済み終端保存→再open/readを接続する。実childの停止やprocess drainを模擬成功として扱わない。
+
+`TestCICDLogMaximum` は最大NUL payloadを実保存/読取し、JSON escapeとenvelopeを含む上限・超過拒否を照合する。`TestCICDLogConcurrency` は8つの独立storeをbarrierで同時更新し、同値再送・最終値・Root世代不変をrace detectorで確認する。
+
+runner変異harnessへchunk確定/raw計数/UTF-8 carry/window offset/封印/mask順位の6制御を追加する。ref追加分と合わせ全37件。statefile変異harnessへLog byte長/terminal/overlap/gap/非選択/初期値/再送の7制御を追加し全41件。いずれも実process callは増やさず、固定test選択とsource指紋を [Go process review固定入力](#development-actions-go-process-review-input) へ接続する。assertionは `security.phase19-mask.*` / `runner.phase19-log.*` / `statefile.phase19-log.*`。正式384 assertion、18 record closure、実worker frame、200ms保存、API/SDK/UI、minimum-live/isolated-liveは本検証でclosedにしない。
+
 <a id="phase-19-memory-evidence"></a>
 **最低実働メモリの単体検証と実測証跡：** [components/runner/runner_test.go](../../components/runner/runner_test.go) の `TestCICDResources` / `TestCICDMemoryAdmission` / `TestCICDHostMemoryParser` / `TestCICDMemorySpecification` は [docs/details/statefile.md 詳細本文責務 Resources](statefile.md#phase-19-schema-registry)、[docs/details/setup.md 詳細本文責務 host観測](setup.md#phase-19-memory-profile)、[docs/details/runner.md 詳細本文責務 メモリ受付](runner.md#phase-19-memory-admission) を独立期待値で検査する。入力には実測896/960/1024 MiB、Available319/320、単独budget384/385、slot境界1535/1536、既存claim合計1536/1537、4slot満杯、不正claim/overflow/順序優先、meminfoのKiB丸め前超過・単位・重複・I/O失敗・65536/65537 bytesを含む。小メモリの2job目はP19_BUSY、単独で成立しない旧既定jobはP19_CAPABILITY、入力値/claim配列不変、エラーの秘密文字列漏えい0とする。schema/default/複合制約をmemory copyで変更する5negative controlを拒否する。assertion IDは `runner.phase19-memory.<case>.value/parse/admit/reject`。これらはbudget計算/読取/資源境界の検証であり、未実装のcoordinator/broker接続・OOM回収や1GB実働成功を証明しない。
 
@@ -3563,8 +3577,8 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
     },
     {
       "path": "components/runner/runner_test.go",
-      "source_sha256": "478fcc4ff812ea8f45ecc1ca5ed53366066cd7e0da369735edf3a0aa6c7b8736",
-      "calls_sha256": "3cba22f144ddbd1c1e66edd375e1e66debcdf18dd37e7f37d4772e4301d17685",
+      "source_sha256": "76bce69c92fe967ad777c79383c9379a0a56c325635f3520fc7f103bc9827bf5",
+      "calls_sha256": "a6e9621991f06c5fe8ea9a758653f3e10b9738731b64e6afb205ef18ee37d847",
       "call_count": 3,
       "review_basis": "native-fixture-only"
     },

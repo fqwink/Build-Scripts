@@ -63,7 +63,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 
 | 策定対象 | 現在状態 | Phase / 主 owner / 詳細入口 |
 |----------|----------|----------------------------|
-| 型付き JSON パイプライン・再利用テンプレート・計画プレビュー | 実装中・検証未完了 | Phase 19 / `runner`。純粋計画処理・固定SHA source取得に、手動受付の最新設定再確認と `statefile` のRun/pin/通知/監査原子保存を接続。ref解決・HTTP/SDK/UI・scheduler/worker実行への登録は完了していない。検証入口は [docs/DETAIL_INDEX.md 詳細仕様入口責務](DETAIL_INDEX.md#cross-test-evidence-route)、owner入口は [同責務 Phase19](DETAIL_INDEX.md#phase-19-owner-route)。 |
+| 型付き JSON パイプライン・再利用テンプレート・計画プレビュー | 実装中・検証未完了 | Phase 19 / `runner`。純粋計画処理・固定SHA source取得に、手動受付の最新設定再確認と `statefile` のRun/pin/通知/監査原子保存を接続。branch/tag解決から同受付への接続を追加。HTTP/SDK/UI・scheduler/worker実行への登録は完了していない。検証入口は [docs/DETAIL_INDEX.md 詳細仕様入口責務](DETAIL_INDEX.md#cross-test-evidence-route)、owner入口は [同責務 Phase19](DETAIL_INDEX.md#phase-19-owner-route)。 |
 | branch / tag / path 条件・定期実行・古い実行の集約 | 実装中・検証未完了 | Phase 19 / `runner`。条件選択とsource差分の [実行検証](details/fixture.md#phase-19-plan-runtime-evidence) に着手。watch/schedule受付・古い実行の集約は完了していない。[`docs/DETAIL_INDEX.md` 詳細仕様入口責務](DETAIL_INDEX.md#phase-19-owner-route)。 |
 | DAG・matrix・並列上限・fail-fast | 実装中・検証未完了 | Phase 19 / `runner`。DAG/matrixの [実行検証](details/fixture.md#phase-19-plan-runtime-evidence) に着手。scheduler・並列実行・fail-fastは完了していない。[`docs/DETAIL_INDEX.md` 詳細仕様入口責務](DETAIL_INDEX.md#phase-19-owner-route)。 |
 | job 単位の再試行・再開・取消 | 仕様化済み・未実装 | Phase 19 / `runner`。[`docs/DETAIL_INDEX.md` 詳細仕様入口責務](DETAIL_INDEX.md#phase-19-owner-route)。 |

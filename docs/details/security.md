@@ -49,9 +49,12 @@ master.jsonのencryption_key/cursor_keyは各crypto/rand32 bytes、相互一致�
 
 secret平文はUTF-8一行、1〜4096 bytes、CR/LF/NULなし。入力bodyだけで受け、argv/URL/環境file/状態snapshotに保存しない。versionはRoot.secrets内の既存最大+1、旧版はactive参照がある間削除不可。暗号fileをO_EXCL staging→fsync→非上書きpublish→親fsync後に、SecretMetaと監査を同じRoot transactionへcommitして初めて参照可能にする。secret一覧/復号はRoot.secretsを入口とし、directory scanで未commitの暗号fileを採用しない。Root commit失敗のfileは未参照として新規Put前のGCで回収し、同versionの上書きや既存暗号文の別入力への流用をしない。GCもlock下で全Plan/active参照を再照合してmetadata除去後にfileを削除する。jobのsecret参照はversion固定、secret数16/合計16384 bytes以内。復号はdurable start直前、worker stdinでだけ渡し、利用後byte sliceを上書きする（GCによる全copy消去を保証しない）。deploy key/SSH/masterはjobに渡さない。
 
-mask patternはraw値、standard base64、base64url、url.QueryEscape、url.PathEscapeを重複排除し、byte長降順→byte辞書順で最長一致を `[REDACTED]` に置換する。長さ1のsecretもmaskする。chunk境界処理はrunner正本。mask後だけlog/notification/diagnosticへ渡す。任意変換・暗号化・分割された悪意ある出力の完全検出は保証せず、untrusted userへsecret使用権を付与しない。Node禁止をmaskで代替しない。
+mask patternはraw値、standard padded base64、base64url（paddedと無paddingの双方）、url.QueryEscape、url.PathEscapeを重複排除し、byte長降順→byte辞書順で最長一致を `[REDACTED]` に置換する。長さ1のsecretもmaskする。chunk境界処理はrunner正本。mask後だけlog/notification/diagnosticへ渡す。任意変換・暗号化・分割された悪意ある出力の完全検出は保証せず、untrusted userへsecret使用権を付与しない。Node禁止をmaskで代替しない。
 
 auditはOperation受付/拒否/終端、user/grant/secret/worker変更、approve/reject/recoverを同じstate transactionに記録する。秘密値・password・token・nonce・秘密hash・request本文を含めず、subject/scope/action/target/codeだけを残す。監査保存失敗は変更/実行を止める。読取失敗と403はrate-limited診断、認証前subjectはsystemに固定する。公開read modelからcredential/totp/token_sha256/SSH pathを必ず除く。
+
+<a id="phase-19-mask-go-boundary"></a>
+**マスク候補のGo境界：** `CICDMaskPatterns(secrets [][]byte)` は [secret暗号・投入・mask](#phase-19-secret-crypto) の値と変換集合だけをbyte列で返す純粋処理とする。最大16値/合計16384 bytes、各値は同正本の平文制約を検査し、空集合は有効、空値/不正UTF-8/禁止改行/容量超過はP19_SECRET。候補は重複を除きbyte長降順/byte辞書順で返し、入力sliceおよび候補同士と共有しない。変換候補の利用/最長一致/未確定suffix/UTF-8処理はrunner所有であり、本関数はlogを書かず置換済み出力を再走査しない。呼出元は元のsecretと候補の保持をjob寿命内へ限定する。
 
 検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
 

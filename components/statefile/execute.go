@@ -32,6 +32,174 @@ func cicdValueDigest(value any) string {
 	return fmt.Sprintf("%x", sha256.Sum256(cicdValueBytes(value)))
 }
 
+func OpenCICDLogStore(path string) (*CICDLogStore, error) {
+	store, err := newCICDSnapshotStore(path)
+	if err != nil {
+		return nil, err
+	}
+	if _, _, err := store.read(); err != nil {
+		return nil, err
+	}
+	return &CICDLogStore{store: store}, nil
+}
+
+func cicdLogRun(root map[string]any, id CICDLogIdentity) (bool, bool, error) {
+	for _, value := range cicdList(root["runs"]) {
+		run := cicdObject(value)
+		if run["project_id"] != id.ProjectID || run["id"] != id.RunID || cicdInt(run["attempt"]) != int64(id.Attempt) {
+			continue
+		}
+		for _, value := range cicdList(cicdObject(cicdObject(run["plan"])["data"])["jobs"]) {
+			job := cicdObject(value)
+			if job["id"] == id.JobID {
+				terminal := run["state"] == "succeeded" || run["state"] == "failed" || run["state"] == "cancelled"
+				return job["selected"] == true, terminal, nil
+			}
+		}
+	}
+	return false, false, ErrCICDNotFound
+}
+
+func openCICDLogDirectory(root *os.File, id CICDLogIdentity, create bool) (*os.File, error) {
+	parent := root
+	for _, part := range []string{"logs", id.ProjectID, id.RunID, strconv.Itoa(id.Attempt), id.JobID} {
+		if create {
+			if err := os.Mkdir(cicdChildPath(parent, part), 0700); err != nil && !errors.Is(err, os.ErrExist) {
+				if parent != root {
+					parent.Close()
+				}
+				return nil, ErrCICDStorage
+			} else if err == nil && parent.Sync() != nil {
+				if parent != root {
+					parent.Close()
+				}
+				return nil, ErrCICDStorage
+			}
+		}
+		next, err := openCICDChild(parent, part, os.O_RDONLY, true)
+		if parent != root {
+			parent.Close()
+		}
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil, ErrCICDNotFound
+			}
+			return nil, ErrCICDCorrupt
+		}
+		parent = next
+	}
+	return parent, nil
+}
+
+func readCICDLog(dir *os.File, id CICDLogIdentity) (map[string]any, error) {
+	data, err := readCICDBounded(dir, id.Stream+".json", cicdLogLimit)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, ErrCICDNotFound
+	}
+	if err != nil {
+		return nil, ErrCICDCorrupt
+	}
+	log, err := decodeCICDLog(data)
+	if err != nil || cicdLogIdentity(log) != id {
+		return nil, ErrCICDCorrupt
+	}
+	return log, nil
+}
+
+func (s *CICDLogStore) ReadLog(id CICDLogIdentity) (json.RawMessage, error) {
+	if s == nil || s.store == nil || !validCICDLogIdentity(id) {
+		return nil, ErrCICDSchema
+	}
+	dir, snapshots, unlock, err := s.store.lock(false)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
+	root, _, err := s.store.readFrom(dir, snapshots)
+	if err != nil {
+		return nil, err
+	}
+	if _, _, err := cicdLogRun(root, id); err != nil {
+		return nil, err
+	}
+	logs, err := openCICDLogDirectory(dir, id, false)
+	if err != nil {
+		return nil, err
+	}
+	defer logs.Close()
+	log, err := readCICDLog(logs, id)
+	if err != nil {
+		return nil, err
+	}
+	return cicdValueBytes(log), nil
+}
+
+func (s *CICDLogStore) WriteLog(data json.RawMessage) error {
+	if s == nil || s.store == nil {
+		return ErrCICDSchema
+	}
+	if len(data) > cicdLogLimit {
+		return ErrCICDStorage
+	}
+	log, err := decodeCICDLog(data)
+	if err != nil {
+		return err
+	}
+	id := cicdLogIdentity(log)
+	dir, snapshots, unlock, err := s.store.lock(false)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	root, _, err := s.store.readFrom(dir, snapshots)
+	if err != nil {
+		return err
+	}
+	selected, terminal, err := cicdLogRun(root, id)
+	if err != nil {
+		return err
+	}
+	if !selected {
+		return ErrCICDStale
+	}
+	var old map[string]any
+	logs, err := openCICDLogDirectory(dir, id, false)
+	if err == nil {
+		defer func() { logs.Close() }()
+		old, err = readCICDLog(logs, id)
+	}
+	if err != nil && err != ErrCICDNotFound {
+		return err
+	}
+	if old == nil {
+		if terminal || cicdInt(log["first_offset"]) != 0 || cicdInt(log["next_offset"]) != 0 || log["gap"] != false || log["terminal"] != false {
+			return ErrCICDStale
+		}
+	} else {
+		if terminal && old["terminal"] != true {
+			return ErrCICDStale
+		}
+		if bytes.Equal(cicdValueBytes(old), cicdValueBytes(log)) {
+			return nil
+		}
+		if terminal || !validCICDLogProgress(old, log) {
+			return ErrCICDStale
+		}
+	}
+	if logs == nil {
+		logs, err = openCICDLogDirectory(dir, id, true)
+		if err != nil {
+			return err
+		}
+		defer logs.Close()
+	}
+	var random [16]byte
+	if _, err := io.ReadFull(rand.Reader, random[:]); err != nil {
+		return ErrCICDStorage
+	}
+	return s.store.writeCICDFile(logs, fmt.Sprintf(".log-%x.tmp", random), id.Stream+".json", cicdValueBytes(log), "log", true)
+}
+
 func OpenCICDIdentityStore(path string) (*CICDIdentityStore, error) {
 	store, err := newCICDSnapshotStore(path)
 	if err != nil {

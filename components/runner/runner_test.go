@@ -32,6 +32,410 @@ import (
 	"github.com/fqwink/build-scripts/components/statefile"
 )
 
+func cicdLogFixture(t *testing.T, secrets ...[]byte) *CICDJobLog {
+	t.Helper()
+	log, err := NewCICDJobLog("p", "r-"+strings.Repeat("1", 32), 1, "build", 1, secrets)
+	if err != nil {
+		t.Fatal("runner.phase19-log.fixture", err)
+	}
+	return log
+}
+
+func cicdLogValue(t *testing.T, log *CICDJobLog, stream string) map[string]any {
+	t.Helper()
+	data, err := log.Snapshot(stream)
+	var value map[string]any
+	if err != nil || statefile.ValidateCICDLog(data) != nil || json.Unmarshal(data, &value) != nil {
+		t.Fatal("runner.phase19-log.snapshot.valid", err)
+	}
+	return value
+}
+
+func TestCICDJobLogMask(t *testing.T) {
+	for _, raw := range []string{"abcde", "YWJjZGU=", "YWJjZGU"} {
+		input := "before " + raw + " after"
+		for split := 0; split <= len(input); split++ {
+			log := cicdLogFixture(t, []byte("abc"), []byte("abcde"))
+			first := []byte(input[:split])
+			if log.Append("stdout", first) != nil {
+				t.Fatal("runner.phase19-log.mask.append")
+			}
+			for i := range first {
+				first[i] = '!'
+			}
+			if log.Append("stdout", []byte(input[split:])) != nil || log.EndStage() != nil || log.Seal() != nil {
+				t.Fatal("runner.phase19-log.mask.end")
+			}
+			value := cicdLogValue(t, log, "stdout")
+			if value["data"] != "before [REDACTED] after" || value["next_offset"] != float64(23) || value["terminal"] != true {
+				t.Fatal("runner.phase19-log.mask.longest-chunk", raw, split, value)
+			}
+			if cicdLogValue(t, log, "stderr")["terminal"] != true {
+				t.Fatal("runner.phase19-log.mask.empty-eof")
+			}
+		}
+	}
+	log := cicdLogFixture(t, []byte("a b/?"))
+	for _, text := range []string{"a%20b%2F%3F", "a+b%2F%3F", "a b/?"} {
+		for _, b := range []byte(text + "|") {
+			if log.Append("stdout", []byte{b}) != nil {
+				t.Fatal("runner.phase19-log.mask.encoded-append")
+			}
+		}
+	}
+	if log.EndStage() != nil || cicdLogValue(t, log, "stdout")["data"] != "[REDACTED]|[REDACTED]|[REDACTED]|" {
+		t.Fatal("runner.phase19-log.mask.encodings")
+	}
+	log = cicdLogFixture(t, []byte("a"), []byte("["))
+	if log.Append("stdout", []byte("a")) != nil || log.EndStage() != nil || cicdLogValue(t, log, "stdout")["data"] != "[REDACTED]" {
+		t.Fatal("runner.phase19-log.mask.no-rescan")
+	}
+	log = cicdLogFixture(t, []byte("secret"))
+	if log.Append("stdout", []byte("sec")) != nil || cicdLogValue(t, log, "stdout")["data"] != "" {
+		t.Fatal("runner.phase19-log.mask.pending")
+	}
+	if log.EndStage() != nil || cicdLogValue(t, log, "stdout")["data"] != "sec" {
+		t.Fatal("runner.phase19-log.mask.eof-prefix")
+	}
+}
+
+func TestCICDJobLogUTF8(t *testing.T) {
+	input := []byte{'a', 0xe6, 0xac, 0xa1, 0xff, 0xe2, 0x82, 0xac, 0xe2, 0x82}
+	want := "a\xe6\xac\xa1\xef\xbf\xbd\xe2\x82\xac\xef\xbf\xbd\xef\xbf\xbd"
+	for split := 0; split <= len(input); split++ {
+		log := cicdLogFixture(t)
+		if log.Append("stdout", input[:split]) != nil || log.Append("stdout", input[split:]) != nil || log.EndStage() != nil {
+			t.Fatal("runner.phase19-log.utf8.append")
+		}
+		value := cicdLogValue(t, log, "stdout")
+		if value["data"] != want || value["next_offset"] != float64(len(want)) {
+			t.Fatal("runner.phase19-log.utf8.partition", split, value)
+		}
+	}
+	log := cicdLogFixture(t)
+	chunk := bytes.Repeat([]byte{0xff}, 65536)
+	for i := 0; i < 16; i++ {
+		if log.Append("stdout", chunk) != nil {
+			t.Fatal("runner.phase19-log.window.append")
+		}
+	}
+	value := cicdLogValue(t, log, "stdout")
+	if value["next_offset"] != float64(3145728) || value["first_offset"] != float64(2097153) || len(value["data"].(string)) != 1048575 || value["truncated"] != true || value["gap"] != false {
+		t.Fatal("runner.phase19-log.window.utf8", value["first_offset"])
+	}
+	data, _ := log.Snapshot("stdout")
+	data[0] = '!'
+	if _, err := log.Snapshot("stdout"); err != nil {
+		t.Fatal("runner.phase19-log.snapshot.copy")
+	}
+}
+
+func TestCICDJobLogLifecycle(t *testing.T) {
+	log := cicdLogFixture(t)
+	if log.Seal() != ErrCICDStale || log.NextStage() != ErrCICDStale || log.NextTry() != ErrCICDStale {
+		t.Fatal("runner.phase19-log.lifecycle.open")
+	}
+	if log.Append("stdout", make([]byte, 65537)) != ErrCICDSchema || log.Append("other", nil) != ErrCICDSchema {
+		t.Fatal("runner.phase19-log.lifecycle.input")
+	}
+	chunk := bytes.Repeat([]byte("x"), 65536)
+	for i := 0; i < 8; i++ {
+		if log.Append("stdout", chunk) != nil || log.Append("stderr", chunk) != nil {
+			t.Fatal("runner.phase19-log.limit.exact")
+		}
+	}
+	if log.EndStage() != nil || log.EndStage() != nil || log.NextStage() != nil || log.Append("stdout", []byte("!")) != ErrCICDOutput || log.Append("stderr", nil) != ErrCICDOutput {
+		t.Fatal("runner.phase19-log.limit.shared-stages")
+	}
+	if log.EndStage() != nil || log.NextStage() != ErrCICDOutput || log.NextTry() != ErrCICDOutput {
+		t.Fatal("runner.phase19-log.limit.no-retry")
+	}
+	log = cicdLogFixture(t)
+	if log.Append("stdout", []byte("x")) != nil || log.EndStage() != nil || log.NextTry() != nil || log.MarkGap() != nil || log.Append("stdout", []byte("z")) != nil {
+		t.Fatal("runner.phase19-log.lifecycle.retry")
+	}
+	value := cicdLogValue(t, log, "stdout")
+	if value["next_offset"] != float64(2) || value["gap"] != true {
+		t.Fatal("runner.phase19-log.lifecycle.preserved")
+	}
+	if log.EndStage() != nil || log.NextTry() != nil || log.EndStage() != nil || log.NextTry() != ErrCICDQuota || log.Seal() != nil || log.Seal() != nil {
+		t.Fatal("runner.phase19-log.lifecycle.seal")
+	}
+	if log.Append("stdout", nil) != ErrCICDStale || log.EndStage() != ErrCICDStale || log.NextTry() != ErrCICDStale || log.NextStage() != ErrCICDStale || log.MarkGap() != ErrCICDStale {
+		t.Fatal("runner.phase19-log.lifecycle.sealed")
+	}
+	if cicdLogValue(t, log, "stderr")["terminal"] != true || cicdLogValue(t, log, "stderr")["gap"] != true {
+		t.Fatal("runner.phase19-log.lifecycle.flags")
+	}
+	log = cicdLogFixture(t)
+	for i := 0; i < 15; i++ {
+		if log.Append("stdout", chunk) != nil {
+			t.Fatal("runner.phase19-log.limit.prefix-fixture")
+		}
+	}
+	if log.Append("stdout", chunk[:65535]) != nil || log.Append("stdout", []byte("yz")) != ErrCICDOutput || log.EndStage() != nil {
+		t.Fatal("runner.phase19-log.limit.prefix")
+	}
+	value = cicdLogValue(t, log, "stdout")
+	if value["next_offset"] != float64(1048576) || !strings.HasSuffix(value["data"].(string), "y") {
+		t.Fatal("runner.phase19-log.limit.discard")
+	}
+	for _, test := range []struct {
+		project, run, job string
+		attempt, limit    int
+	}{{"../p", "r-" + strings.Repeat("1", 32), "build", 1, 1}, {"p", "r-bad", "build", 1, 1}, {"p", "r-" + strings.Repeat("1", 32), "build", 0, 1}, {"p", "r-" + strings.Repeat("1", 32), "build", 1, 17}} {
+		if result, err := NewCICDJobLog(test.project, test.run, test.attempt, test.job, test.limit, nil); result != nil || err != ErrCICDSchema {
+			t.Fatal("runner.phase19-log.constructor.schema")
+		}
+	}
+	if result, err := NewCICDJobLog("p", "r-"+strings.Repeat("1", 32), 1, "build", 1, [][]byte{nil}); result != nil || err != ErrCICDSecret {
+		t.Fatal("runner.phase19-log.constructor.secret")
+	}
+	var absent *CICDJobLog
+	if absent.Append("stdout", nil) != ErrCICDSchema || absent.EndStage() != ErrCICDSchema || absent.NextStage() != ErrCICDSchema || absent.NextTry() != ErrCICDSchema || absent.Seal() != ErrCICDSchema || absent.MarkGap() != ErrCICDSchema {
+		t.Fatal("runner.phase19-log.nil")
+	}
+}
+
+func TestCICDJobLogConcurrency(t *testing.T) {
+	log := cicdLogFixture(t, []byte("fixture-secret"))
+	var group sync.WaitGroup
+	for _, stream := range []string{"stdout", "stderr"} {
+		stream := stream
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			for i := 0; i < 128; i++ {
+				if log.Append(stream, []byte("fixture-secret\n")) != nil {
+					t.Error("runner.phase19-log.concurrent.append")
+				}
+				if _, err := log.Snapshot(stream); err != nil {
+					t.Error("runner.phase19-log.concurrent.snapshot")
+				}
+			}
+		}()
+	}
+	group.Wait()
+	if log.EndStage() != nil || log.Seal() != nil {
+		t.Fatal("runner.phase19-log.concurrent.seal")
+	}
+	for _, stream := range []string{"stdout", "stderr"} {
+		if cicdLogValue(t, log, stream)["data"] != strings.Repeat("[REDACTED]\n", 128) {
+			t.Fatal("runner.phase19-log.concurrent.output")
+		}
+	}
+}
+
+func TestCICDRefSource(t *testing.T) {
+	for _, name := range []string{"branch", "lightweight", "annotated", "eight-tags", "nine-tags", "cycle", "wrong-ref", "branch-tag", "blob", "bad-object", "bad-sha", "tag-digest", "tag-shape", "tag-sha", "cancelled", "escaped", "ref-limit", "tag-limit"} {
+		t.Run(name, func(t *testing.T) {
+			request := CICDRefRequest{Owner: "owner", Repo: "repo", RefKind: "tag", Ref: "release/next"}
+			if name == "branch" || name == "branch-tag" {
+				request.RefKind = "branch"
+			}
+			if name == "escaped" {
+				request.Ref = "release/#%\xe6\xac\xa1"
+			}
+			namespace := "tags"
+			if request.RefKind == "branch" {
+				namespace = "heads"
+			}
+			object := map[string]any{"type": "commit", "sha": strings.Repeat("b", 40), "url": "https://ignored.invalid/private"}
+			ref := map[string]any{"ref": "refs/" + namespace + "/" + request.Ref, "object": object}
+			depth := 0
+			var want error
+			switch name {
+			case "annotated", "tag-digest", "tag-shape", "tag-sha", "tag-limit":
+				depth = 1
+			case "eight-tags":
+				depth = 8
+			case "nine-tags":
+				depth, want = 9, ErrCICDSource
+			case "cycle":
+				depth, want = 2, ErrCICDSource
+			case "wrong-ref":
+				ref["ref"], want = "refs/tags/release/other", ErrCICDSource
+			case "branch-tag":
+				object["type"], want = "tag", ErrCICDSource
+			case "blob":
+				object["type"], want = "blob", ErrCICDSource
+			case "bad-object":
+				ref["object"], want = nil, ErrCICDTransport
+			case "bad-sha":
+				object["sha"], want = "BAD", ErrCICDTransport
+			case "cancelled":
+				want = ErrCICDTransport
+			case "ref-limit":
+				want = ErrCICDBody
+			}
+			if depth > 0 {
+				object["type"], object["sha"] = "tag", fmt.Sprintf("%040x", 1)
+			}
+			if name == "tag-digest" {
+				want = ErrCICDDigest
+			}
+			if name == "tag-shape" || name == "tag-sha" {
+				want = ErrCICDTransport
+			}
+			if name == "tag-limit" {
+				want = ErrCICDBody
+			}
+			calls := []string{}
+			first := true
+			client := cicdSourceClient(cicdSourceTestTransport(func(httpRequest *http.Request) (*http.Response, error) {
+				calls = append(calls, httpRequest.URL.RequestURI())
+				if httpRequest.URL.Host != "api.github.com" || httpRequest.Method != "GET" || httpRequest.Header.Get("Authorization") != "Bearer fixture-token" || httpRequest.URL.Fragment != "" {
+					t.Fatal("runner.phase19-ref.request")
+				}
+				deadline, ok := httpRequest.Context().Deadline()
+				if !ok || time.Until(deadline) > 10*time.Second {
+					t.Fatal("runner.phase19-ref.deadline")
+				}
+				if first {
+					first = false
+					if name == "escaped" && httpRequest.URL.EscapedPath() != "/repos/owner/repo/git/ref/tags/release/%23%25%E6%AC%A1" {
+						t.Fatal("runner.phase19-ref.escaping")
+					}
+					response := cicdSourceTestResponse(cicdPlanTestRaw(t, ref))
+					if name == "ref-limit" {
+						response.ContentLength = 262145
+					}
+					return response, nil
+				}
+				if strings.Contains(httpRequest.URL.Path, "/git/tags/") {
+					index := len(calls) - 1
+					if name == "cycle" {
+						index = 1
+					}
+					if httpRequest.URL.Path != "/repos/owner/repo/git/tags/"+fmt.Sprintf("%040x", index) {
+						t.Fatal("runner.phase19-ref.tag-order")
+					}
+					next := map[string]any{"type": "commit", "sha": strings.Repeat("b", 40)}
+					if index < depth {
+						next = map[string]any{"type": "tag", "sha": fmt.Sprintf("%040x", index+1)}
+					}
+					if name == "cycle" {
+						next = map[string]any{"type": "tag", "sha": fmt.Sprintf("%040x", 1)}
+					}
+					tag := map[string]any{"sha": fmt.Sprintf("%040x", index), "object": next}
+					if name == "tag-digest" {
+						tag["sha"] = strings.Repeat("c", 40)
+					}
+					if name == "tag-sha" {
+						tag["sha"] = nil
+					}
+					if name == "tag-shape" {
+						tag["object"] = nil
+					}
+					response := cicdSourceTestResponse(cicdPlanTestRaw(t, tag))
+					if name == "tag-limit" {
+						response.ContentLength = 1048577
+					}
+					return response, nil
+				}
+				if httpRequest.URL.RequestURI() != "/repos/owner/repo/git/trees/"+strings.Repeat("b", 40)+"?recursive=1" {
+					t.Fatal("runner.phase19-ref.fixed-source")
+				}
+				return cicdSourceTestResponse([]byte(`{"sha":"` + strings.Repeat("a", 40) + `","tree":[],"truncated":false}`)), nil
+			}))
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			if name == "cancelled" {
+				cancel()
+			}
+			got, err := cicdFetchRefSource(ctx, request, "fixture-token", client)
+			if err != want || (err != nil) != (got == nil) {
+				t.Fatal("runner.phase19-ref.result", err)
+			}
+			if want == nil {
+				metadata := cicdPlanTestObject(t, string(got.Metadata()))
+				if metadata["sha"] != strings.Repeat("b", 40) || metadata["ref"] != request.Ref || metadata["ref_kind"] != request.RefKind || len(calls) != depth+2 {
+					t.Fatal("runner.phase19-ref.snapshot")
+				}
+			} else if name == "cancelled" && len(calls) != 0 || name == "nine-tags" && len(calls) != 9 || name == "cycle" && len(calls) != 2 {
+				t.Fatal("runner.phase19-ref.stop")
+			}
+		})
+	}
+}
+
+func TestCICDRefInput(t *testing.T) {
+	for _, name := range []string{"nil-context", "owner", "repo", "kind", "ref", "token", "token-control"} {
+		t.Run(name, func(t *testing.T) {
+			request := CICDRefRequest{Owner: "owner", Repo: "repo", RefKind: "branch", Ref: "main"}
+			var ctx context.Context = context.Background()
+			token := "fixture-token"
+			switch name {
+			case "nil-context":
+				ctx = nil
+			case "owner":
+				request.Owner = "../owner"
+			case "repo":
+				request.Repo = "repo?secret"
+			case "kind":
+				request.RefKind = "commit"
+			case "ref":
+				request.Ref = "../main"
+			case "token":
+				token = ""
+			case "token-control":
+				token = "token\n"
+			}
+			calls := 0
+			client := cicdSourceClient(cicdSourceTestTransport(func(*http.Request) (*http.Response, error) { calls++; return nil, ErrCICDTransport }))
+			got, err := cicdFetchRefSource(ctx, request, token, client)
+			if got != nil || err != ErrCICDSchema || calls != 0 {
+				t.Fatal("runner.phase19-ref.input.no-io", err)
+			}
+		})
+	}
+	if got, err := FetchCICDRefSource(nil, CICDRefRequest{}, ""); got != nil || err != ErrCICDSchema {
+		t.Fatal("runner.phase19-ref.input.public")
+	}
+	if got, err := StartCICDRefRun(nil, nil, statefile.CICDRunRequest{}, nil, "branch", "main", nil); got.Operation != nil || err != ErrCICDSchema {
+		t.Fatal("runner.phase19-ref.input.admission")
+	}
+}
+
+func TestCICDRefRun(t *testing.T) {
+	for _, replay := range []bool{false, true} {
+		p, d, source, planContext := cicdPlanTestFixture(t)
+		plan, err := cicdPlanTestDraft(t, p, d, `{}`).Resolve(cicdPlanTestRaw(t, source), nil, planContext)
+		if err != nil {
+			t.Fatal("runner.phase19-ref-run.fixture")
+		}
+		request := statefile.CICDRunRequest{PlanDigest: cicdPlanTestObject(t, string(plan))["digest"].(string)}
+		store := &cicdRunTestStore{snapshot: statefile.CICDPlanSnapshot{Project: cicdPlanTestRaw(t, p), Definition: cicdPlanTestRaw(t, d), Workers: planContext.Workers}}
+		reads, requests, commits := 0, 0, 0
+		store.check = func() (statefile.CICDRunReply, error) { return statefile.CICDRunReply{Replayed: replay}, nil }
+		store.commit = func(actual statefile.CICDRunRequest, revision int64, resolve func(statefile.CICDPlanSnapshot) (json.RawMessage, error)) (statefile.CICDRunReply, error) {
+			commits++
+			got, err := resolve(store.snapshot)
+			if err != nil || !bytes.Equal(got, plan) || revision != 1 || actual.PlanDigest != request.PlanDigest {
+				t.Fatal("runner.phase19-ref-run.frozen-plan", err)
+			}
+			return statefile.CICDRunReply{Generation: 2}, nil
+		}
+		client := cicdSourceClient(cicdSourceTestTransport(func(r *http.Request) (*http.Response, error) {
+			requests++
+			if requests == 1 {
+				if r.URL.Path != "/repos/owner/repo/git/ref/heads/main" {
+					t.Fatal("runner.phase19-ref-run.scope")
+				}
+				return cicdSourceTestResponse([]byte(`{"ref":"refs/heads/main","object":{"type":"commit","sha":"` + strings.Repeat("b", 40) + `"}}`)), nil
+			}
+			if requests != 2 || !strings.HasSuffix(r.URL.Path, strings.Repeat("b", 40)) {
+				t.Fatal("runner.phase19-ref-run.requests")
+			}
+			return cicdSourceTestResponse([]byte(`{"sha":"` + strings.Repeat("a", 40) + `","truncated":false,"tree":[]}`)), nil
+		}))
+		got, err := cicdStartRefRun(context.Background(), store, request, json.RawMessage(`{}`), "branch", "main", func() (string, error) { reads++; return "fixture-token", nil }, client)
+		if err != nil || got.Replayed != replay || replay && (reads != 0 || requests != 0 || commits != 0) || !replay && (reads != 1 || requests != 2 || commits != 1) {
+			t.Fatal("runner.phase19-ref-run.result", err)
+		}
+	}
+}
+
 type cicdRunTestStore struct {
 	snapshot statefile.CICDPlanSnapshot
 	check    func() (statefile.CICDRunReply, error)
@@ -145,9 +549,9 @@ func TestCICDRunRealStore(t *testing.T) {
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
 		t.Skip("P19_CAPABILITY: run admission filesystem requires Linux amd64")
 	}
-	p, d, source, context := cicdPlanTestFixture(t)
+	p, d, source, planContext := cicdPlanTestFixture(t)
 	root := cicdPlanTestObject(t, `{"schema_version":1,"generation":1,"projects":[],"definitions":[],"templates":[],"environments":[],"users":[{"id":"admin","name":"Administrator","revision":1,"enabled":true,"credential":null,"totp":null,"created_at":"2026-10-22T00:00:00Z"}],"services":[],"secrets":[],"grants":[{"subject_kind":"user","subject_id":"admin","project_id":null,"environment_id":null,"role":"platform-admin","enabled":true,"expires_at":null},{"subject_kind":"user","subject_id":"admin","project_id":"p","environment_id":null,"role":"operator","enabled":true,"expires_at":null}],"workers":[],"runs":[],"deployments":[],"artifacts":[],"caches":[],"operations":[],"audits":[],"targets":[],"environment_states":[],"notifications":[],"trigger_cursors":[],"status_deliveries":[]}`)
-	root["projects"], root["definitions"], root["workers"] = []any{p}, []any{d}, []any{cicdPlanTestObject(t, string(context.Workers[0]))}
+	root["projects"], root["definitions"], root["workers"] = []any{p}, []any{d}, []any{cicdPlanTestObject(t, string(planContext.Workers[0]))}
 	state := t.TempDir()
 	if os.Chmod(state, 0700) != nil || os.MkdirAll(filepath.Join(state, "cicd", "snapshots"), 0700) != nil {
 		t.Fatal("runner.phase19-run.real.directory")
@@ -163,7 +567,7 @@ func TestCICDRunRealStore(t *testing.T) {
 	if err != nil {
 		t.Fatal("runner.phase19-run.real.open", err)
 	}
-	plan, err := cicdPlanTestDraft(t, p, d, `{}`).Resolve(cicdPlanTestRaw(t, source), nil, context)
+	plan, err := cicdPlanTestDraft(t, p, d, `{}`).Resolve(cicdPlanTestRaw(t, source), nil, planContext)
 	if err != nil {
 		t.Fatal("runner.phase19-run.real.preview")
 	}
@@ -174,11 +578,24 @@ func TestCICDRunRealStore(t *testing.T) {
 		return nil
 	}}
 	fetches := 0
-	acquire := func(statefile.CICDPlanSnapshot) (*CICDSourceSnapshot, error) {
+	readToken := func() (string, error) {
 		fetches++
-		return &CICDSourceSnapshot{metadata: cicdPlanTestRaw(t, source), files: map[string][]byte{}}, nil
+		return "fixture-token", nil
 	}
-	first, err := StartCICDRun(store, request, json.RawMessage(`{}`), acquire)
+	requests := 0
+	client := cicdSourceClient(cicdSourceTestTransport(func(httpRequest *http.Request) (*http.Response, error) {
+		requests++
+		switch httpRequest.URL.RequestURI() {
+		case "/repos/owner/repo/git/ref/heads/main":
+			return cicdSourceTestResponse([]byte(`{"ref":"refs/heads/main","object":{"type":"commit","sha":"` + strings.Repeat("b", 40) + `"}}`)), nil
+		case "/repos/owner/repo/git/trees/" + strings.Repeat("b", 40) + "?recursive=1":
+			return cicdSourceTestResponse([]byte(`{"sha":"` + strings.Repeat("a", 40) + `","truncated":false,"tree":[]}`)), nil
+		default:
+			t.Fatal("runner.phase19-run.real.request")
+			return nil, ErrCICDTransport
+		}
+	}))
+	first, err := cicdStartRefRun(context.Background(), store, request, json.RawMessage(`{}`), "branch", "main", readToken, client)
 	if err != nil || first.Replayed || first.Generation != 2 || fetches != 1 {
 		t.Fatal("runner.phase19-run.real.accept", err)
 	}
@@ -186,13 +603,52 @@ func TestCICDRunRealStore(t *testing.T) {
 	if err != nil {
 		t.Fatal("runner.phase19-run.real.reopen", err)
 	}
-	replay, err := StartCICDRun(reopened, request, json.RawMessage(`{}`), acquire)
-	if err != nil || !replay.Replayed || !bytes.Equal(first.Operation, replay.Operation) || replay.Generation != 2 || fetches != 1 {
+	replay, err := cicdStartRefRun(context.Background(), reopened, request, json.RawMessage(`{}`), "branch", "main", readToken, client)
+	if err != nil || !replay.Replayed || !bytes.Equal(first.Operation, replay.Operation) || replay.Generation != 2 || fetches != 1 || requests != 2 {
 		t.Fatal("runner.phase19-run.real.replay", err)
 	}
+	op := cicdPlanTestObject(t, string(first.Operation))
+	logs, err := statefile.OpenCICDLogStore(state)
+	if err != nil {
+		t.Fatal("runner.phase19-run.real.log-store", err)
+	}
+	collector, err := NewCICDJobLog("p", op["target_id"].(string), 1, "build", 1, [][]byte{[]byte("fixture-secret")})
+	if err != nil {
+		t.Fatal("runner.phase19-run.real.log-collector", err)
+	}
+	for _, stream := range []string{"stdout", "stderr"} {
+		data, err := collector.Snapshot(stream)
+		if err != nil || logs.WriteLog(data) != nil {
+			t.Fatal("runner.phase19-run.real.log-initial", err)
+		}
+	}
+	if collector.Append("stdout", []byte("before fixture-")) != nil || collector.Append("stdout", []byte("secret after")) != nil || collector.EndStage() != nil || collector.Seal() != nil {
+		t.Fatal("runner.phase19-run.real.log-produce")
+	}
+	for _, stream := range []string{"stdout", "stderr"} {
+		data, err := collector.Snapshot(stream)
+		if err != nil || logs.WriteLog(data) != nil {
+			t.Fatal("runner.phase19-run.real.log-write", err)
+		}
+	}
+	logs, err = statefile.OpenCICDLogStore(state)
+	if err != nil {
+		t.Fatal("runner.phase19-run.real.log-reopen", err)
+	}
+	for _, stream := range []string{"stdout", "stderr"} {
+		data, err := logs.ReadLog(statefile.CICDLogIdentity{ProjectID: "p", RunID: op["target_id"].(string), Attempt: 1, JobID: "build", Stream: stream})
+		value := cicdPlanTestObject(t, string(data))
+		want := ""
+		if stream == "stdout" {
+			want = "before [REDACTED] after"
+		}
+		if err != nil || value["data"] != want || value["terminal"] != true {
+			t.Fatal("runner.phase19-run.real.log-read", err)
+		}
+	}
 	request.Check = func(statefile.CICDIdentity) error { return security.ErrCICDAuth }
-	denied, err := StartCICDRun(reopened, request, json.RawMessage(`{}`), acquire)
-	if err != security.ErrCICDAuth || denied.Operation != nil || fetches != 1 {
+	denied, err := cicdStartRefRun(context.Background(), reopened, request, json.RawMessage(`{}`), "branch", "main", readToken, client)
+	if err != security.ErrCICDAuth || denied.Operation != nil || fetches != 1 || requests != 2 {
 		t.Fatal("runner.phase19-run.real.revoked", err)
 	}
 }
@@ -1351,6 +1807,16 @@ func TestCICDPlanMutations(t *testing.T) {
 		{"source-no-reuse", "runner/execute.go", "DisableKeepAlives: true", "DisableKeepAlives: false", "runner.phase19-source.http.transport-profile"},
 		{"run-values-copy", "runner/execute.go", "values = bytes.Clone(values)", "values = values[:]", "runner.phase19-run.start.result"},
 		{"run-replay", "runner/execute.go", "if err != nil || replay.Replayed {", "if err != nil {", "runner.phase19-run.start.result"},
+		{"ref-exact", "runner/execute.go", "if name != \"refs/\"+namespace+\"/\"+request.Ref {", "if false && name != \"refs/\"+namespace+\"/\"+request.Ref {", "runner.phase19-ref.result"},
+		{"ref-depth", "runner/execute.go", "depth >= 8 || visited[sha]", "depth >= 9 || visited[sha]", "runner.phase19-ref.result"},
+		{"ref-cycle", "runner/execute.go", "depth >= 8 || visited[sha]", "depth >= 8 || false && visited[sha]", "runner.phase19-ref.stop"},
+		{"tag-identity", "runner/execute.go", "if tag[\"sha\"] != sha {", "if false && tag[\"sha\"] != sha {", "runner.phase19-ref.result"},
+		{"log-chunk-prefix", "runner/execute.go", "eof || len(stream.pending)-position >= log.maxPattern", "true", "runner.phase19-log.mask.longest-chunk"},
+		{"log-raw-limit", "runner/execute.go", "log.raw += int64(len(data))", "log.raw += 0", "runner.phase19-log.limit.shared-stages"},
+		{"log-utf8", "runner/execute.go", "if !eof && !utf8.FullRune(decoded[position:]) {", "if false && !eof && !utf8.FullRune(decoded[position:]) {", "runner.phase19-log.utf8.partition"},
+		{"log-window", "runner/execute.go", "stream.first += int64(drop)", "stream.first += 0", "runner.phase19-log.snapshot.valid"},
+		{"log-seal", "runner/execute.go", "if !log.stageClosed {\n\t\treturn ErrCICDStale", "if false && !log.stageClosed {\n\t\treturn ErrCICDStale", "runner.phase19-log.lifecycle.open"},
+		{"mask-order", "security/execute.go", "return len(result[i]) > len(result[j])", "return len(result[i]) < len(result[j])", "runner.phase19-log.mask.longest-chunk"},
 	} {
 		t.Run(mutation.id, func(t *testing.T) {
 			root := t.TempDir()
@@ -1388,7 +1854,7 @@ func TestCICDPlanMutations(t *testing.T) {
 			if _, err := compile.CombinedOutput(); err != nil {
 				t.Fatal("runner.phase19-plan-unit.mutation.compile-invalid")
 			}
-			command := exec.Command(filepath.Join(root, "mutation.test"), "-test.run=^TestCICD(RunStart|Plan(Inputs|Matrix|DAG|Selection|Prerequisites|Source|Deploy|TemplateAndSubstitution|TaskSyntax)|Source(Input|Tree|Blob|HTTP)?)$")
+			command := exec.Command(filepath.Join(root, "mutation.test"), "-test.run=^TestCICD(RefSource|JobLog(Mask|UTF8|Lifecycle)|RunStart|Plan(Inputs|Matrix|DAG|Selection|Prerequisites|Source|Deploy|TemplateAndSubstitution|TaskSyntax)|Source(Input|Tree|Blob|HTTP)?)$")
 			command.Dir = root
 			output, err := command.CombinedOutput()
 			if err == nil || !bytes.Contains(output, []byte(mutation.reason)) {

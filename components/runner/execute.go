@@ -13,6 +13,7 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"reflect"
 	"runtime"
@@ -20,9 +21,313 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
+	"github.com/fqwink/build-scripts/components/security"
 	"github.com/fqwink/build-scripts/components/statefile"
 )
+
+func NewCICDJobLog(project, run string, attempt int, job string, outputMB int, secrets [][]byte) (*CICDJobLog, error) {
+	if outputMB < 1 || outputMB > 16 {
+		return nil, ErrCICDSchema
+	}
+	patterns, err := security.CICDMaskPatterns(secrets)
+	if err != nil {
+		return nil, ErrCICDSecret
+	}
+	log := &CICDJobLog{project: project, run: run, attempt: attempt, job: job, try: 1, limit: int64(outputMB) * 1048576, patterns: patterns, maxPattern: 1}
+	if len(patterns) > 0 {
+		log.maxPattern = len(patterns[0])
+	}
+	if statefile.ValidateCICDLog(log.snapshot(0)) != nil {
+		return nil, ErrCICDSchema
+	}
+	return log, nil
+}
+
+func cicdLogIndex(stream string) int {
+	if stream == "stdout" {
+		return 0
+	}
+	if stream == "stderr" {
+		return 1
+	}
+	return -1
+}
+
+func (log *CICDJobLog) Append(stream string, data []byte) error {
+	index := cicdLogIndex(stream)
+	if log == nil || index < 0 || len(data) > 65536 {
+		return ErrCICDSchema
+	}
+	log.mu.Lock()
+	defer log.mu.Unlock()
+	if log.sealed || log.stageClosed {
+		return ErrCICDStale
+	}
+	if log.over {
+		return ErrCICDOutput
+	}
+	remaining := log.limit - log.raw
+	if int64(len(data)) > remaining {
+		data = data[:int(remaining)]
+		log.over = true
+	}
+	log.raw += int64(len(data))
+	log.streams[index].pending = append(log.streams[index].pending, data...)
+	log.process(index, false)
+	if log.over {
+		return ErrCICDOutput
+	}
+	return nil
+}
+
+func (log *CICDJobLog) process(index int, eof bool) {
+	stream := &log.streams[index]
+	masked := make([]byte, 0, len(stream.pending))
+	position := 0
+	for position < len(stream.pending) && (eof || len(stream.pending)-position >= log.maxPattern) {
+		matched := false
+		for _, pattern := range log.patterns {
+			if bytes.HasPrefix(stream.pending[position:], pattern) {
+				masked = append(masked, "[REDACTED]"...)
+				position += len(pattern)
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			masked = append(masked, stream.pending[position])
+			position++
+		}
+	}
+	stream.pending = bytes.Clone(stream.pending[position:])
+	decoded := append(stream.carry, masked...)
+	stream.carry = nil
+	position = 0
+	start := len(stream.data)
+	for position < len(decoded) {
+		if !eof && !utf8.FullRune(decoded[position:]) {
+			break
+		}
+		r, size := utf8.DecodeRune(decoded[position:])
+		if r == utf8.RuneError && size == 1 {
+			stream.data = append(stream.data, "\xef\xbf\xbd"...)
+		} else {
+			stream.data = append(stream.data, decoded[position:position+size]...)
+		}
+		position += size
+	}
+	stream.carry = bytes.Clone(decoded[position:])
+	stream.next += int64(len(stream.data) - start)
+	if len(stream.data) > 1048576 {
+		drop := len(stream.data) - 1048576
+		for drop < len(stream.data) && !utf8.RuneStart(stream.data[drop]) {
+			drop++
+		}
+		stream.first += int64(drop)
+		stream.data = bytes.Clone(stream.data[drop:])
+	}
+}
+
+func (log *CICDJobLog) EndStage() error {
+	if log == nil {
+		return ErrCICDSchema
+	}
+	log.mu.Lock()
+	defer log.mu.Unlock()
+	if log.sealed {
+		return ErrCICDStale
+	}
+	if !log.stageClosed {
+		log.process(0, true)
+		log.process(1, true)
+		log.stageClosed = true
+	}
+	return nil
+}
+
+func (log *CICDJobLog) NextStage() error {
+	if log == nil {
+		return ErrCICDSchema
+	}
+	log.mu.Lock()
+	defer log.mu.Unlock()
+	if log.sealed || !log.stageClosed {
+		return ErrCICDStale
+	}
+	if log.over {
+		return ErrCICDOutput
+	}
+	log.stageClosed = false
+	return nil
+}
+
+func (log *CICDJobLog) NextTry() error {
+	if log == nil {
+		return ErrCICDSchema
+	}
+	log.mu.Lock()
+	defer log.mu.Unlock()
+	if log.sealed || !log.stageClosed {
+		return ErrCICDStale
+	}
+	if log.over {
+		return ErrCICDOutput
+	}
+	if log.try >= 3 {
+		return ErrCICDQuota
+	}
+	log.try++
+	log.raw = 0
+	log.over = false
+	log.stageClosed = false
+	return nil
+}
+
+func (log *CICDJobLog) Seal() error {
+	if log == nil {
+		return ErrCICDSchema
+	}
+	log.mu.Lock()
+	defer log.mu.Unlock()
+	if !log.stageClosed {
+		return ErrCICDStale
+	}
+	log.sealed = true
+	for i := range log.streams {
+		log.streams[i].terminal = true
+	}
+	return nil
+}
+
+func (log *CICDJobLog) MarkGap() error {
+	if log == nil {
+		return ErrCICDSchema
+	}
+	log.mu.Lock()
+	defer log.mu.Unlock()
+	if log.sealed {
+		return ErrCICDStale
+	}
+	for i := range log.streams {
+		log.streams[i].gap = true
+	}
+	return nil
+}
+
+func (log *CICDJobLog) snapshot(index int) json.RawMessage {
+	stream := &log.streams[index]
+	name := "stdout"
+	if index == 1 {
+		name = "stderr"
+	}
+	value := map[string]any{"schema_version": 1, "project_id": log.project, "run_id": log.run, "attempt": log.attempt, "job_id": log.job, "stream": name, "first_offset": stream.first, "next_offset": stream.next, "data": string(stream.data), "truncated": stream.first > 0, "gap": stream.gap, "terminal": stream.terminal}
+	data, _ := statefile.CanonicalCICDJSON(cicdPlanBytes(value))
+	return data
+}
+
+func (log *CICDJobLog) Snapshot(stream string) (json.RawMessage, error) {
+	index := cicdLogIndex(stream)
+	if log == nil || index < 0 {
+		return nil, ErrCICDSchema
+	}
+	log.mu.Lock()
+	defer log.mu.Unlock()
+	return log.snapshot(index), nil
+}
+
+func FetchCICDRefSource(ctx context.Context, request CICDRefRequest, token string) (*CICDSourceSnapshot, error) {
+	transport := cicdSourceTransport()
+	defer transport.CloseIdleConnections()
+	return cicdFetchRefSource(ctx, request, token, cicdSourceClient(transport))
+}
+
+func cicdFetchRefSource(ctx context.Context, request CICDRefRequest, token string, client *http.Client) (*CICDSourceSnapshot, error) {
+	fixed := CICDSourceRequest{Owner: request.Owner, Repo: request.Repo, RefKind: request.RefKind, Ref: request.Ref, SHA: strings.Repeat("0", 40)}
+	if ctx == nil || !cicdSourceRequestValid(fixed, token) {
+		return nil, ErrCICDSchema
+	}
+	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	defer cancel()
+	namespace := "heads"
+	if request.RefKind == "tag" {
+		namespace = "tags"
+	}
+	segments := strings.Split(request.Ref, "/")
+	for i := range segments {
+		segments[i] = url.PathEscape(segments[i])
+	}
+	base := "/repos/" + request.Owner + "/" + request.Repo + "/git/"
+	ref, err := cicdSourceGet(ctx, client, base+"ref/"+namespace+"/"+strings.Join(segments, "/"), token, 262144)
+	if err != nil {
+		return nil, err
+	}
+	name, validName := ref["ref"].(string)
+	if !validName {
+		return nil, ErrCICDTransport
+	}
+	if name != "refs/"+namespace+"/"+request.Ref {
+		return nil, ErrCICDSource
+	}
+	object, valid := ref["object"].(map[string]any)
+	if !valid {
+		return nil, ErrCICDTransport
+	}
+	visited := make(map[string]bool)
+	for depth := 0; ; depth++ {
+		kind, validKind := object["type"].(string)
+		sha, validSHA := object["sha"].(string)
+		if !validKind || !validSHA || statefile.ValidateCICDValue("SHA", cicdPlanBytes(sha)) != nil {
+			return nil, ErrCICDTransport
+		}
+		if kind == "commit" {
+			fixed.SHA = sha
+			return cicdFetchSource(ctx, fixed, token, client)
+		}
+		if request.RefKind != "tag" || kind != "tag" || depth >= 8 || visited[sha] {
+			return nil, ErrCICDSource
+		}
+		visited[sha] = true
+		tag, err := cicdSourceGet(ctx, client, base+"tags/"+sha, token, 1048576)
+		if err != nil {
+			return nil, err
+		}
+		if statefile.ValidateCICDValue("SHA", cicdPlanBytes(tag["sha"])) != nil {
+			return nil, ErrCICDTransport
+		}
+		if tag["sha"] != sha {
+			return nil, ErrCICDDigest
+		}
+		object, valid = tag["object"].(map[string]any)
+		if !valid {
+			return nil, ErrCICDTransport
+		}
+	}
+}
+
+func StartCICDRefRun(ctx context.Context, store CICDRunAdmissionStore, request statefile.CICDRunRequest, values json.RawMessage, refKind, ref string, readToken func() (string, error)) (statefile.CICDRunReply, error) {
+	transport := cicdSourceTransport()
+	defer transport.CloseIdleConnections()
+	return cicdStartRefRun(ctx, store, request, values, refKind, ref, readToken, cicdSourceClient(transport))
+}
+
+func cicdStartRefRun(ctx context.Context, store CICDRunAdmissionStore, request statefile.CICDRunRequest, values json.RawMessage, refKind, ref string, readToken func() (string, error), client *http.Client) (statefile.CICDRunReply, error) {
+	if ctx == nil || readToken == nil {
+		return statefile.CICDRunReply{}, ErrCICDSchema
+	}
+	return StartCICDRun(store, request, values, func(snapshot statefile.CICDPlanSnapshot) (*CICDSourceSnapshot, error) {
+		project, err := cicdPlanObject("Project", snapshot.Project)
+		if err != nil {
+			return nil, err
+		}
+		token, err := readToken()
+		if err != nil {
+			return nil, err
+		}
+		return cicdFetchRefSource(ctx, CICDRefRequest{Owner: project["source_owner"].(string), Repo: project["source_repo"].(string), RefKind: refKind, Ref: ref}, token, client)
+	})
+}
 
 func FetchCICDSource(ctx context.Context, request CICDSourceRequest, token string) (*CICDSourceSnapshot, error) {
 	transport := cicdSourceTransport()
@@ -198,11 +503,11 @@ func StartCICDRun(store CICDRunAdmissionStore, request statefile.CICDRunRequest,
 	reject := func(cause error) (statefile.CICDRunReply, error) {
 		return store.StartRun(request, revision, func(statefile.CICDPlanSnapshot) (json.RawMessage, error) { return nil, cause })
 	}
-	values = bytes.Clone(values)
 	draft, err := PrepareCICDPlan(snapshot.Project, snapshot.Definition, values, snapshot.Templates)
 	if err != nil {
 		return reject(err)
 	}
+	values = bytes.Clone(values)
 	source, err := acquire(snapshot)
 	if err != nil {
 		return reject(err)

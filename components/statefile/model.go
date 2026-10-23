@@ -14,6 +14,13 @@ var ErrCICDSchema = errors.New("P19_SCHEMA")
 
 type CICDIdentityStore struct{ store *cicdSnapshotStore }
 
+type CICDLogStore struct{ store *cicdSnapshotStore }
+
+type CICDLogIdentity struct {
+	ProjectID, RunID, JobID, Stream string
+	Attempt                         int
+}
+
 type CICDRunStore struct {
 	store   *cicdSnapshotStore
 	entropy io.Reader
@@ -93,6 +100,7 @@ type cicdOperationReply struct {
 }
 
 const cicdSnapshotLimit = 33554432
+const cicdLogLimit = 7340032
 
 // API admission modes, not a registry of executable business handlers.
 var cicdOperationKinds = map[string]bool{

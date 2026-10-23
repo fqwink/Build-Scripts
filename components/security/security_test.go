@@ -1,12 +1,60 @@
 package security
 
 import (
+	"bytes"
 	"encoding/base64"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestCICDMaskPatterns(t *testing.T) {
+	secret := []byte("a b/?")
+	patterns, err := CICDMaskPatterns([][]byte{secret, []byte("x"), secret})
+	want := [][]byte{[]byte("a%20b%2F%3F"), []byte("a+b%2F%3F"), []byte("YSBiLz8="), []byte("YSBiLz8"), []byte("a b/?"), []byte("eA=="), []byte("eA"), []byte("x")}
+	if err != nil || !reflect.DeepEqual(patterns, want) {
+		t.Fatal("security.phase19-mask.encodings-order", err)
+	}
+	secret[0] = '!'
+	if bytes.Contains(patterns[4], []byte("!")) {
+		t.Fatal("security.phase19-mask.input-copy")
+	}
+	patterns[0][0] = '!'
+	fresh, err := CICDMaskPatterns([][]byte{[]byte("a b/?")})
+	if err != nil || fresh[0][0] != 'a' {
+		t.Fatal("security.phase19-mask.output-copy")
+	}
+	encoded, err := CICDMaskPatterns([][]byte{[]byte("\xef\xbf\xbfx")})
+	if err != nil || !reflect.DeepEqual(encoded, [][]byte{[]byte("%EF%BF%BFx"), []byte("77+/eA=="), []byte("77-_eA=="), []byte("77-_eA"), []byte("\xef\xbf\xbfx")}) {
+		t.Fatal("security.phase19-mask.base64-variants", err)
+	}
+	for _, test := range []struct {
+		name   string
+		values [][]byte
+		valid  bool
+	}{
+		{"empty-set", nil, true},
+		{"empty-secret", [][]byte{nil}, false},
+		{"newline", [][]byte{[]byte("x\ny")}, false},
+		{"carriage", [][]byte{[]byte("x\ry")}, false},
+		{"nul", [][]byte{{0}}, false},
+		{"invalid-utf8", [][]byte{{0xff}}, false},
+		{"max-value", [][]byte{bytes.Repeat([]byte("x"), 4096)}, true},
+		{"long-value", [][]byte{bytes.Repeat([]byte("x"), 4097)}, false},
+		{"max-count", bytes.Fields(bytes.Repeat([]byte("x "), 16)), true},
+		{"over-count", bytes.Fields(bytes.Repeat([]byte("x "), 17)), false},
+		{"max-total", [][]byte{bytes.Repeat([]byte("x"), 4096), bytes.Repeat([]byte("y"), 4096), bytes.Repeat([]byte("z"), 4096), bytes.Repeat([]byte("a"), 4096)}, true},
+		{"over-total", [][]byte{bytes.Repeat([]byte("x"), 4096), bytes.Repeat([]byte("y"), 4096), bytes.Repeat([]byte("z"), 4096), bytes.Repeat([]byte("a"), 4096), []byte("b")}, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := CICDMaskPatterns(test.values)
+			if test.valid && err != nil || !test.valid && (err != ErrCICDSecret || result != nil) {
+				t.Fatal("security.phase19-mask.bounds", err)
+			}
+		})
+	}
+}
 
 func TestCICDBearerAndCredentialBinding(t *testing.T) {
 	service := base64.RawURLEncoding.EncodeToString(make([]byte, 32))

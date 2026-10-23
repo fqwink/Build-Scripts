@@ -22,6 +22,360 @@ import (
 	"github.com/fqwink/build-scripts/components/security"
 )
 
+func cicdLogTestValue() map[string]any {
+	return map[string]any{"schema_version": json.Number("1"), "project_id": "p", "run_id": "r-" + strings.Repeat("11", 16), "attempt": json.Number("1"), "job_id": "build", "stream": "stdout", "first_offset": json.Number("0"), "next_offset": json.Number("0"), "data": "", "truncated": false, "gap": false, "terminal": false}
+}
+
+func TestCICDLogSchema(t *testing.T) {
+	for _, name := range []string{"initial", "nul", "utf8", "window", "length", "reverse", "truncated", "run-id", "unknown", "missing", "invalid-utf8", "duplicate", "unsafe-offset"} {
+		t.Run(name, func(t *testing.T) {
+			value := cicdLogTestValue()
+			valid := false
+			switch name {
+			case "initial":
+				valid = true
+			case "nul":
+				value["data"], value["next_offset"], valid = strings.Repeat("\x00", 1048576), json.Number("1048576"), true
+			case "utf8":
+				value["data"], value["next_offset"], valid = "\xe6\xac\xa1", json.Number("3"), true
+			case "window":
+				value["first_offset"], value["next_offset"], value["truncated"], valid = json.Number("5"), json.Number("5"), true, true
+			case "length":
+				value["data"] = "x"
+			case "reverse":
+				value["first_offset"] = json.Number("1")
+				value["truncated"] = true
+			case "truncated":
+				value["truncated"] = true
+			case "run-id":
+				value["run_id"] = "r-bad"
+			case "unknown":
+				value["other"] = false
+			case "missing":
+				delete(value, "terminal")
+			case "unsafe-offset":
+				value["first_offset"], value["next_offset"], value["truncated"] = json.Number("9007199254740992"), json.Number("9007199254740992"), true
+			}
+			data := cicdValueBytes(value)
+			if name == "invalid-utf8" {
+				data = bytes.Replace(data, []byte(`"data":""`), []byte{'"', 'd', 'a', 't', 'a', '"', ':', '"', 0xff, '"'}, 1)
+			}
+			if name == "duplicate" {
+				data = bytes.Replace(data, []byte(`"gap":false`), []byte(`"gap":false,"gap":false`), 1)
+			}
+			err := ValidateCICDLog(data)
+			if valid && err != nil || !valid && err != ErrCICDSchema {
+				t.Fatal("statefile.phase19-log.schema.reject", name, err)
+			}
+		})
+	}
+}
+
+func cicdLogStoreFixture(t *testing.T) (*CICDLogStore, map[string]any) {
+	t.Helper()
+	s, request, plan := cicdRunFixture(t)
+	if _, err := s.StartRun(request, 1, func(CICDPlanSnapshot) (json.RawMessage, error) { return plan, nil }); err != nil {
+		t.Fatal("statefile.phase19-log.store.fixture", err)
+	}
+	logs, err := OpenCICDLogStore(s.store.path)
+	if err != nil {
+		t.Fatal("statefile.phase19-log.store.open", err)
+	}
+	return logs, cicdLogTestValue()
+}
+
+func TestCICDLogStore(t *testing.T) {
+	s, value := cicdLogStoreFixture(t)
+	id := cicdLogIdentity(value)
+	before, head, _ := s.store.read()
+	if data, err := s.ReadLog(id); data != nil || err != ErrCICDNotFound {
+		t.Fatal("statefile.phase19-log.store.missing", err)
+	}
+	if _, err := os.Lstat(filepath.Join(s.store.path, "cicd", "logs")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("statefile.phase19-log.store.read-no-create")
+	}
+	if err := s.WriteLog(cicdValueBytes(value)); err != nil {
+		t.Fatal("statefile.phase19-log.store.initial", err)
+	}
+	value["data"], value["next_offset"] = "hello\x00\xe6\xac\xa1", json.Number("9")
+	if err := s.WriteLog(cicdValueBytes(value)); err != nil {
+		t.Fatal("statefile.phase19-log.store.append", err)
+	}
+	value["data"], value["first_offset"], value["next_offset"], value["truncated"], value["gap"] = "lo\x00\xe6\xac\xa1!", json.Number("3"), json.Number("10"), true, true
+	if err := s.WriteLog(cicdValueBytes(value)); err != nil {
+		t.Fatal("statefile.phase19-log.store.window", err)
+	}
+	value["terminal"] = true
+	if err := s.WriteLog(cicdValueBytes(value)); err != nil {
+		t.Fatal("statefile.phase19-log.store.seal", err)
+	}
+	s.store.fault = func(stage string) error {
+		if strings.HasPrefix(stage, "log.") {
+			return errors.New("no IO on replay")
+		}
+		return nil
+	}
+	if err := s.WriteLog(cicdValueBytes(value)); err != nil {
+		t.Fatal("statefile.phase19-log.store.noop", err)
+	}
+	s.store.fault = nil
+	fresh, err := OpenCICDLogStore(s.store.path)
+	if err != nil {
+		t.Fatal("statefile.phase19-log.store.reopen", err)
+	}
+	data, err := fresh.ReadLog(id)
+	if err != nil || !bytes.Equal(data, cicdValueBytes(value)) {
+		t.Fatal("statefile.phase19-log.store.read", err)
+	}
+	data[0] = '!'
+	if data, err := fresh.ReadLog(id); err != nil || data[0] != '{' {
+		t.Fatal("statefile.phase19-log.store.copy", err)
+	}
+	after, latest, _ := s.store.read()
+	if latest != head || !bytes.Equal(cicdValueBytes(before), cicdValueBytes(after)) {
+		t.Fatal("statefile.phase19-log.store.no-root-write")
+	}
+	path := filepath.Join(s.store.path, "cicd", "logs", id.ProjectID, id.RunID, "1", id.JobID, id.Stream+".json")
+	info, err := os.Stat(path)
+	if err != nil || info.Mode().Perm() != 0600 {
+		t.Fatal("statefile.phase19-log.store.mode")
+	}
+}
+
+func TestCICDLogRejection(t *testing.T) {
+	for _, name := range []string{"first-content", "first-terminal", "first-gap", "not-found", "unselected", "overlap", "reverse-first", "reverse-next", "gap-clear", "terminal-change", "terminal-run", "terminal-new"} {
+		t.Run(name, func(t *testing.T) {
+			s, value := cicdLogStoreFixture(t)
+			var expected error = ErrCICDStale
+			if strings.HasPrefix(name, "first-") {
+				if name == "first-content" {
+					value["data"], value["next_offset"] = "x", json.Number("1")
+				}
+				if name == "first-terminal" {
+					value["terminal"] = true
+				}
+				if name == "first-gap" {
+					value["gap"] = true
+				}
+			} else if name == "not-found" {
+				value["attempt"], expected = json.Number("2"), ErrCICDNotFound
+			} else if name == "unselected" {
+				value["job_id"] = "ignored"
+			} else {
+				if err := s.WriteLog(cicdValueBytes(value)); err != nil {
+					t.Fatal("statefile.phase19-log.reject.initial", err)
+				}
+				value["data"], value["next_offset"] = "abc", json.Number("3")
+				if name == "gap-clear" {
+					value["gap"] = true
+				}
+				if name == "terminal-change" {
+					value["terminal"] = true
+				}
+				if err := s.WriteLog(cicdValueBytes(value)); err != nil {
+					t.Fatal("statefile.phase19-log.reject.base", err)
+				}
+				switch name {
+				case "overlap":
+					value["data"] = "axc"
+				case "reverse-first":
+					value["first_offset"], value["data"], value["truncated"] = json.Number("1"), "bc", true
+					if err := s.WriteLog(cicdValueBytes(value)); err != nil {
+						t.Fatal("statefile.phase19-log.reject.window", err)
+					}
+					value["first_offset"], value["data"], value["truncated"] = json.Number("0"), "abc", false
+				case "reverse-next":
+					value["data"], value["next_offset"] = "ab", json.Number("2")
+				case "gap-clear":
+					value["gap"] = false
+				case "terminal-change":
+					value["terminal"] = false
+				case "terminal-run", "terminal-new":
+					_, head, _ := s.store.read()
+					if _, err := s.store.commit(head.Generation, cicdTestOperation, func(root map[string]any) error {
+						run := cicdObject(cicdList(root["runs"])[0])
+						run["state"] = "failed"
+						run["finished_at"] = "2026-10-22T00:00:00Z"
+						return nil
+					}); err != nil {
+						t.Fatal("statefile.phase19-log.reject.root", err)
+					}
+					if name == "terminal-new" {
+						value["stream"], value["data"], value["next_offset"] = "stderr", "", json.Number("0")
+					}
+				}
+			}
+			before, head, _ := s.store.read()
+			if err := s.WriteLog(cicdValueBytes(value)); err != expected {
+				t.Fatal("statefile.phase19-log.reject.result", name, err)
+			}
+			after, latest, _ := s.store.read()
+			if head != latest || !bytes.Equal(cicdValueBytes(before), cicdValueBytes(after)) {
+				t.Fatal("statefile.phase19-log.reject.no-root-write")
+			}
+		})
+	}
+}
+
+func TestCICDLogMaximum(t *testing.T) {
+	s, value := cicdLogStoreFixture(t)
+	if err := s.WriteLog(cicdValueBytes(value)); err != nil {
+		t.Fatal("statefile.phase19-log.maximum.initial", err)
+	}
+	value["data"], value["next_offset"] = strings.Repeat("\x00", 1048576), json.Number("1048576")
+	data := cicdValueBytes(value)
+	if len(data) <= 6291456 || len(data) > cicdLogLimit {
+		t.Fatal("statefile.phase19-log.maximum.envelope")
+	}
+	if err := s.WriteLog(data); err != nil {
+		t.Fatal("statefile.phase19-log.maximum.write", err)
+	}
+	actual, err := s.ReadLog(cicdLogIdentity(value))
+	if err != nil || !bytes.Equal(actual, data) {
+		t.Fatal("statefile.phase19-log.maximum.read", err)
+	}
+	if err := s.WriteLog(make([]byte, cicdLogLimit+1)); err != ErrCICDStorage {
+		t.Fatal("statefile.phase19-log.maximum.over-cap", err)
+	}
+	var absent *CICDLogStore
+	if _, err := absent.ReadLog(cicdLogIdentity(value)); err != ErrCICDSchema {
+		t.Fatal("statefile.phase19-log.maximum.nil-read")
+	}
+	if absent.WriteLog(nil) != ErrCICDSchema {
+		t.Fatal("statefile.phase19-log.maximum.nil-write")
+	}
+	bad := cicdLogIdentity(value)
+	bad.JobID = "../build"
+	if _, err := s.ReadLog(bad); err != ErrCICDSchema {
+		t.Fatal("statefile.phase19-log.maximum.bad-identity")
+	}
+}
+
+func TestCICDLogConcurrency(t *testing.T) {
+	s, value := cicdLogStoreFixture(t)
+	if err := s.WriteLog(cicdValueBytes(value)); err != nil {
+		t.Fatal("statefile.phase19-log.concurrent.initial", err)
+	}
+	start := make(chan struct{})
+	var group sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			<-start
+			fresh, err := OpenCICDLogStore(s.store.path)
+			if err != nil {
+				t.Error("statefile.phase19-log.concurrent.open", err)
+				return
+			}
+			local := cicdLogTestValue()
+			local["data"], local["next_offset"] = "same", json.Number("4")
+			if err := fresh.WriteLog(cicdValueBytes(local)); err != nil {
+				t.Error("statefile.phase19-log.concurrent.write", err)
+				return
+			}
+			data, err := fresh.ReadLog(cicdLogIdentity(local))
+			if err != nil || !bytes.Equal(data, cicdValueBytes(local)) {
+				t.Error("statefile.phase19-log.concurrent.read", err)
+			}
+		}()
+	}
+	close(start)
+	group.Wait()
+	_, head, err := s.store.read()
+	if err != nil || head.Generation != 3 {
+		t.Fatal("statefile.phase19-log.concurrent.no-root-write", err)
+	}
+}
+
+func TestCICDLogFaults(t *testing.T) {
+	for _, stage := range []string{"log.create", "log.write", "log.chmod", "log.sync", "log.close", "log.publish", "log.directory-sync"} {
+		t.Run(stage, func(t *testing.T) {
+			s, value := cicdLogStoreFixture(t)
+			if err := s.WriteLog(cicdValueBytes(value)); err != nil {
+				t.Fatal("statefile.phase19-log.fault.initial", err)
+			}
+			value["data"], value["next_offset"] = "x", json.Number("1")
+			s.store.fault = func(current string) error {
+				if current == stage {
+					return errors.New("injected")
+				}
+				return nil
+			}
+			want := ErrCICDStorage
+			if stage == "log.directory-sync" {
+				want = ErrCICDUncertain
+			}
+			if err := s.WriteLog(cicdValueBytes(value)); err != want {
+				t.Fatal("statefile.phase19-log.fault.result", err)
+			}
+			s.store.fault = nil
+			data, err := s.ReadLog(cicdLogIdentity(value))
+			if err != nil {
+				t.Fatal("statefile.phase19-log.fault.read", err)
+			}
+			log, _ := decodeCICDLog(data)
+			wantText := ""
+			if stage == "log.directory-sync" {
+				wantText = "x"
+			}
+			if log["data"] != wantText {
+				t.Fatal("statefile.phase19-log.fault.atomic")
+			}
+			path := filepath.Join(s.store.path, "cicd", "logs", "p", value["run_id"].(string), "1", "build")
+			entries, err := os.ReadDir(path)
+			if err != nil || len(entries) != 1 || entries[0].Name() != "stdout.json" {
+				t.Fatal("statefile.phase19-log.fault.no-temp")
+			}
+		})
+	}
+}
+
+func TestCICDLogCorruption(t *testing.T) {
+	for _, name := range []string{"identity", "malformed", "symlink", "hardlink", "file-mode", "directory-mode", "oversized"} {
+		t.Run(name, func(t *testing.T) {
+			s, value := cicdLogStoreFixture(t)
+			if err := s.WriteLog(cicdValueBytes(value)); err != nil {
+				t.Fatal("statefile.phase19-log.corrupt.initial", err)
+			}
+			id := cicdLogIdentity(value)
+			path := filepath.Join(s.store.path, "cicd", "logs", "p", id.RunID, "1", "build", "stdout.json")
+			var err error
+			switch name {
+			case "identity":
+				value["stream"] = "stderr"
+				err = os.WriteFile(path, cicdValueBytes(value), 0600)
+			case "malformed":
+				err = os.WriteFile(path, []byte(`{}`), 0600)
+			case "symlink":
+				other := filepath.Join(t.TempDir(), "other")
+				if os.WriteFile(other, cicdValueBytes(value), 0600) != nil || os.Remove(path) != nil {
+					t.Fatal("statefile.phase19-log.corrupt.fixture")
+				}
+				err = os.Symlink(other, path)
+			case "hardlink":
+				err = os.Link(path, filepath.Join(t.TempDir(), "other"))
+			case "file-mode":
+				err = os.Chmod(path, 0644)
+			case "directory-mode":
+				err = os.Chmod(filepath.Dir(path), 0755)
+			case "oversized":
+				err = os.Truncate(path, cicdLogLimit+1)
+			}
+			if err != nil {
+				t.Fatal("statefile.phase19-log.corrupt.fixture", err)
+			}
+			if data, err := s.ReadLog(id); err != ErrCICDCorrupt || data != nil {
+				t.Fatal("statefile.phase19-log.corrupt.read", name, err)
+			}
+			value["stream"] = "stdout"
+			if err := s.WriteLog(cicdValueBytes(value)); err != ErrCICDCorrupt {
+				t.Fatal("statefile.phase19-log.corrupt.write", name, err)
+			}
+		})
+	}
+}
+
 func cicdRunFixture(t *testing.T) (*CICDRunStore, CICDRunRequest, json.RawMessage) {
 	t.Helper()
 	s, operation := cicdOperationFixture(t)
@@ -1560,7 +1914,7 @@ func TestCICDSnapshotMutations(t *testing.T) {
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
 		t.Skip("P19_CAPABILITY: storage mutation execution requires Linux amd64")
 	}
-	const selection = "^TestCICD(Schema|RootIntegrity|Run(Admission|Rejection|RequestCollision|Pins|ReadScope|Capacity)|Operation(Schema|Admission|OneTime|Authorization|RejectedMutation|Scope|Advance|GC|Concurrency|Faults)|Snapshot(Store|Faults|Corruption|Locks|NoReplace))$"
+	const selection = "^TestCICD(Log(Schema|Store|Rejection|Faults|Corruption)|Schema|RootIntegrity|Run(Admission|Rejection|RequestCollision|Pins|ReadScope|Capacity)|Operation(Schema|Admission|OneTime|Authorization|RejectedMutation|Scope|Advance|GC|Concurrency|Faults)|Snapshot(Store|Faults|Corruption|Locks|NoReplace))$"
 	for _, mutation := range []struct{ id, path, old, new, reason string }{
 		{"unknown-key", "validate.go", "!ok || len(object) != len(schema)", "!ok", "statefile.phase19-schema.head-unknown.result"},
 		{"missing-key", "validate.go", "!exists || !validateCICDType(childType, child, expression+\".\"+key, depth+1)", "exists && !validateCICDType(childType, child, expression+\".\"+key, depth+1)", "statefile.phase19-schema.head-missing-substituted.result"},
@@ -1596,6 +1950,13 @@ func TestCICDSnapshotMutations(t *testing.T) {
 		{"run-pin", "execute.go", "artifact[\"pins\"] = append(pins, id)", "artifact[\"pins\"] = pins", "statefile.phase19-run.pin.atomic"},
 		{"run-entropy", "execute.go", "if _, err := io.ReadFull(reader, entropy[:]); err != nil {", "if _, err := io.ReadFull(reader, entropy[:]); false && err != nil {", "statefile.phase19-run.reject.result"},
 		{"run-request-id", "execute.go", "if !cicdRequestIDAvailable(root, request.requestID) {", "if false && !cicdRequestIDAvailable(root, request.requestID) {", "statefile.phase19-run.request-id.admission-reject"},
+		{"log-length", "validate.go", "next-first != int64(len(log[\"data\"].(string)))", "false", "statefile.phase19-log.schema.reject"},
+		{"log-terminal", "validate.go", "if old[\"terminal\"] == true {", "if false && old[\"terminal\"] == true {", "statefile.phase19-log.reject.result"},
+		{"log-overlap", "validate.go", "return a[start-cicdInt(old[\"first_offset\"]):end-cicdInt(old[\"first_offset\"])] == b[:end-start]", "return len(a)+len(b) >= 0", "statefile.phase19-log.reject.result"},
+		{"log-gap", "validate.go", "old[\"gap\"] == true && next[\"gap\"] != true", "false", "statefile.phase19-log.reject.result"},
+		{"log-selected", "execute.go", "if !selected {", "if false && !selected {", "statefile.phase19-log.reject.result"},
+		{"log-first", "execute.go", "cicdInt(log[\"next_offset\"]) != 0", "false", "statefile.phase19-log.reject.result"},
+		{"log-replay", "execute.go", "if bytes.Equal(cicdValueBytes(old), cicdValueBytes(log)) {", "if false && bytes.Equal(cicdValueBytes(old), cicdValueBytes(log)) {", "statefile.phase19-log.store.noop"},
 	} {
 		t.Run(mutation.id, func(t *testing.T) {
 			copyDir := t.TempDir()

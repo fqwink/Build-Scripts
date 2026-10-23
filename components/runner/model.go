@@ -3,6 +3,7 @@ package runner
 import (
 	"encoding/json"
 	"errors"
+	"sync"
 
 	"github.com/fqwink/build-scripts/components/statefile"
 )
@@ -22,10 +23,33 @@ var (
 	ErrCICDSource       = errors.New("P19_SOURCE")
 	ErrCICDDigest       = errors.New("P19_DIGEST")
 	ErrCICDTransport    = errors.New("P19_TRANSPORT")
+	ErrCICDOutput       = errors.New("P19_OUTPUT")
+	ErrCICDStale        = errors.New("P19_STALE")
 )
+
+type CICDJobLog struct {
+	mu                        sync.Mutex
+	project, run, job         string
+	attempt, try              int
+	patterns                  [][]byte
+	maxPattern                int
+	streams                   [2]cicdLogStream
+	limit, raw                int64
+	stageClosed, sealed, over bool
+}
+
+type cicdLogStream struct {
+	data, pending, carry []byte
+	first, next          int64
+	gap, terminal        bool
+}
 
 type CICDSourceRequest struct {
 	Owner, Repo, RefKind, Ref, SHA string
+}
+
+type CICDRefRequest struct {
+	Owner, Repo, RefKind, Ref string
 }
 
 type CICDRunAdmissionStore interface {
