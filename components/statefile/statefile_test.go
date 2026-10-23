@@ -203,6 +203,52 @@ func TestCICDRunRejection(t *testing.T) {
 	}
 }
 
+func TestCICDRunRequestCollision(t *testing.T) {
+	for _, name := range []string{"rejected-audit", "operation", "replay"} {
+		t.Run(name, func(t *testing.T) {
+			s, request, plan := cicdRunFixture(t)
+			resolve := func(CICDPlanSnapshot) (json.RawMessage, error) { return plan, nil }
+			if name == "rejected-audit" {
+				original := request.PlanDigest
+				request.PlanDigest = strings.Repeat("f", 64)
+				if _, err := s.StartRun(request, 1, resolve); err == nil || err.Error() != "P19_STALE" {
+					t.Fatal("statefile.phase19-run.request-id.fixture")
+				}
+				request.PlanDigest = original
+			} else {
+				if _, err := s.StartRun(request, 1, resolve); err != nil {
+					t.Fatal("statefile.phase19-run.request-id.fixture", err)
+				}
+				request.RequestID = request.OperationID
+				if name == "operation" {
+					request.OperationID = "o-" + strings.Repeat("c", 32)
+				} else {
+					// A different retained operation supplies the colliding server ID.
+					other := request
+					other.OperationID, other.RequestID = "o-"+strings.Repeat("c", 32), "o-"+strings.Repeat("d", 32)
+					s.entropy = bytes.NewReader(bytes.Repeat([]byte{0x22}, 16))
+					if _, err := s.StartRun(other, 1, resolve); err != nil {
+						t.Fatal("statefile.phase19-run.request-id.second", err)
+					}
+					request.RequestID = other.OperationID
+				}
+			}
+			before, head, _ := s.store.read()
+			if _, reply, err := s.CheckRunStart(request); err == nil || err.Error() != "P19_ENTROPY" || reply.Operation != nil {
+				t.Fatal("statefile.phase19-run.request-id.read-reject", err)
+			}
+			calls := 0
+			if reply, err := s.StartRun(request, 1, func(CICDPlanSnapshot) (json.RawMessage, error) { calls++; return plan, nil }); err == nil || err.Error() != "P19_ENTROPY" || reply.Operation != nil || calls != 0 {
+				t.Fatal("statefile.phase19-run.request-id.admission-reject", err)
+			}
+			after, final, _ := s.store.read()
+			if head != final || !bytes.Equal(cicdValueBytes(before), cicdValueBytes(after)) {
+				t.Fatal("statefile.phase19-run.request-id.no-write")
+			}
+		})
+	}
+}
+
 func TestCICDRunPins(t *testing.T) {
 	for _, name := range []string{"selected", "duplicate", "unselected", "missing", "deleting"} {
 		t.Run(name, func(t *testing.T) {
@@ -231,7 +277,7 @@ func TestCICDRunPins(t *testing.T) {
 			reply, err := s.StartRun(request, 1, func(CICDPlanSnapshot) (json.RawMessage, error) { return plan, nil })
 			root, _, _ := s.store.read()
 			if name == "missing" || name == "deleting" {
-				if err != ErrCICDNotFound || reply.Operation != nil || len(cicdList(root["runs"])) != 0 || len(cicdList(root["notifications"])) != 0 {
+				if err == nil || err.Error() != "P19_NOT_FOUND" || reply.Operation != nil || len(cicdList(root["runs"])) != 0 || len(cicdList(root["notifications"])) != 0 {
 					t.Fatal("statefile.phase19-run.pin.reject", err)
 				}
 			} else {
@@ -1514,7 +1560,7 @@ func TestCICDSnapshotMutations(t *testing.T) {
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
 		t.Skip("P19_CAPABILITY: storage mutation execution requires Linux amd64")
 	}
-	const selection = "^TestCICD(Schema|RootIntegrity|Run(Admission|Rejection|Pins|ReadScope|Capacity)|Operation(Schema|Admission|OneTime|Authorization|RejectedMutation|Scope|Advance|GC|Concurrency|Faults)|Snapshot(Store|Faults|Corruption|Locks|NoReplace))$"
+	const selection = "^TestCICD(Schema|RootIntegrity|Run(Admission|Rejection|RequestCollision|Pins|ReadScope|Capacity)|Operation(Schema|Admission|OneTime|Authorization|RejectedMutation|Scope|Advance|GC|Concurrency|Faults)|Snapshot(Store|Faults|Corruption|Locks|NoReplace))$"
 	for _, mutation := range []struct{ id, path, old, new, reason string }{
 		{"unknown-key", "validate.go", "!ok || len(object) != len(schema)", "!ok", "statefile.phase19-schema.head-unknown.result"},
 		{"missing-key", "validate.go", "!exists || !validateCICDType(childType, child, expression+\".\"+key, depth+1)", "exists && !validateCICDType(childType, child, expression+\".\"+key, depth+1)", "statefile.phase19-schema.head-missing-substituted.result"},
@@ -1549,6 +1595,7 @@ func TestCICDSnapshotMutations(t *testing.T) {
 		{"run-global-limit", "execute.go", "active >= 16", "active >= 17", "statefile.phase19-run.capacity.boundary"},
 		{"run-pin", "execute.go", "artifact[\"pins\"] = append(pins, id)", "artifact[\"pins\"] = pins", "statefile.phase19-run.pin.atomic"},
 		{"run-entropy", "execute.go", "if _, err := io.ReadFull(reader, entropy[:]); err != nil {", "if _, err := io.ReadFull(reader, entropy[:]); false && err != nil {", "statefile.phase19-run.reject.result"},
+		{"run-request-id", "execute.go", "if !cicdRequestIDAvailable(root, request.requestID) {", "if false && !cicdRequestIDAvailable(root, request.requestID) {", "statefile.phase19-run.request-id.admission-reject"},
 	} {
 		t.Run(mutation.id, func(t *testing.T) {
 			copyDir := t.TempDir()

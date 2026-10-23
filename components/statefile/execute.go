@@ -265,6 +265,9 @@ func (s *CICDRunStore) readPlan(request CICDRunRequest, start bool) (CICDPlanSna
 		return snapshot, reply, err
 	}
 	if start {
+		if !cicdRequestIDAvailable(root, request.RequestID) {
+			return snapshot, reply, errors.New("P19_ENTROPY")
+		}
 		if existing := findCICDOperation(root, request.OperationID); existing != nil {
 			if existing["subject"] != request.Principal.ID || existing["kind"] != "runStart" || existing["request_digest"] != request.RequestDigest || existing["project_id"] != request.ProjectID {
 				return snapshot, reply, ErrCICDIdempotency
@@ -845,6 +848,9 @@ func (s *cicdSnapshotStore) updateCICDAt(request cicdOperationRequest, mutate fu
 		if err != nil {
 			return err
 		}
+		if !cicdRequestIDAvailable(root, request.requestID) {
+			return errors.New("P19_ENTROPY")
+		}
 		if operation := findCICDOperation(root, request.id); operation != nil {
 			if operation["subject"] != request.principal.ID || operation["kind"] != request.access.Operation || operation["request_digest"] != request.digest || operation["project_id"] != cicdNullable(request.access.ProjectID) {
 				return ErrCICDIdempotency
@@ -924,14 +930,6 @@ func (s *cicdSnapshotStore) updateCICDAt(request cicdOperationRequest, mutate fu
 		for key, value := range cicdObject(restored) {
 			root[key] = value
 		}
-		if findCICDOperation(root, request.requestID) != nil {
-			return errors.New("P19_ENTROPY")
-		}
-		for _, value := range cicdList(root["audits"]) {
-			if cicdObject(value)["operation_id"] == request.requestID {
-				return errors.New("P19_ENTROPY")
-			}
-		}
 		rejection = safeCICDOperationError(err)
 		root["audits"] = append(cicdList(root["audits"]), map[string]any{"operation_id": request.requestID, "subject": request.principal.ID, "project_id": cicdNullable(request.access.ProjectID), "environment_id": cicdNullable(request.access.EnvironmentID), "action": request.access.Operation, "phase": "rejected", "at": now.Format(time.RFC3339), "target_id": nil, "code": rejection.Error()})
 		return nil
@@ -944,6 +942,18 @@ func (s *cicdSnapshotStore) updateCICDAt(request cicdOperationRequest, mutate fu
 	}
 	reply.generation = head.Generation
 	return reply, nil
+}
+
+func cicdRequestIDAvailable(root map[string]any, id string) bool {
+	if findCICDOperation(root, id) != nil {
+		return false
+	}
+	for _, value := range cicdList(root["audits"]) {
+		if cicdObject(value)["operation_id"] == id {
+			return false
+		}
+	}
+	return true
 }
 
 func authorizeCICDRoot(root map[string]any, principal security.CICDPrincipal, access security.CICDAccess, now time.Time) (security.CICDAuthorization, error) {

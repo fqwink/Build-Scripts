@@ -167,7 +167,7 @@ func TestCICDRunRealStore(t *testing.T) {
 	if err != nil {
 		t.Fatal("runner.phase19-run.real.preview")
 	}
-	request := statefile.CICDRunRequest{Principal: security.CICDPrincipal{Kind: "user", ID: "admin", ExpiresAt: time.Now().Add(time.Hour), MustChange: "none"}, ProjectID: "p", DefinitionID: "d", DefinitionRevision: 1, OperationID: "o-" + strings.Repeat("a", 32), RequestID: "o-" + strings.Repeat("b", 32), RequestDigest: strings.Repeat("c", 64), PlanDigest: cicdPlanTestObject(t, string(plan))["digest"].(string), Check: func(current statefile.CICDIdentity) error {
+	request := statefile.CICDRunRequest{Principal: security.CICDPrincipal{Kind: "user", ID: "admin", ExpiresAt: time.Now().UTC().Truncate(time.Second).Add(time.Hour), MustChange: "none"}, ProjectID: "p", DefinitionID: "d", DefinitionRevision: 1, OperationID: "o-" + strings.Repeat("a", 32), RequestID: "o-" + strings.Repeat("b", 32), RequestDigest: strings.Repeat("c", 64), PlanDigest: cicdPlanTestObject(t, string(plan))["digest"].(string), Check: func(current statefile.CICDIdentity) error {
 		if current.ID != "admin" || current.Revision != 1 {
 			return security.ErrCICDAuth
 		}

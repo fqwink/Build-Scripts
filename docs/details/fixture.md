@@ -67,7 +67,9 @@ truncated/必須key/null、unsafe/重複/親欠落/file祖先path、symlink/subm
 
 [components/runner/runner_test.go](../../components/runner/runner_test.go) の `TestCICDRunStart` はsource取得前のPrepare、取得1回、値copy、現在Worker/Definitionでの再計算、stale拒否、取得/入力失敗の保存層への拒否接続、再送/認可失敗時の取得/受付0を独立fakeで比較する。`TestCICDRunRealStore` はLinux amd64で実OpenCICDRunStoreと製品Prepare/Resolveを接続し、durable受付→再open→同Operation再送→認証失効拒否を行う。assertion IDは `runner.phase19-run.*`。実GitHub、worker起動、HTTP/SDK/UI登録、正式384 assertion、18 record closure、最低1GB実働の証明には流用しない。Macのfilesystem skipは正式成功へ置換せずLinux Actions結果へ接続する。
 
-既存native Go変異harnessに、statefileのproject revision/PlanDigest/現在identity/queue/global limit/pin/entropyの7制御（既存26件と計33件）、runnerのvalues copy/replayの2制御（既存25件と計27件）を追加する。compile成功後の固定assertion失敗だけをkillとし、実process callを増やさない。実行入口は通常Go/race/既存開発Actions、process入力指紋は [Go process review固定入力](#development-actions-go-process-review-input) を参照する。
+`TestCICDRunRequestCollision` は保存済み拒否監査/OperationのIDをserver request_idへ与え、新規/再送ともPlan再計算0・Operation返却0・Root不変でP19_ENTROPYを要求する。認可後かつ既存key/副作用より前の衝突検査を、拒否監査を書こうとした時だけの検査で代用しない。
+
+既存native Go変異harnessに、statefileのproject revision/PlanDigest/現在identity/queue/global limit/pin/entropy/server request_idの8制御（既存26件と計34件）、runnerのvalues copy/replayの2制御（既存25件と計27件）を追加する。compile成功後の固定assertion失敗だけをkillとし、実process callを増やさない。実行入口は通常Go/race/既存開発Actions、process入力指紋は [Go process review固定入力](#development-actions-go-process-review-input) を参照する。
 
 <a id="phase-19-memory-evidence"></a>
 **最低実働メモリの単体検証と実測証跡：** [components/runner/runner_test.go](../../components/runner/runner_test.go) の `TestCICDResources` / `TestCICDMemoryAdmission` / `TestCICDHostMemoryParser` / `TestCICDMemorySpecification` は [docs/details/statefile.md 詳細本文責務 Resources](statefile.md#phase-19-schema-registry)、[docs/details/setup.md 詳細本文責務 host観測](setup.md#phase-19-memory-profile)、[docs/details/runner.md 詳細本文責務 メモリ受付](runner.md#phase-19-memory-admission) を独立期待値で検査する。入力には実測896/960/1024 MiB、Available319/320、単独budget384/385、slot境界1535/1536、既存claim合計1536/1537、4slot満杯、不正claim/overflow/順序優先、meminfoのKiB丸め前超過・単位・重複・I/O失敗・65536/65537 bytesを含む。小メモリの2job目はP19_BUSY、単独で成立しない旧既定jobはP19_CAPABILITY、入力値/claim配列不変、エラーの秘密文字列漏えい0とする。schema/default/複合制約をmemory copyで変更する5negative controlを拒否する。assertion IDは `runner.phase19-memory.<case>.value/parse/admit/reject`。これらはbudget計算/読取/資源境界の検証であり、未実装のcoordinator/broker接続・OOM回収や1GB実働成功を証明しない。
@@ -3561,7 +3563,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
     },
     {
       "path": "components/runner/runner_test.go",
-      "source_sha256": "dc1e34e20728c4be349747e0b248e9eca20dfbc152cf3f5dcfb7486f4b3ac86d",
+      "source_sha256": "478fcc4ff812ea8f45ecc1ca5ed53366066cd7e0da369735edf3a0aa6c7b8736",
       "calls_sha256": "3cba22f144ddbd1c1e66edd375e1e66debcdf18dd37e7f37d4772e4301d17685",
       "call_count": 3,
       "review_basis": "native-fixture-only"
